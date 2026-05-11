@@ -112,9 +112,30 @@ Route::post('/logout', [LoginController::class, 'logout'])->name('admin.logout')
     Route::get('/admin/historial/salida/repuestos/detalletabla/{id}', [HistorialController::class,'detalleTablaHistorialSalidas']);
 
 
-    // --- REPORTES ---
+    // --- REPORTES / ENTRADA Y SALIDAS ---
     Route::get('/admin/entrada/reporte/vista', [ReportesController::class,'indexEntradaReporte'])->name('admin.entrada.reporte.index');
     Route::get('/admin/reporte/registro/{tipo}/{desde}/{hasta}', [ReportesController::class,'reportePdfEntradaSalida']);
+
+    // --- REPORTES / INVENTARIO ---
+    Route::get('/admin/reporte/inventario', [ReportesController::class,'vistaParaReporteInventario'])->name('admin.reporte.inventario.index');
+    Route::get('/admin/reporte/inventario/pdf/{tipo}', [ReportesController::class,'reporteInventarioActual']);
+
+    // --- REPORTE / QUE HA SALIDO POR X PROYECTO
+    Route::get('/admin/reporte/inventario/quehasalido/proyecto', [ReportesController::class,'vistaQueHaSalidoProyecto'])->name('admin.reporte.inventario.salidaproyecto.index');
+    Route::get('/admin/reporte/quehasalido/proyectos/pdf/{idproy}/{desde}/{hasta}/{tipo}', [ReportesController::class,'pdfQueHaSalidoProyectos']);
+
+    // --- REPORTE / INVENTARIO QUE MATERIALES TENGO POR X PROYECTO
+    Route::get('/admin/reporte/inventario/quetengopor/proyecto', [ReportesController::class,'vistaQueTengoPorProyecto'])->name('admin.reporte.inventario.tengoporproyecto.index');
+    Route::get('/admin/reporte/quetengopor/proyectos/pdf/{idproy}', [ReportesController::class,'reporteQueTengoPorProyecto']);
+
+    // --- REPORTE / VER LOS MATERIALES QUE SOBRARON DE UN PROYECTO COMPLETADO
+    Route::get('/admin/reporte/inventario/sobranteterminado/proyecto', [ReportesController::class,'vistaProyectoCompletado'])->name('admin.reporte.inventario.proyectocompletado.index');
+    Route::get('/admin/reporte/inventario/sobranteterminado/proy/{idtrans}', [ReportesController::class,'reporteProyectoTerminado']);
+
+    // --- REPORTE / SALIDA POR MATERIAL ---
+    Route::get('/admin/reporte/salida/pormaterial/index', [ReportesController::class,'vistaSalidaPorMaterial'])->name('admin.reporte.salida.material.index');
+    Route::get('/admin/pdf/salida/pormaterial/proyecto/{desde}/{hasta}/{materiales}', [ReportesController::class,'pdfReporteMaterialesSalidas']);
+
 
 
 

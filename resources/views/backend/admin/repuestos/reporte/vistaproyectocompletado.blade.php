@@ -1,17 +1,72 @@
-@extends('backend.menus.superior')
+@extends('adminlte::page')
 
-@section('content-admin-css')
-    <link href="{{ asset('css/adminlte.min.css') }}" type="text/css" rel="stylesheet" />
-    <link href="{{ asset('css/dataTables.bootstrap4.css') }}" type="text/css" rel="stylesheet" />
+@section('title', 'Proyecto Completado')
+
+{{-- Activa plugins que necesitas --}}
+@section('plugins.Datatables', true)
+@section('plugins.DatatablesPlugins', true)
+@section('plugins.Sweetalert2', true)
+
+@include('backend.urlglobal')
+
+@section('content_top_nav_right')
+
     <link href="{{ asset('css/toastr.min.css') }}" type="text/css" rel="stylesheet" />
-    <link href="{{ asset('css/estiloToggle.css') }}" type="text/css" rel="stylesheet" />
-    <link href="{{ asset('css/main.css') }}" type="text/css" rel="stylesheet" />
     <link href="{{ asset('css/select2.min.css') }}" type="text/css" rel="stylesheet">
     <link href="{{ asset('css/select2-bootstrap-5-theme.min.css') }}" type="text/css" rel="stylesheet">
-@stop
+
+    <li class="nav-item dropdown">
+        <a href="#"
+           class="nav-link"
+           data-toggle="dropdown"
+           role="button"
+           aria-haspopup="true"
+           aria-expanded="false">
+
+            <i class="fas fa-cogs"></i>
+
+            <span class="d-none d-md-inline">
+                {{ Auth::guard('admin')->user()->nombre }}
+            </span>
+        </a>
+
+        <div class="dropdown-menu dropdown-menu-right">
+
+            <a href="{{ route('admin.perfil') }}" class="dropdown-item">
+                <i class="fas fa-user mr-2"></i>
+                Editar Perfil
+            </a>
+
+        </div>
+    </li>
+
+    <li class="nav-item">
+
+        <form action="{{ route('admin.logout') }}"
+              method="POST"
+              class="d-inline">
+
+            @csrf
+
+            <button type="submit"
+                    class="nav-link btn btn-link border-0 bg-transparent">
+
+                <i class="fas fa-sign-out-alt"></i>
+
+                <span class="d-none d-md-inline">
+                    Cerrar Sesión
+                </span>
+
+            </button>
+
+        </form>
+
+    </li>
+
+@endsection
+@section('content')
 
 
-<div class="content-wrapper" id="divcc" style="display: none">
     <!-- Content Header (Page header) -->
     <section class="content-header">
         <div class="container-fluid">
@@ -66,11 +121,8 @@
     </section>
 
 
-</div>
-
-
-@extends('backend.menus.footerjs')
-@section('archivos-js')
+@stop
+@section('js')
 
     <script src="{{ asset('js/jquery.dataTables.js') }}" type="text/javascript"></script>
     <script src="{{ asset('js/dataTables.bootstrap4.js') }}" type="text/javascript"></script>

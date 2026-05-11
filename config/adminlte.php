@@ -410,6 +410,35 @@ return [
                     'icon' => 'far fa-circle',
                     'route' => 'admin.entrada.reporte.index',
                 ],
+                [
+                    'text' => 'Inventario',
+                    'icon' => 'far fa-circle',
+                    'route' => 'admin.reporte.inventario.index',
+                ],
+                [
+                    'text' => 'Salida por Proyecto',
+                    'icon' => 'far fa-circle',
+                    'route' => 'admin.reporte.inventario.salidaproyecto.index',
+                ],
+                [
+                    'text' => 'Inventario Proyecto',
+                    'icon' => 'far fa-circle',
+                    'route' => 'admin.reporte.inventario.tengoporproyecto.index',
+                ],
+                [
+                    'text' => 'Proyecto Completado',
+                    'icon' => 'far fa-circle',
+                    'route' => 'admin.reporte.inventario.proyectocompletado.index',
+                ],
+                [
+                    'text' => 'Salida por Material',
+                    'icon' => 'far fa-circle',
+                    'route' => 'admin.reporte.salida.material.index',
+                ],
+
+
+
+
             ],
         ],
 
