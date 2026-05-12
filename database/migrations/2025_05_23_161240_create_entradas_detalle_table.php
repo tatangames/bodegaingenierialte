@@ -13,8 +13,8 @@ return new class extends Migration
     {
         Schema::create('entradas_detalle', function (Blueprint $table) {
             $table->id();
-            $table->bigInteger('entradas_id')->unsigned();
-            $table->bigInteger('material_id')->unsigned();
+            $table->bigInteger('id_entradas')->unsigned();
+            $table->bigInteger('id_material')->unsigned();
 
             // La cantidad registrada que no cambia
             $table->integer('cantidad_inicial');
@@ -22,8 +22,8 @@ return new class extends Migration
             // 4 DECIMALES PARA PRECIO UNITARIO
             $table->decimal('precio', 10,4)->default(0);
 
-            $table->foreign('entradas_id')->references('id')->on('entrada');
-            $table->foreign('material_id')->references('id')->on('materiales');
+            $table->foreign('id_entradas')->references('id')->on('entradas');
+            $table->foreign('id_material')->references('id')->on('materiales');
         });
     }
 

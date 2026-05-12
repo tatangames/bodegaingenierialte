@@ -59,7 +59,7 @@ Route::post('/logout', [LoginController::class, 'logout'])->name('admin.logout')
     Route::post('/admin/unidadmedida/informacion', [ConfiguracionController::class, 'informacionUnidadMedida']);
     Route::post('/admin/unidadmedida/editar', [ConfiguracionController::class, 'editarUnidadMedida']);
 
-    // --- REGISTRO DE REPUESTOS PARA TENER UN INVENTARIO ---
+    // --- INVENTARIO ---
     Route::get('/admin/inventario/index', [RepuestosController::class,'index'])->name('admin.materiales.index');
     Route::get('/admin/inventario/tabla/index', [RepuestosController::class,'tablaMateriales']);
     Route::post('/admin/inventario/nuevo', [RepuestosController::class, 'nuevoMaterial']);
@@ -76,32 +76,63 @@ Route::post('/logout', [LoginController::class, 'logout'])->name('admin.logout')
     Route::post('/admin/proyecto/editar', [TipoProyectoController::class, 'editarProyecto']);
     Route::post('/admin/proyecto/eliminar', [TipoProyectoController::class, 'borrarProyecto']);
 
-    // --- REGISTRAR ENTRADA DE REPUESTOS ---
+    // --- REGISTRAR ENTRADA ---
     Route::get('/admin/registro/entrada', [RepuestosController::class,'indexRegistroEntrada'])->name('admin.entrada.registro.index');
     Route::post('/admin/buscar/material',  [RepuestosController::class,'buscadorMaterial']);
-    Route::post('/admin/entrada/guardar',  [RepuestosController::class,'guardarEntrada']);
+    Route::post('/admin/entradas/guardar',  [RepuestosController::class,'guardarEntrada']);
 
-    // --- REGISTRAR SALIDA DE REPUESTOS ---
+    // --- REGISTRAR SALIDA ---
     Route::get('/admin/registro/salida', [SalidasController::class,'indexRegistroSalida'])->name('admin.salida.registro.index');
     Route::post('/admin/salida/guardar',  [SalidasController::class,'guardarSalida']);
+    Route::post('/admin/buscar/material/disponible',  [SalidasController::class,'buscadorMaterialDisponible']);
+    Route::post('/admin/buscar/material/disponibilidad', [SalidasController::class, 'infoBodegaMaterialDetalleFila']);
 
-    Route::post('/admin/buscar/material/porproyecto',  [SalidasController::class,'buscadorMaterialPorProyecto']);
-    Route::post('/admin/repuesto/cantidad/bloque', [SalidasController::class,'bloqueCantidades']);
 
     // --- TRANSFERENCIAS ---
     Route::get('/admin/transferecias/a/huesera', [SalidasController::class,'indexTransferencias'])->name('admin.transferencias.index');
     Route::post('/admin/generar/salida/transferencia',  [SalidasController::class,'geenrarSalidaTransferencia']);
 
 
+    // --- HISTORIAL / ENTRADAS ---
+    Route::get('/admin/historial/entradas', [HistorialController::class,'indexHistorialEntradas'])->name('admin.historial.entradas.index');
+    Route::get('/admin/historial/entradas/tabla',  [HistorialController::class,'tablaHistorialEntradas']);
+
+    Route::post('/admin/historial/entradas/informacion', [HistorialController::class, 'informacionEntrada']);
+    Route::post('/admin/historial/entradas/editar',      [HistorialController::class, 'editarEntrada']);
+    Route::post('/admin/historial/entradas/eliminar',    [HistorialController::class, 'eliminarEntrada']);
+
+
+
+
+
+
+
+
 
     // --- HISTORIAL - LISTADO DE REPUESTAS DE SALIDA
     Route::get('/admin/historial/salida/repuestos/index', [HistorialController::class,'indexHistorialRepuestosSalida'])->name('admin.historial.salidas.repuestos');
     Route::get('/admin/historial/salida/repuestos/tabla', [HistorialController::class,'tablaHistorialRepuestosSalida']);
-    Route::post('/admin/historial/salida/repuestos/informacion',  [HistorialController::class,'informacionHistorialSalidaRepuesto']);
-    Route::post('/admin/historial/salida/repuestos/actualizar',  [HistorialController::class,'actualizarHistorialSalidaRepuesto']);
 
-    Route::get('/admin/historial/salida/repuestos/detalle/{id}', [HistorialController::class,'detalleIndexHistorialSalidas']);
-    Route::get('/admin/historial/salida/repuestos/detalletabla/{id}', [HistorialController::class,'detalleTablaHistorialSalidas']);
+
+
+
+
+
+
+
+
+
+
+
+
+  //  Route::get('/admin/historial/salida/repuestos/detalle/{id}', [HistorialController::class,'detalleIndexHistorialSalidas']);
+  //  Route::get('/admin/historial/salida/repuestos/detalletabla/{id}', [HistorialController::class,'detalleTablaHistorialSalidas']);
+
+
+
+
+
+
 
 
     // --- REPORTES / ENTRADA Y SALIDAS ---

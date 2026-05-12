@@ -6,7 +6,6 @@
     <h1>Registro de Entradas</h1>
 @stop
 
-
 {{-- Activa plugins que necesitas --}}
 @section('plugins.Datatables', true)
 @section('plugins.DatatablesPlugins', true)
@@ -23,8 +22,8 @@
         <a href="#" class="nav-link" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
             <i class="fas fa-cogs"></i>
             <span class="d-none d-md-inline">
-            {{ Auth::guard('admin')->user()->nombre }}
-        </span>
+                {{ Auth::guard('admin')->user()->nombre }}
+            </span>
         </a>
 
         <div class="dropdown-menu dropdown-menu-right">
@@ -54,60 +53,98 @@
         /*Ajustar tablas*/
         table-layout:fixed;
     }
+
+    .cursor-pointer:hover {
+        cursor: pointer;
+        color: #401fd2;
+        font-weight: bold;
+    }
+
+    *:focus {
+        outline: none;
+    }
 </style>
 
 <div id="divcontenedor">
+
+    <section class="content-header">
+        <div class="row mb-2">
+            <div class="col-sm-6">
+                <h2>Registro de Entradas</h2>
+            </div>
+        </div>
+    </section>
+
 
     <section class="content">
         <div class="container-fluid">
             <div class="row">
 
-                <div class="col-md-8">
-
-                    <div class="card card-primary">
+                <div class="col-md-10">
+                    <div class="card card-gray-dark">
                         <div class="card-header">
-                            <h3 class="card-title">Información</h3>
+                            <h3 class="card-title">Información de Ingreso</h3>
                         </div>
 
                         <div class="card-body">
 
-                            <div class="card-body">
-                                <div class="row">
-                                    <label>Fecha: <span style="color: red">*</span></label>
-                                    <input style="width: 25%; margin-left: 25px;" type="date" class="form-control" id="fecha">
+                            {{-- Fila 1: Fecha y Factura --}}
+                            <div class="row">
+                                <div class="col-md-2">
+                                    <div class="form-group">
+                                        <label>Fecha:</label>
+                                        <input type="date" class="form-control" id="fecha">
+                                    </div>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label>Factura (Opcional):</label>
+                                        <input type="text" class="form-control" autocomplete="off" maxlength="100" id="lote">
+                                    </div>
                                 </div>
                             </div>
 
-                            <div style="margin-left: 15px; margin-right: 15px; margin-top: 15px;">
-                                <div class="form-group">
-                                    <label>Asignar Proyecto: <span style="color: red">*</span></label>
-                                    <select id="select-tipoproyecto" class="form-control w-100" onchange="borrarTabla(this)">
-                                        <option value="">Seleccionar Proyecto</option>
-                                        @foreach($tipoproyecto as $item)
-                                            <option value="{{$item->id}}">{{ $item->nombre }}</option>
-                                        @endforeach
-                                    </select>
+                            {{-- Fila 2: Proyecto --}}
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <div class="form-group">
+                                        <label>Proyecto:</label>
+                                        <select class="form-control" id="select-proyecto">
+                                            @foreach($arrayProyecto as $sel)
+                                                <option value="{{ $sel->id }}">{{ $sel->nombre }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div style="margin-left: 15px; margin-right: 15px; margin-top: 25px;">
-                                <div class="form-group">
-                                    <label>Descripción (Opcional):</label>
-                                    <input type="text" class="form-control" autocomplete="off" maxlength="800" id="descripcion">
+                            {{-- Fila 3: Descripción y Botón --}}
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <div class="form-group">
+                                        <label>Descripción (Opcional):</label>
+                                        <input type="text" class="form-control" autocomplete="off" maxlength="800" id="descripcion">
+                                    </div>
+                                </div>
+
+                                <div class="col-md-4 d-flex align-items-end justify-content-end">
+                                    <div class="form-group">
+                                        <button type="button" onclick="abrirModal()" class="btn btn-primary btn-sm">
+                                            <i class="fas fa-plus"></i> Agregar Material
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div class="form-group" style="float: right">
-                                <br>
-                                <button type="button" id="botonaddmaterial" onclick="abrirModal()" class="btn btn-primary btn-sm float-right" style="margin-top:10px; margin-right: 15px;">
-                                    <i class="fas fa-plus" title="Agregar Material"></i> Agregar Material</button>
-                            </div>
                         </div>
                     </div>
                 </div>
+
             </div>
         </div>
     </section>
+
 
     <div class="modal fade" id="modalRepuesto" >
         <div class="modal-dialog modal-xl">
@@ -124,8 +161,8 @@
                         <div class="card-body">
 
                             <div class="form-group">
-                                <label class="control-label">Material</label>
-                                <p>La busqueda regresa Material - Medida - Código</p>
+                                <label class="control-label">Repuesto</label>
+                                <p>La busqueda regresa: Material - Medida - Marca - Normativa - Color - Talla</p>
                                 <table class="table" id="matriz-busqueda" data-toggle="table">
                                     <tbody>
                                     <tr>
@@ -139,23 +176,23 @@
                             </div>
 
                             <div class="form-group" >
-                                <label class="control-label">Cantidad <span style="color: red">*</span></label>
+                                <label class="control-label">Cantidad</label>
                                 <div class="col-md-6">
-                                    <input id="cantidad" class='form-control' autocomplete="off" placeholder="0">
+                                    <input type="number" id="cantidad" min="0" max="1000000"  class='form-control' autocomplete="off" placeholder="0">
                                 </div>
                             </div>
 
                             <div class="form-group" >
-                                <label class="control-label">Código (opcional)</label>
+                                <label class="control-label">Código</label>
                                 <div class="col-md-6">
-                                    <input id="codigo" class='form-control' maxlength="100" autocomplete="off" placeholder="0">
+                                    <input type="text" id="codigo" maxlength="100" class='form-control' autocomplete="off" placeholder="0">
                                 </div>
                             </div>
 
-                            <div class="form-group" >
-                                <label class="control-label">Precio <span style="color: red">*</span></label>
-                                <div class="col-md-6">
-                                    <input id="precio" min="0" class='form-control' autocomplete="off" placeholder="0.0">
+                            <div class="form-group col-md-4" style="margin-top: 5px">
+                                <label class="control-label" style="color: #686868">Precio (4 decimales máximo): </label>
+                                <div>
+                                    <input type="number" min="0" max="1000000" autocomplete="off" class="form-control" id="precio-producto" placeholder="0.00">
                                 </div>
                             </div>
 
@@ -171,8 +208,6 @@
         </div>
     </div>
 
-
-
     <section class="content-header">
         <div class="row mb-2">
             <div class="col-sm-6">
@@ -183,27 +218,26 @@
 
     <section class="content">
         <div class="container-fluid">
-            <div class="card card-primary">
+            <div class="card card-gray-dark">
                 <div class="card-header">
                     <h3 class="card-title">Información de Ingreso</h3>
                 </div>
 
-                <div style="margin: 15px;">
-                    <table class="table" id="matriz" data-toggle="table">
-                        <thead>
-                        <tr>
-                            <th style="width: 3%">#</th>
-                            <th style="width: 10%">Descripción</th>
-                            <th style="width: 6%">Cantidad</th>
-                            <th style="width: 6%">Código</th>
-                            <th style="width: 6%">Precio</th>
-                            <th style="width: 5%">Opciones</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        </tbody>
-                    </table>
-                </div>
+                <table class="table" id="matriz" data-toggle="table" style="margin-right: 15px; margin-left: 15px;">
+                    <thead>
+                    <tr>
+                        <th style="width: 3%">#</th>
+                        <th style="width: 10%">Descripción</th>
+                        <th style="width: 6%">Cantidad</th>
+                        <th style="width: 6%">Código</th>
+                        <th style="width: 6%">Precio</th>
+                        <th style="width: 5%">Opciones</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+
+                    </tbody>
+                </table>
 
             </div>
         </div>
@@ -216,7 +250,6 @@
 </div>
 
 @stop
-
 @section('js')
 
     <script src="{{ asset('js/jquery.dataTables.js') }}" type="text/javascript"></script>
@@ -228,9 +261,9 @@
     <script src="{{ asset('js/alertaPersonalizada.js') }}"></script>
     <script src="{{ asset('js/select2.min.js') }}" type="text/javascript"></script>
 
+    <script type="text/javascript">
+        $(document).ready(function(){
 
-    <script>
-        $(function () {
             var fecha = new Date();
             document.getElementById('fecha').value = fecha.toJSON().slice(0,10);
 
@@ -248,23 +281,29 @@
                 });
             });
 
-            $('#select-tipoproyecto').select2({
+
+            $('#select-proyecto').select2({
                 theme: "bootstrap-5",
                 "language": {
                     "noResults": function(){
-                        return "Búsqueda no encontrada";
+                        return "Busqueda no encontrada";
                     }
                 },
             });
 
-            document.querySelector('#botonaddmaterial').disabled = true;
         });
     </script>
 
     <script>
 
-        function abrirModal(){
+        document.getElementById('cantidad').addEventListener('keypress', function (event) {
+            // Permitir solo números (códigos de teclas 48-57) y teclas de control como "Backspace"
+            if (event.key < '0' || event.key > '9') {
+                event.preventDefault();
+            }
+        });
 
+        function abrirModal(){
             document.getElementById("formulario-repuesto").reset();
             $('#modalRepuesto').css('overflow-y', 'auto');
             $('#modalRepuesto').modal({backdrop: 'static', keyboard: false})
@@ -275,15 +314,15 @@
             var nomRepuesto = document.getElementById('repuesto').value;
             var cantidad = document.getElementById('cantidad').value;
             var codigo = document.getElementById('codigo').value;
-            var precio = document.getElementById('precio').value;
+            var precioProducto = document.getElementById('precio-producto').value;
 
             if(repuesto.dataset.info == 0){
-                toastr.error("Repuesto es requerido");
+                toastr.error("Material es requerido");
                 return;
             }
 
-            var reglaNumeroDosDecimal = /^([0-9]+\.?[0-9]{0,2})$/;
-
+            var reglaNumeroEntero = /^[0-9]\d*$/;
+            var reglaNumeroDiesDecimal = /^([0-9]+\.?[0-9]{0,10})$/;
             //*************
 
             if(cantidad === ''){
@@ -291,8 +330,8 @@
                 return;
             }
 
-            if(!cantidad.match(reglaNumeroDosDecimal)) {
-                toastr.error('Cantidad debe ser número Decimal (2 decimales) y no Negativo');
+            if(!cantidad.match(reglaNumeroEntero)) {
+                toastr.error('Cantidad debe ser número entero y no Negativo');
                 return;
             }
 
@@ -306,29 +345,30 @@
                 return;
             }
 
+            //**************
+
             //*************
 
-            if(precio === ''){
-                toastr.error('Precio es requerida');
+            if(precioProducto === ''){
+                toastr.error('Precio Producto es requerido');
                 return;
             }
 
-            if(!precio.match(reglaNumeroDosDecimal)) {
-                toastr.error('Precio debe ser número Decimal (2 decimales) y no Negativo');
+            if(!precioProducto.match(reglaNumeroDiesDecimal)) {
+                toastr.error('Precio Producto debe ser número Decimal (10 decimales)');
                 return;
             }
 
-            if(precio < 0){
-                toastr.error('Precio no debe ser negativo');
+            if(precioProducto < 0){
+                toastr.error('Precio Producto no debe ser negativo');
                 return;
             }
 
-            if(precio > 1000000){
-                toastr.error('Precio máximo 1 millón');
+            if(precioProducto > 9000000){
+                toastr.error('Precio Producto debe ser máximo 9 millones');
                 return;
             }
 
-            //**************
 
             var nFilas = $('#matriz >tbody >tr').length;
             nFilas += 1;
@@ -352,11 +392,12 @@
                 "</td>" +
 
                 "<td>" +
-                "<input name='precioArray[]' disabled value='" + precio + "' class='form-control' type='number'>" +
+                "<input name='arrayPrecio[]' data-precio='" + precioProducto + "' disabled value='$" + precioProducto + "' class='form-control' type='text'>" +
                 "</td>" +
 
+
                 "<td>" +
-                "<button type='button' class='btn btn-danger btn-sm' onclick='borrarFila(this)'>Borrar</button>" +
+                "<button type='button' class='btn btn-block btn-danger' onclick='borrarFila(this)'>Borrar</button>" +
                 "</td>" +
 
                 "</tr>";
@@ -373,6 +414,8 @@
 
             $(txtContenedorGlobal).attr('data-info', '0');
             document.getElementById("formulario-repuesto").reset();
+
+            document.getElementById('precio-producto').value = '';
         }
 
         function borrarFila(elemento){
@@ -463,43 +506,39 @@
 
             var fecha = document.getElementById('fecha').value;
             var descripc = document.getElementById('descripcion').value; // max 800
-            var tipoproyecto = document.getElementById('select-tipoproyecto').value;
+            var lote = document.getElementById('lote').value;
+            var proyecto = document.getElementById('select-proyecto').value;
 
             if(fecha === ''){
                 toastr.error('Fecha es requerida');
                 return;
             }
 
-            if(tipoproyecto === ''){
-                toastr.error('Seleccionar Proyecto');
+            if(proyecto === ''){
+                toastr.error('Proyecto es requerido');
                 return;
             }
 
-            if(descripc.length > 800){
-                toastr.error('descripción máximo 800 caracteres');
-                return;
-            }
-
-            var reglaNumeroDosDecimal = /^([0-9]+\.?[0-9]{0,2})$/;
-
+            var reglaNumeroEntero = /^[0-9]\d*$/;
             var nRegistro = $('#matriz > tbody >tr').length;
-            let formData = new FormData();
 
             if (nRegistro <= 0){
                 toastr.error('Registro Entrada son requeridos');
                 return;
             }
 
-            var descripcion = $("input[name='descripcionArray[]']").map(function(){return $(this).val();}).get();
             var descripcionAtributo = $("input[name='descripcionArray[]']").map(function(){return $(this).attr("data-info");}).get();
             var cantidad = $("input[name='cantidadArray[]']").map(function(){return $(this).val();}).get();
             var codigo = $("input[name='codigoArray[]']").map(function(){return $(this).val();}).get();
-            var precio = $("input[name='precioArray[]']").map(function(){return $(this).val();}).get();
+            var arrayPrecio = $("input[name='arrayPrecio[]']").map(function(){return $(this).attr("data-precio");}).get();
+
+            var reglaNumeroDiesDecimal = /^([0-9]+\.?[0-9]{0,10})$/;
 
             for(var a = 0; a < cantidad.length; a++){
 
                 let detalle = descripcionAtributo[a];
                 let datoCantidad = cantidad[a];
+                let precioProducto = arrayPrecio[a];
 
                 // identifica si el 0 es tipo number o texto
                 if(detalle == 0){
@@ -514,9 +553,9 @@
                     return;
                 }
 
-                if (!datoCantidad.match(reglaNumeroDosDecimal)) {
+                if (!datoCantidad.match(reglaNumeroEntero)) {
                     colorRojoTabla(a);
-                    toastr.error('Fila #' + (a + 1) + ' Cantidad debe ser decimal (2 decimales) y no negativo');
+                    toastr.error('Fila #' + (a + 1) + ' Cantidad debe ser Entero y no negativo');
                     return;
                 }
 
@@ -526,52 +565,69 @@
                     return;
                 }
 
-                if (datoCantidad.length > 10) {
+                // Máximo 1 millón
+                if (datoCantidad > 1000000) {
                     colorRojoTabla(a);
-                    toastr.error('Fila #' + (a + 1) + ' Cantidad máximo 10 caracteres');
-                    return;
-                }
-            }
-
-            for(var b = 0; b < descripcion.length; b++){
-
-                var datoDescripcion = descripcion[b];
-
-                if(datoDescripcion === ''){
-                    colorRojoTabla(b);
-                    toastr.error('Fila #' + (b+1) + ' la descripción es requerida');
+                    toastr.error('Fila #' + (a + 1) + ' Cantidad máximo 1 millón');
                     return;
                 }
 
-                if(datoDescripcion.length > 300){
-                    colorRojoTabla(b);
-                    toastr.error('Fila #' + (b+1) + ' la descripción tiene más de 300 caracteres');
+                // **** VALIDAR PRECIO DE PRODUCTO
+
+                if (precioProducto === '') {
+                    colorRojoTabla(a);
+                    toastr.error('Fila #' + (a + 1) + ' Precio de producto es requerida. Por favor borrar la Fila y buscar de nuevo el Producto');
+                    return;
+                }
+
+                if (!precioProducto.match(reglaNumeroDiesDecimal)) {
+                    colorRojoTabla(a);
+                    toastr.error('Fila #' + (a + 1) + ' Precio debe ser decimal (10 decimales) y no negativo. Por favor borrar la Fila y buscar de nuevo el Producto');
+                    return;
+                }
+
+                if (precioProducto < 0) {
+                    colorRojoTabla(a);
+                    toastr.error('Fila #' + (a + 1) + ' Precio no debe ser negativo. Por favor borrar la Fila y buscar de nuevo el Producto');
+                    return;
+                }
+
+                if (precioProducto > 9000000) {
+                    colorRojoTabla(a);
+                    toastr.error('Fila #' + (a + 1) + ' Precio máximo 9 millones. Por favor borrar la Fila y buscar de nuevo el Producto');
+                    return;
                 }
             }
 
             //*******************
 
+            let formData = new FormData();
+            const contenedorArray = [];
+
             // como tienen la misma cantidad de filas, podemos recorrer
             // todas las filas de una vez
             for(var p = 0; p < cantidad.length; p++){
 
-                formData.append('cantidad[]', cantidad[p]);
-                formData.append('codigo[]', codigo[p]);
-                formData.append('precio[]', precio[p]);
-                formData.append('datainfo[]', descripcionAtributo[p]);
+                let idMaterial = descripcionAtributo[p];
+                let infoCantidad = cantidad[p];
+                let infoCodigo = codigo[p];
+                let infoPrecio = arrayPrecio[p];
+
+                contenedorArray.push({ idMaterial, infoCantidad, infoCodigo, infoPrecio });
             }
 
             openLoading();
 
             formData.append('fecha', fecha);
             formData.append('descripcion', descripc);
-            formData.append('tipoproyecto', tipoproyecto);
+            formData.append('lote', lote);
+            formData.append('tipoproyecto', proyecto);
+            formData.append('contenedorArray', JSON.stringify(contenedorArray));
 
-            axios.post(urlAdmin+'/admin/entrada/guardar', formData, {
+            axios.post(urlAdmin+'/admin/entradas/guardar', formData, {
             })
                 .then((response) => {
                     closeLoading();
-
                     if(response.data.success === 1){
                         toastr.success('Registrado correctamente');
                         limpiar();
@@ -596,20 +652,11 @@
 
         function limpiar(){
             document.getElementById('descripcion').value = '';
-
+            document.getElementById('precio-producto').value = '';
             $("#matriz tbody tr").remove();
         }
 
-        function borrarTabla(e){
-            let id = $(e).val();
 
-            if(id == ''){
-                $("#matriz tbody tr").remove();
-                document.querySelector('#botonaddmaterial').disabled = true;
-            }else{
-                document.querySelector('#botonaddmaterial').disabled = false;
-            }
-        }
 
     </script>
 

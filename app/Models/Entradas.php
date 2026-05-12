@@ -12,8 +12,26 @@ class Entradas extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'id_material',
         'id_tipoproyecto',
-        'cantidad',
+        'fecha',
+        'descripcion',
+        'factura',
+        'es_transferencia',
+        'id_tipoproyecto_transferencia',
     ];
+
+    public function tipoproyecto()
+    {
+        return $this->belongsTo(\App\Models\Tipoproyecto::class, 'id_tipoproyecto');
+    }
+
+    public function tipoproyectoTransferencia()
+    {
+        return $this->belongsTo(\App\Models\Tipoproyecto::class, 'id_tipoproyecto_transferencia');
+    }
+
+    public function detalle()
+    {
+        return $this->hasMany(\App\Models\EntradasDetalle::class, 'id_entradas');
+    }
 }

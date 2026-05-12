@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 class CreateTipoproyectoTable extends Migration
 {
     /**
-     * Run the migrations.
+     * LISTADO DE PROYECTOS
      *
      * @return void
      */
@@ -17,6 +17,7 @@ class CreateTipoproyectoTable extends Migration
             $table->id();
             $table->string('nombre', 800);
 
+            // 0: NO TRANSFERIDO, 1: SI TRANSFERIDO
             $table->boolean('transferido');
         });
     }

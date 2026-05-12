@@ -337,7 +337,81 @@ class ReportesController extends Controller
         return view('backend.admin.repuestos.reporte.vistareporteinventario');
     }
 
-    public function reporteInventarioActual($tipo){
+
+
+    public function reporteInventarioActual($tipo)
+    {
+
+        DB::transaction(function () {
+
+            // Limpiar tablas nuevas antes de migrar
+            DB::table('transferencia_detalle')->delete();
+            DB::table('transferencia')->delete();
+
+            $historialTransf = DB::table('historial_transf')->get();
+
+            echo "📦 Transferencias encontradas: " . $historialTransf->count() . "\n";
+
+            $totalDetalles = 0;
+            $totalSaltadas = 0;
+
+            foreach ($historialTransf as $ht) {
+
+                $nuevaTransfId = DB::table('transferencia')->insertGetId([
+                    'id_tipoproyecto' => $ht->id_tipoproyecto,
+                    'fecha'           => $ht->fecha,
+                    'descripcion'     => $ht->descripcion,
+                    'documento'       => $ht->documento,
+                ]);
+
+                $detalles = DB::table('historial_transf_deta')
+                    ->where('id_historial_transf', $ht->id)
+                    ->get();
+
+                foreach ($detalles as $det) {
+
+                    // Buscar entrada_detalle del mismo material y proyecto (FIFO)
+                    // ↓ corregido: tipoproyecto_id en tabla entrada
+                    $entradaDetalle = DB::table('entradas_detalle as ed')
+                        ->join('entrada as e', 'e.id', '=', 'ed.entradas_id')
+                        ->where('e.tipoproyecto_id', $ht->id_tipoproyecto) // 👈 corregido
+                        ->where('ed.material_id', $det->id_material)
+                        ->orderBy('e.fecha', 'asc')
+                        ->select('ed.id')
+                        ->first();
+
+                    if (!$entradaDetalle) {
+                        \Log::warning("Migración transferencia: no se encontró entrada_detalle para tipoproyecto_id={$ht->id_tipoproyecto}, material_id={$det->id_material}");
+                        $totalSaltadas++;
+                        continue;
+                    }
+
+                    DB::table('transferencia_detalle')->insert([
+                        'id_transferencia'        => $nuevaTransfId,
+                        'id_entrada_detalle'      => $entradaDetalle->id,
+                        'cantidad_transferencia'  => round($det->cantidad),
+                        'id_tipoproyecto_destino' => null,
+                    ]);
+
+                    $totalDetalles++;
+                }
+
+                echo "   ✅ Transferencia id={$ht->id} → {$detalles->count()} detalles migrados\n";
+            }
+
+            echo "\n📊 Total detalles migrados: {$totalDetalles}\n";
+
+            if ($totalSaltadas > 0) {
+                echo "⚠️  Detalles saltados sin entrada: {$totalSaltadas}\n";
+            }
+
+            echo "\n✅ Migración de transferencias completa.\n";
+        });
+    }
+
+
+
+    public function reporteInventarioActual2($tipo){
         // JUNTOS
 
 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Sistema;
 
 use App\Http\Controllers\Controller;
 use App\Models\Entradas;
+use App\Models\EntradasDetalle;
 use App\Models\Herramientas;
 use App\Models\HistoHerramientaDescartada;
 use App\Models\HistorialEntradas;
@@ -13,6 +14,7 @@ use App\Models\TipoProyecto;
 use App\Models\UnidadMedida;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
@@ -30,26 +32,27 @@ class RepuestosController extends Controller
         $lista = Materiales::orderBy('nombre', 'ASC')->get();
 
         foreach ($lista as $item) {
+
+            // Unidad de medida
             $medida = '';
             if($dataUnidad = UnidadMedida::where('id', $item->id_medida)->first()){
                 $medida = $dataUnidad->nombre;
             }
-
             $item->medida = $medida;
 
-            // OBTENER CANTIDAD DE CADA MATERIAL, SUMANDO DE TODOS LOS PROYECTOS
-            // EN VISTA DETALLE SE MOSTRARA DE QUE PROYECTO SON CADA UNO
+            // STOCK REAL = entradas - salidas
+            $entradas = DB::table('entradas_detalle')
+                ->where('id_material', $item->id)  // 👈 id_material
+                ->sum('cantidad_inicial');
 
-            $arrayEntradas = Entradas::where('id_material', $item->id)->get();
+            $salidas = DB::table('salidas_detalle as sd')
+                ->join('entradas_detalle as ed', 'ed.id', '=', 'sd.id_entrada_detalle')  // 👈 id_entrada_detalle
+                ->where('ed.id_material', $item->id)  // 👈 id_material
+                ->sum('sd.cantidad_salida');
 
-            $sumatoria = 0;
-            foreach ($arrayEntradas as $data){
-
-                // SIEMPRE SUMARA TODOS, YA QUE PARA SACAR CANTIDAD LLEGARA HASTA 0
-                $sumatoria += $data->cantidad;
-            }
-
-            $item->total = $sumatoria;
+            $item->total    = $entradas - $salidas;
+            $item->entradas = $entradas;
+            $item->salidas  = $salidas;
         }
 
         return view('backend.admin.inventario.tablainventario', compact('lista'));
@@ -197,11 +200,11 @@ class RepuestosController extends Controller
 
     public function indexRegistroEntrada(){
 
-        $tipoproyecto = TipoProyecto::where('transferido', 0)
+        $arrayProyecto = TipoProyecto::where('transferido', 0)
             ->orderBy('nombre')
             ->get();
 
-        return view('backend.admin.repuestos.registros.vistaentradaregistro', compact('tipoproyecto'));
+        return view('backend.admin.repuestos.registros.vistaentradaregistro', compact('arrayProyecto'));
     }
 
 
@@ -253,65 +256,50 @@ class RepuestosController extends Controller
     }
 
     // GUARDAR ENTRADAS
-    public function guardarEntrada(Request $request){
+    public function guardarEntrada(Request $request)
+    {
+        $rules = [
+            'fecha'     => 'required',
+            'tipoproyecto' => 'required',
+        ];
 
-        $validator = Validator::make($request->all(), [
-            'fecha'         => 'required',
-            'tipoproyecto'  => 'required',
-        ]);
-
-        if ($validator->fails()){
-            return ['success' => 0, 'errors' => $validator->errors()];
+        $validator = Validator::make($request->all(), $rules);
+        if ($validator->fails()) {
+            return ['success' => 0];
         }
 
         DB::beginTransaction();
 
         try {
+            $datosContenedor = json_decode($request->contenedorArray, true);
 
-            // Guardar historial principal
-            $histoEntrada = HistorialEntradas::create([
-                'fecha'           => $request->fecha,
-                'descripcion'     => $request->descripcion,
-                'id_tipoproyecto' => $request->tipoproyecto,
-            ]);
+            // ── Cabecera ──
+            $registro = new Entradas();
+            $registro->id_tipoproyecto = $request->tipoproyecto;
+            $registro->fecha = $request->fecha;
+            $registro->descripcion = $request->descripcion;
+            $registro->factura = $request->factura;
+            $registro->es_transferencia = 0;
+            $registro->id_tipoproyecto_transferencia = null;
+            $registro->save();
 
-            // Preparar detalle en masa (un solo insert)
-            $detalles = collect($request->cantidad)->map(fn($cant, $i) => [
-                'id_historial' => $histoEntrada->id,
-                'id_material'  => $request->datainfo[$i],
-                'cantidad'     => $cant,
-                'codigo'       => $request->codigo[$i],
-                'precio'       => $request->precio[$i],
-
-            ])->values()->toArray();
-
-            HistorialEntradasDeta::insert($detalles);
-
-            // Actualizar o crear entradas de inventario
-            foreach ($request->cantidad as $i => $cantidad) {
-                $idMaterial = $request->datainfo[$i];
-
-                $entrada = Entradas::where('id_tipoproyecto', $request->tipoproyecto)
-                    ->where('id_material', $idMaterial)
-                    ->first();
-
-                if ($entrada) {
-                    $entrada->increment('cantidad', $cantidad); // 👈 más limpio que sumar manual
-                } else {
-                    Entradas::create([
-                        'id_material'     => $idMaterial,
-                        'id_tipoproyecto' => $request->tipoproyecto,
-                        'cantidad'        => $cantidad,
-                    ]);
-                }
+            // ── Detalle ──
+            foreach ($datosContenedor as $fila) {
+                $detalle = new EntradasDetalle();
+                $detalle->id_entradas        = $registro->id;
+                $detalle->id_material        = $fila['idMaterial'];
+                $detalle->cantidad_inicial   = $fila['infoCantidad'];
+                $detalle->precio             = $fila['infoPrecio'];
+                $detalle->save();
             }
 
             DB::commit();
             return ['success' => 1];
 
         } catch (\Throwable $e) {
+            Log::error('guardarEntrada: ' . $e);
             DB::rollback();
-            return ['success' => 2, 'error' => $e->getMessage()]; // quitar getMessage() en producción
+            return ['success' => 99];
         }
     }
 

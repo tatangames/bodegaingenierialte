@@ -392,10 +392,20 @@ return [
             'can'     => 'sidebar.inventario',
             'submenu' => [
                 [
+                    'text' => 'Entradas',
+                    'icon' => 'far fa-circle',
+                    'route' => 'admin.historial.entradas.index',
+                ],
+                [
                     'text' => 'Salida de Materiales',
                     'icon' => 'far fa-circle',
                     'route' => 'admin.historial.salidas.repuestos',
                 ],
+
+
+
+
+
             ],
         ],
 
@@ -440,6 +450,10 @@ return [
                     'icon' => 'far fa-circle',
                     'route' => 'admin.reporte.salida.material.index',
                 ],
+
+
+
+
 
 
 

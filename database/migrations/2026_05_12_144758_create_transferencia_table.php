@@ -4,38 +4,31 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class CreateHistorialTransfTable extends Migration
+return new class extends Migration
 {
     /**
-     * HISTORIAL DE PROYECTOS TRANSFERIDOS A INVENTARIO GENERAL
-     *
-     * @return void
+     * CIERRE DE PROYECTO, HISTORIAL DE TRASPASO
      */
-
-    public function up()
+    public function up(): void
     {
-        Schema::create('historial_transf', function (Blueprint $table) {
+        Schema::create('transferencia', function (Blueprint $table) {
             $table->id();
             $table->bigInteger('id_tipoproyecto')->unsigned();
-
+            $table->bigInteger('id_salida')->unsigned()->nullable();
             $table->date('fecha');
             $table->string('descripcion', 800)->nullable();
-
-            // acta de cierre
             $table->string('documento', 100)->nullable();
 
-            // esta entrada debe ser para un proyecto o inventario general
+            $table->foreign('id_salida')->references('id')->on('salidas');
             $table->foreign('id_tipoproyecto')->references('id')->on('tipoproyecto');
         });
     }
 
     /**
      * Reverse the migrations.
-     *
-     * @return void
      */
-    public function down()
+    public function down(): void
     {
-        Schema::dropIfExists('historial_transf');
+        Schema::dropIfExists('transferencia');
     }
-}
+};

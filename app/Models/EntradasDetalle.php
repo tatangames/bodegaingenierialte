@@ -5,15 +5,18 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class HistorialEntradas extends Model
+class EntradasDetalle extends Model
 {
     use HasFactory;
-    protected $table = 'historial_entradas';
+    protected $table = 'entradas_detalle';
     public $timestamps = false;
 
     protected $fillable = [
-        'id_tipoproyecto',
-        'fecha',
-        'descripcion',
+        'id_entradas',
+        'id_material',
+        'cantidad_inicial',
+        'precio'
     ];
+
+
 }

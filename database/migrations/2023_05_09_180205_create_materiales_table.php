@@ -18,7 +18,6 @@ class CreateMaterialesTable extends Migration
             $table->bigInteger('id_medida')->unsigned()->nullable();
 
             $table->string('nombre', 300);
-            $table->string('codigo', 100)->nullable();
 
             $table->foreign('id_medida')->references('id')->on('unidadmedida');
         });
