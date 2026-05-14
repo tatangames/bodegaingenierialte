@@ -6,7 +6,6 @@
     <h1>Registro de Entradas</h1>
 @stop
 
-{{-- Activa plugins que necesitas --}}
 @section('plugins.Datatables', true)
 @section('plugins.DatatablesPlugins', true)
 @section('plugins.Sweetalert2', true)
@@ -25,7 +24,6 @@
                 {{ Auth::guard('admin')->user()->nombre }}
             </span>
         </a>
-
         <div class="dropdown-menu dropdown-menu-right">
             <a href="{{ route('admin.perfil') }}" class="dropdown-item">
                 <i class="fas fa-user mr-2"></i>
@@ -37,7 +35,6 @@
     <li class="nav-item">
         <form action="{{ route('admin.logout') }}" method="POST" class="d-inline">
             @csrf
-
             <button type="submit" class="nav-link btn btn-link border-0 bg-transparent">
                 <i class="fas fa-sign-out-alt"></i>
                 <span class="d-none d-md-inline">Cerrar Sesión</span>
@@ -48,205 +45,207 @@
 
 @section('content')
 
-<style>
-    table{
-        /*Ajustar tablas*/
-        table-layout:fixed;
-    }
+    <style>
+        #matriz {
+            table-layout: auto;
+            word-break: break-word;
+            width: 100%;
+        }
 
-    .cursor-pointer:hover {
-        cursor: pointer;
-        color: #401fd2;
-        font-weight: bold;
-    }
+        #matriz-busqueda {
+            table-layout: fixed;
+        }
 
-    *:focus {
-        outline: none;
-    }
-</style>
+        .cursor-pointer:hover {
+            cursor: pointer;
+            color: #401fd2;
+            font-weight: bold;
+        }
 
-<div id="divcontenedor">
+        *:focus {
+            outline: none;
+        }
+    </style>
 
+    <div id="divcontenedor">
 
-    <section class="content">
-        <div class="container-fluid">
-            <div class="row">
-
-                <div class="col-md-10">
-                    <div class="card card-gray-dark">
-                        <div class="card-header">
-                            <h3 class="card-title">Información de Ingreso</h3>
-                        </div>
-
-                        <div class="card-body">
-
-                            {{-- Fila 1: Fecha y Factura --}}
-                            <div class="row">
-                                <div class="col-md-2">
-                                    <div class="form-group">
-                                        <label>Fecha: <span style="color: red">*</span></label>
-                                        <input type="date" class="form-control" id="fecha">
-                                    </div>
-                                </div>
-
-                                <div class="col-md-4">
-                                    <div class="form-group">
-                                        <label>Factura (Opcional):</label>
-                                        <input type="text" class="form-control" autocomplete="off" maxlength="100" id="lote">
-                                    </div>
-                                </div>
+        {{-- CARD INFORMACIÓN DE INGRESO --}}
+        <section class="content">
+            <div class="container-fluid">
+                <div class="row">
+                    <div class="col-md-10">
+                        <div class="card card-gray-dark">
+                            <div class="card-header">
+                                <h3 class="card-title">Información de Ingreso</h3>
                             </div>
+                            <div class="card-body">
 
-                            {{-- Fila 2: Proyecto --}}
-                            <div class="row">
-                                <div class="col-md-12">
-                                    <div class="form-group">
-                                        <label>Proyecto: <span style="color: red">*</span></label>
-                                        <select class="form-control" id="select-proyecto">
-                                            @foreach($arrayProyecto as $sel)
-                                                <option value="{{ $sel->id }}">{{ $sel->nombre }}</option>
-                                            @endforeach
-                                        </select>
+                                {{-- Fila 1: Fecha y Factura --}}
+                                <div class="row">
+                                    <div class="col-md-2">
+                                        <div class="form-group">
+                                            <label>Fecha: <span style="color: red">*</span></label>
+                                            <input type="date" class="form-control" id="fecha">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-group">
+                                            <label>Factura (Opcional):</label>
+                                            <input type="text" class="form-control" autocomplete="off" maxlength="100" id="lote">
+                                        </div>
                                     </div>
                                 </div>
+
+                                {{-- Fila 2: Proyecto --}}
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <div class="form-group">
+                                            <label>Proyecto: <span style="color: red">*</span></label>
+                                            <select class="form-control" id="select-proyecto">
+                                                @foreach($arrayProyecto as $sel)
+                                                    <option value="{{ $sel->id }}">{{ $sel->nombre }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {{-- Fila 3: Descripción y Botón --}}
+                                <div class="row">
+                                    <div class="col-md-8">
+                                        <div class="form-group">
+                                            <label>Descripción (Opcional):</label>
+                                            <input type="text" class="form-control" autocomplete="off" maxlength="800" id="descripcion">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 d-flex align-items-end justify-content-end">
+                                        <div class="form-group">
+                                            <button type="button" onclick="abrirModal()" class="btn btn-primary btn-sm">
+                                                <i class="fas fa-plus"></i> Agregar Material
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
                             </div>
-
-                            {{-- Fila 3: Descripción y Botón --}}
-                            <div class="row">
-                                <div class="col-md-8">
-                                    <div class="form-group">
-                                        <label>Descripción (Opcional):</label>
-                                        <input type="text" class="form-control" autocomplete="off" maxlength="800" id="descripcion">
-                                    </div>
-                                </div>
-
-                                <div class="col-md-4 d-flex align-items-end justify-content-end">
-                                    <div class="form-group">
-                                        <button type="button" onclick="abrirModal()" class="btn btn-primary btn-sm">
-                                            <i class="fas fa-plus"></i> Agregar Material
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
                         </div>
                     </div>
                 </div>
+            </div>
+        </section>
 
+        {{-- MODAL AGREGAR MATERIAL --}}
+        <div class="modal fade" id="modalRepuesto">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h4 class="modal-title">Agregar Material</h4>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="formulario-repuesto">
+                            <div class="card-body">
+
+                                <div class="form-group">
+                                    <label class="control-label">Repuesto <span style="color: red">*</span></label>
+                                    <p>La busqueda regresa: Material - Medida - Marca - Normativa - Color - Talla</p>
+                                    <table class="table" id="matriz-busqueda" data-toggle="table">
+                                        <tbody>
+                                        <tr>
+                                            <td>
+                                                <input id="repuesto" data-info='0' autocomplete="off" class='form-control' style='width:100%' onkeyup='buscarMaterial(this)' maxlength='400' type='text'>
+                                                <div class='droplista' style='position: absolute; z-index: 9; width: 75% !important;'></div>
+                                            </td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="control-label">Cantidad <span style="color: red">*</span></label>
+                                    <div class="col-md-6">
+                                        <input type="number" id="cantidad" min="0" max="1000000" class='form-control' autocomplete="off" placeholder="0">
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="control-label">Código</label>
+                                    <div class="col-md-6">
+                                        <input type="text" id="codigo" maxlength="100" class='form-control' autocomplete="off" placeholder="">
+                                    </div>
+                                </div>
+
+                                <div class="form-group col-md-4" style="margin-top: 5px">
+                                    <label class="control-label" style="color: #686868">Precio (4 decimales máximo): <span style="color: red">*</span></label>
+                                    <div>
+                                        <input type="number" min="0" max="1000000" autocomplete="off" value="0" class="form-control" id="precio-producto" placeholder="0.00">
+                                    </div>
+                                </div>
+
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer justify-content-between">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Cerrar</button>
+                        <button type="button" class="btn btn-primary" onclick="agregarFila()">Agregar</button>
+                    </div>
+                </div>
             </div>
         </div>
-    </section>
 
-
-    <div class="modal fade" id="modalRepuesto" >
-        <div class="modal-dialog modal-xl">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h4 class="modal-title">Agregar Material</h4>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
+        {{-- TÍTULO DETALLE --}}
+        <section class="content-header">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h2>Detalle de Ingreso</h2>
                 </div>
-                <div class="modal-body">
+            </div>
+        </section>
 
-                    <form id="formulario-repuesto">
-                        <div class="card-body">
-
-                            <div class="form-group">
-                                <label class="control-label">Repuesto <span style="color: red">*</span></label>
-                                <p>La busqueda regresa: Material - Medida - Marca - Normativa - Color - Talla</p>
-                                <table class="table" id="matriz-busqueda" data-toggle="table">
-                                    <tbody>
-                                    <tr>
-                                        <td>
-                                            <input id="repuesto" data-info='0' autocomplete="off" class='form-control' style='width:100%' onkeyup='buscarMaterial(this)' maxlength='400'  type='text'>
-                                            <div class='droplista' style='position: absolute; z-index: 9; width: 75% !important;'></div>
-                                        </td>
-                                    </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            <div class="form-group" >
-                                <label class="control-label">Cantidad <span style="color: red">*</span></label>
-                                <div class="col-md-6">
-                                    <input type="number" id="cantidad" min="0" max="1000000"  class='form-control' autocomplete="off" placeholder="0">
-                                </div>
-                            </div>
-
-                            <div class="form-group" >
-                                <label class="control-label">Código</label>
-                                <div class="col-md-6">
-                                    <input type="text" id="codigo" maxlength="100" class='form-control' autocomplete="off" placeholder="">
-                                </div>
-                            </div>
-
-                            <div class="form-group col-md-4" style="margin-top: 5px">
-                                <label class="control-label" style="color: #686868">Precio (4 decimales máximo): <span style="color: red">*</span></label>
-                                <div>
-                                    <input type="number" min="0" max="1000000" autocomplete="off" value="0" class="form-control" id="precio-producto" placeholder="0.00">
-                                </div>
-                            </div>
-
+        {{-- TABLA DETALLE DE INGRESO --}}
+        <section class="content">
+            <div class="container-fluid">
+                <div class="card card-gray-dark">
+                    <div class="card-header">
+                        <h3 class="card-title">Información de Ingreso</h3>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover mb-0" id="matriz" data-toggle="table">
+                                <thead>
+                                <tr>
+                                    <th style="width: 6%">#</th>
+                                    <th style="width: 40%">Descripción</th>
+                                    <th style="width: 12%">Cantidad</th>
+                                    <th style="width: 14%">Código</th>
+                                    <th style="width: 14%">Precio</th>
+                                    <th style="width: 16%">Opciones</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                </tbody>
+                            </table>
                         </div>
-                    </form>
-
-                </div>
-                <div class="modal-footer justify-content-between">
-                    <button type="button" class="btn btn-default" data-dismiss="modal">Cerrar</button>
-                    <button type="button" class="btn btn-primary" onclick="agregarFila()">Agregar</button>
+                    </div>
                 </div>
             </div>
+        </section>
+
+        {{-- BOTÓN GUARDAR --}}
+        <div class="modal-footer justify-content-between" style="margin-top: 25px;">
+            <button type="button" class="btn btn-success" onclick="preguntaGuardar()">Guardar</button>
         </div>
+
     </div>
-
-    <section class="content-header">
-        <div class="row mb-2">
-            <div class="col-sm-6">
-                <h2>Detalle de Ingreso</h2>
-            </div>
-        </div>
-    </section>
-
-    <section class="content">
-        <div class="container-fluid">
-            <div class="card card-gray-dark">
-                <div class="card-header">
-                    <h3 class="card-title">Información de Ingreso</h3>
-                </div>
-
-                <table class="table" id="matriz" data-toggle="table" style="margin-right: 15px; margin-left: 15px;">
-                    <thead>
-                    <tr>
-                        <th style="width: 3%">#</th>
-                        <th style="width: 10%">Descripción</th>
-                        <th style="width: 6%">Cantidad</th>
-                        <th style="width: 6%">Código</th>
-                        <th style="width: 6%">Precio</th>
-                        <th style="width: 5%">Opciones</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-
-                    </tbody>
-                </table>
-
-            </div>
-        </div>
-    </section>
-
-    <div class="modal-footer justify-content-between" style="margin-top: 25px;">
-        <button type="button" class="btn btn-success" onclick="preguntaGuardar()">Guardar</button>
-    </div>
-
-</div>
 
 @stop
+
 @section('js')
 
     <script src="{{ asset('js/jquery.dataTables.js') }}" type="text/javascript"></script>
     <script src="{{ asset('js/dataTables.bootstrap4.js') }}" type="text/javascript"></script>
-
     <script src="{{ asset('js/toastr.min.js') }}" type="text/javascript"></script>
     <script src="{{ asset('js/axios.min.js') }}" type="text/javascript"></script>
     <script src="{{ asset('js/sweetalert2.all.min.js') }}"></script>
@@ -273,7 +272,6 @@
                 });
             });
 
-
             $('#select-proyecto').select2({
                 theme: "bootstrap-5",
                 "language": {
@@ -289,7 +287,6 @@
     <script>
 
         document.getElementById('cantidad').addEventListener('keypress', function (event) {
-            // Permitir solo números (códigos de teclas 48-57) y teclas de control como "Backspace"
             if (event.key < '0' || event.key > '9') {
                 event.preventDefault();
             }
@@ -298,7 +295,7 @@
         function abrirModal(){
             document.getElementById("formulario-repuesto").reset();
             $('#modalRepuesto').css('overflow-y', 'auto');
-            $('#modalRepuesto').modal({backdrop: 'static', keyboard: false})
+            $('#modalRepuesto').modal({backdrop: 'static', keyboard: false});
         }
 
         function agregarFila(){
@@ -315,7 +312,6 @@
 
             var reglaNumeroEntero = /^[0-9]\d*$/;
             var reglaNumeroDiesDecimal = /^([0-9]+\.?[0-9]{0,10})$/;
-            //*************
 
             if(cantidad === ''){
                 toastr.error('Cantidad es requerida');
@@ -337,10 +333,6 @@
                 return;
             }
 
-            //**************
-
-            //*************
-
             if(precioProducto === ''){
                 toastr.error('Precio Producto es requerido');
                 return;
@@ -361,14 +353,13 @@
                 return;
             }
 
-
             var nFilas = $('#matriz >tbody >tr').length;
             nFilas += 1;
 
             var markup = "<tr>" +
 
                 "<td>" +
-                "<p id='fila" + (nFilas) + "' class='form-control' style='max-width: 65px'>" + (nFilas) + "</p>" +
+                "<p id='fila" + (nFilas) + "' class='form-control mb-0' style='max-width: 65px'>" + (nFilas) + "</p>" +
                 "</td>" +
 
                 "<td>" +
@@ -387,51 +378,38 @@
                 "<input name='arrayPrecio[]' data-precio='" + precioProducto + "' disabled value='$" + precioProducto + "' class='form-control' type='text'>" +
                 "</td>" +
 
-
                 "<td>" +
-                "<button type='button' class='btn btn-block btn-danger' onclick='borrarFila(this)'>Borrar</button>" +
+                "<button type='button' class='btn btn-block btn-danger btn-sm' onclick='borrarFila(this)'>Borrar</button>" +
                 "</td>" +
 
                 "</tr>";
 
             $("#matriz tbody").append(markup);
 
-            Swal.fire({
-                position: 'center',
-                icon: 'success',
-                title: 'Agregado al Detalle',
-                showConfirmButton: false,
-                timer: 1500
-            })
+            toastr.success("Agregado");
 
             $(txtContenedorGlobal).attr('data-info', '0');
             document.getElementById("formulario-repuesto").reset();
-
-            document.getElementById('precio-producto').value = '';
+            document.getElementById('precio-producto').value = '0';
         }
 
         function borrarFila(elemento){
             var tabla = elemento.parentNode.parentNode;
             tabla.parentNode.removeChild(tabla);
-            setearFila()
+            setearFila();
         }
 
-        // cambiar # de fila cada vez que se borra la fila de
-        // tabla nuevo material
         function setearFila(){
-
             var table = document.getElementById('matriz');
             var conteo = 0;
             for (var r = 1, n = table.rows.length; r < n; r++) {
-                conteo +=1;
+                conteo += 1;
                 var element = table.rows[r].cells[0].children[0];
-                document.getElementById(element.id).innerHTML = ""+conteo;
+                document.getElementById(element.id).innerHTML = "" + conteo;
             }
         }
 
         function buscarMaterial(e){
-
-            // seguro para evitar errores de busqueda continua
             if(seguroBuscador){
                 seguroBuscador = false;
 
@@ -441,7 +419,6 @@
                 let texto = e.value;
 
                 if(texto === ''){
-                    // si se limpia el input, setear el atributo id
                     $(e).attr('data-info', 0);
                 }
 
@@ -449,7 +426,6 @@
                     'query' : texto
                 })
                     .then((response) => {
-
                         seguroBuscador = true;
                         $(row).each(function (index, element) {
                             $(this).find(".droplista").fadeIn();
@@ -463,16 +439,9 @@
         }
 
         function modificarValor(edrop){
-
-            // obtener texto del li
             let texto = $(edrop).text();
-            // setear el input de la descripcion
             $(txtContenedorGlobal).val(texto);
-
-            // agregar el id al atributo del input descripcion
             $(txtContenedorGlobal).attr('data-info', edrop.id);
-
-            //$(txtContenedorGlobal).data("info");
         }
 
         function preguntaGuardar(){
@@ -491,13 +460,13 @@
                 if (result.isConfirmed) {
                     guardarEntrada();
                 }
-            })
+            });
         }
 
         function guardarEntrada(){
 
             var fecha = document.getElementById('fecha').value;
-            var descripc = document.getElementById('descripcion').value; // max 800
+            var descripc = document.getElementById('descripcion').value;
             var lote = document.getElementById('lote').value;
             var proyecto = document.getElementById('select-proyecto').value;
 
@@ -532,7 +501,6 @@
                 let datoCantidad = cantidad[a];
                 let precioProducto = arrayPrecio[a];
 
-                // identifica si el 0 es tipo number o texto
                 if(detalle == 0){
                     colorRojoTabla(a);
                     alertaMensaje('info', 'No encontrado', 'En la Fila #' + (a+1) + " El material no se encuentra. Por favor buscar de nuevo el Material");
@@ -557,54 +525,45 @@
                     return;
                 }
 
-                // Máximo 1 millón
                 if (datoCantidad > 1000000) {
                     colorRojoTabla(a);
                     toastr.error('Fila #' + (a + 1) + ' Cantidad máximo 1 millón');
                     return;
                 }
 
-                // **** VALIDAR PRECIO DE PRODUCTO
-
                 if (precioProducto === '') {
                     colorRojoTabla(a);
-                    toastr.error('Fila #' + (a + 1) + ' Precio de producto es requerida. Por favor borrar la Fila y buscar de nuevo el Producto');
+                    toastr.error('Fila #' + (a + 1) + ' Precio de producto es requerida.');
                     return;
                 }
 
                 if (!precioProducto.match(reglaNumeroDiesDecimal)) {
                     colorRojoTabla(a);
-                    toastr.error('Fila #' + (a + 1) + ' Precio debe ser decimal (10 decimales) y no negativo. Por favor borrar la Fila y buscar de nuevo el Producto');
+                    toastr.error('Fila #' + (a + 1) + ' Precio debe ser decimal (10 decimales) y no negativo.');
                     return;
                 }
 
                 if (precioProducto < 0) {
                     colorRojoTabla(a);
-                    toastr.error('Fila #' + (a + 1) + ' Precio no debe ser negativo. Por favor borrar la Fila y buscar de nuevo el Producto');
+                    toastr.error('Fila #' + (a + 1) + ' Precio no debe ser negativo.');
                     return;
                 }
 
                 if (precioProducto > 9000000) {
                     colorRojoTabla(a);
-                    toastr.error('Fila #' + (a + 1) + ' Precio máximo 9 millones. Por favor borrar la Fila y buscar de nuevo el Producto');
+                    toastr.error('Fila #' + (a + 1) + ' Precio máximo 9 millones.');
                     return;
                 }
             }
 
-            //*******************
-
             let formData = new FormData();
             const contenedorArray = [];
 
-            // como tienen la misma cantidad de filas, podemos recorrer
-            // todas las filas de una vez
             for(var p = 0; p < cantidad.length; p++){
-
                 let idMaterial = descripcionAtributo[p];
                 let infoCantidad = cantidad[p];
                 let infoCodigo = codigo[p];
                 let infoPrecio = arrayPrecio[p];
-
                 contenedorArray.push({ idMaterial, infoCantidad, infoCodigo, infoPrecio });
             }
 
@@ -616,15 +575,13 @@
             formData.append('tipoproyecto', proyecto);
             formData.append('contenedorArray', JSON.stringify(contenedorArray));
 
-            axios.post(urlAdmin+'/admin/entradas/guardar', formData, {
-            })
+            axios.post(urlAdmin+'/admin/entradas/guardar', formData, {})
                 .then((response) => {
                     closeLoading();
                     if(response.data.success === 1){
                         toastr.success('Registrado correctamente');
                         limpiar();
-                    }
-                    else{
+                    } else {
                         toastr.error('error al guardar');
                     }
                 })
@@ -644,13 +601,10 @@
 
         function limpiar(){
             document.getElementById('descripcion').value = '';
-            document.getElementById('precio-producto').value = '';
+            document.getElementById('precio-producto').value = '0';
             $("#matriz tbody tr").remove();
         }
 
-
-
     </script>
-
 
 @endsection

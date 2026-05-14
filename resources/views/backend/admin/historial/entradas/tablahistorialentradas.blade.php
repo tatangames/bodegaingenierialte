@@ -7,7 +7,7 @@
                         <table id="tabla" class="table table-bordered table-striped">
                             <thead>
                             <tr>
-
+                                <th style="width: 3%">id</th>
                                 <th style="width: 16%">Tipo de Proyecto</th>
                                 <th style="width: 10%">Fecha</th>
                                 <th style="width: 8%">Factura</th>
@@ -22,7 +22,7 @@
                             @foreach($arrayEntradas as $dato)
                                 @php $cerrado = $dato->tipoproyecto && $dato->tipoproyecto->transferido == 1; @endphp
                                 <tr>
-
+                                    <td>{{ $dato->id }}</td>
                                     <td>{{ $dato->tipoproyecto->nombre ?? '' }}</td>
                                     <td>{{ $dato->fecha_fmt }}</td>
                                     <td>{{ $dato->factura ?? '' }}</td>

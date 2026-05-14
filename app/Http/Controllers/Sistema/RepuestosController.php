@@ -276,7 +276,7 @@ class RepuestosController extends Controller
 
             // ── Cabecera ──
             $registro = new Entradas();
-            $registro->id_tipoproyecto = 7;
+            $registro->id_tipoproyecto = $request->tipoproyecto;
             $registro->fecha = Carbon::parse($request->fecha)
                 ->setTimeFrom(Carbon::now());
             $registro->descripcion = $request->descripcion;

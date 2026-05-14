@@ -160,7 +160,7 @@
                                     <select class="form-control" id="select-proyecto">
                                         <option value="0" selected disabled>Seleccionar Proyecto</option>
                                         @foreach($arrayProyectos as $sel)
-                                            <option value="{{ $sel->id }}">{{ $sel->nombre }}</option>
+                                            <option value="{{ $sel->id }}">{{ $sel->id }} - {{ $sel->nombre }}</option>
                                         @endforeach
                                     </select>
                                 </div>
@@ -251,7 +251,7 @@
                                 <div class="form-group">
                                     <label class="field-label">
                                         Material — Regresa: Nombre / Unidad de Medida
-                                        <span class="badge badge-success ml-1">Solo con inventario</span>
+                                        <span class="badge badge-success ml-1">Solo con inventario del mismo proyecto</span>
                                     </label>
                                     <table class="table" id="matriz-busqueda">
                                         <tbody>

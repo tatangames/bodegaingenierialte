@@ -681,7 +681,7 @@ class ReportesController extends Controller
                     <td style='font-weight:bold; width:13%; font-size:13px;'>Código</td>
                     <td style='font-weight:bold; width:35%; font-size:13px;'>Material</td>
                     <td style='font-weight:bold; width:12%; font-size:13px;'>Medida</td>
-                    <td style='font-weight:bold; width:10%; font-size:13px;'>Cantidad</td>
+                    <td style='font-weight:bold; width:12%; font-size:13px;'>Cantidad</td>
                     <td style='font-weight:bold; width:15%; font-size:13px;'>Precio Unit.</td>
                     <td style='font-weight:bold; width:15%; font-size:13px;'>Total ($)</td>
                 </tr>";
@@ -1481,7 +1481,7 @@ class ReportesController extends Controller
                 <td style='font-weight:bold; width:13%; font-size:13px;'>Código</td>
                 <td style='font-weight:bold; width:35%; font-size:13px;'>Material</td>
                 <td style='font-weight:bold; width:12%; font-size:13px;'>Medida</td>
-                <td style='font-weight:bold; width:11%; font-size:13px;'>Cantidad</td>
+                <td style='font-weight:bold; width:13%; font-size:13px;'>Cantidad</td>
                 <td style='font-weight:bold; width:15%; font-size:13px;'>Precio Unit.</td>
                 <td style='font-weight:bold; width:15%; font-size:13px;'>Total ($)</td>
             </tr>";
