@@ -204,31 +204,23 @@
         function generarPdf() {
 
             var idproy = document.getElementById('select-proyecto').value;
-            var desde = document.getElementById('fecha-desde').value;
-            var hasta = document.getElementById('fecha-hasta').value;
-            var tipo = document.getElementById('select-tipo').value;
+            var desde  = document.getElementById('fecha-desde').value;
+            var hasta  = document.getElementById('fecha-hasta').value;
+            var tipo   = document.getElementById('select-tipo').value;
 
-            if(desde === ''){
-                toastr.error('Fecha desde es requerido');
-                return;
-            }
+            // ← Se eliminaron las validaciones de desde/hasta
 
-            if(hasta === ''){
-                toastr.error('Fecha hasta es requerido');
-                return;
-            }
-
-            if(idproy === ''){
+            if (idproy === '') {
                 toastr.error('Proyecto es requerido');
                 return;
             }
 
-            if(tipo === ''){
+            if (tipo === '') {
                 toastr.error('Seleccionar Tipo');
                 return;
             }
 
-            window.open("{{ URL::to('admin/reporte/quehasalido/proyectos/pdf') }}/" + idproy+ "/" + desde + "/" + hasta + "/" + tipo);
+            window.open("{{ URL::to('admin/reporte/quehasalido/proyectos/pdf') }}/" + idproy + "/" + (desde || 'null') + "/" + (hasta || 'null') + "/" + tipo);
         }
 
     </script>

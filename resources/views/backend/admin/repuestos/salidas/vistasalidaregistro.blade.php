@@ -604,7 +604,18 @@
                 .then((response) => {
                     closeLoading();
                     if      (response.data.success === 1)  { toastr.error('Se requiere ítem de salida'); }
-                    else if (response.data.success === 2)  { toastr.error('Fila #' + response.data.fila + ": Supera unidades disponibles"); }
+                    else if (response.data.success === 2) {
+                        Swal.fire({
+                            title: 'Cantidad no disponible',
+                            html:
+                                '<b>' + response.data.nombre_material + '</b><br><br>' +
+                                'Solicitado: <b>' + response.data.cantidad_pedida + '</b><br>' +
+                                'Disponible: <b>' + response.data.disponible + '</b>',
+                            icon: 'warning',
+                            confirmButtonColor: '#d33',
+                            confirmButtonText: 'Entendido'
+                        });
+                    }
                     else if (response.data.success === 10) {msgActualizado(); }
                     else                                   { toastr.error('Error al guardar'); }
                 })

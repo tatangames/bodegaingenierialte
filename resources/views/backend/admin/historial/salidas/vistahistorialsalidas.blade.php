@@ -51,6 +51,8 @@
                         <h3 class="card-title"><i class="fas fa-filter mr-1"></i> Filtros</h3>
                     </div>
                     <div class="card-body">
+
+                        {{-- Fila 1: Proyecto + Fechas + Botones --}}
                         <div class="row align-items-end">
                             <div class="col-md-4">
                                 <label class="font-weight-bold">Proyecto</label>
@@ -81,6 +83,26 @@
                                 </button>
                             </div>
                         </div>
+
+                        {{-- Fila 2: Búsqueda por material --}}
+                        <div class="row align-items-end mt-3">
+                            <div class="col-md-6">
+                                <label class="font-weight-bold">
+                                    <i class="fas fa-box mr-1 text-muted"></i> Buscar por material (nombre)
+                                </label>
+                                <input type="text"
+                                       class="form-control"
+                                       id="filtro-material"
+                                       placeholder="Ej: cemento, MAT-001 ...">
+                            </div>
+                            <div class="col-md-6 d-flex align-items-end">
+                                <small class="text-muted">
+                                    Filtra las salidas que contengan ese material en su detalle.
+                                    El <strong>ID</strong> de cada salida se muestra en la tabla.
+                                </small>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             </div>
@@ -272,11 +294,13 @@
                 const proyecto   = $('#filtro-proyecto').val();
                 const fechaDesde = $('#filtro-fecha-desde').val();
                 const fechaHasta = $('#filtro-fecha-hasta').val();
+                const material   = $('#filtro-material').val().trim();
 
                 const params = new URLSearchParams();
                 if (proyecto)   params.append('proyecto',    proyecto);
                 if (fechaDesde) params.append('fecha_desde', fechaDesde);
                 if (fechaHasta) params.append('fecha_hasta', fechaHasta);
+                if (material)   params.append('material',    material);
 
                 const url = params.toString() ? ruta + '?' + params.toString() : ruta;
 
@@ -291,6 +315,7 @@
                 $('#filtro-proyecto').val('').trigger('change');
                 $('#filtro-fecha-desde').val('');
                 $('#filtro-fecha-hasta').val('');
+                $('#filtro-material').val('');
                 cargarTabla();
             };
 
@@ -311,7 +336,8 @@
                     if (response.data.success === 1) {
                         const s = response.data.salida;
                         $('#id-editar').val(s.id);
-                        $('#fecha-editar').val(s.fecha);
+                        const soloFecha = s.fecha ? s.fecha.substring(0, 10) : '';
+                        $('#fecha-editar').val(soloFecha);
                         $('#descripcion-editar').val(s.descripcion ?? '');
                         $('#modalEditar').modal('show');
                     } else {

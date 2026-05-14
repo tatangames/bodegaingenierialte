@@ -410,11 +410,11 @@ return [
             'icon'    => 'fas fa-pen-alt',
             'can'     => 'sidebar.inventario',
             'submenu' => [
-                [
+                /*[
                     'text' => 'Entradas y Salidas',
                     'icon' => 'far fa-circle',
                     'route' => 'admin.entrada.reporte.index',
-                ],
+                ],*/
                 [
                     'text' => 'Inventario',
                     'icon' => 'far fa-circle',

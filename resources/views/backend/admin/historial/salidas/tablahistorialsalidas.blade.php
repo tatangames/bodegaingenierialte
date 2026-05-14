@@ -7,17 +7,17 @@
                         <table id="tabla" class="table table-bordered table-striped">
                             <thead>
                             <tr>
-                                <th style="width: 5%">#</th>
-                                <th style="width: 20%">Tipo de Proyecto</th>
+                                <th style="width: 5%">ID</th>
+                                <th style="width: 18%">Tipo de Proyecto</th>
                                 <th style="width: 10%">Fecha</th>
-                                <th style="width: 25%">Descripción</th>
+                                <th style="width: 22%">Descripción</th>
                                 <th style="width: 8%">
                                     Transferencia
                                     <span data-toggle="tooltip"
                                           data-placement="top"
                                           title="Indica si esta salida fue generada por una transferencia entre proyectos">
-                                    <i class="fas fa-question-circle text-info" style="cursor:pointer"></i>
-                                </span>
+                                        <i class="fas fa-question-circle text-info" style="cursor:pointer"></i>
+                                    </span>
                                 </th>
                                 <th style="width: 7%">Estado</th>
                                 <th style="width: 25%">Opciones</th>
@@ -27,7 +27,9 @@
                             @foreach($arraySalidas as $dato)
                                 @php $cerrado = $dato->tipoproyecto && $dato->tipoproyecto->transferido == 1; @endphp
                                 <tr>
-                                    <td>{{ $dato->id }}</td>
+                                    <td class="text-center">
+                                        <span class="badge badge-dark">#{{ $dato->id }}</span>
+                                    </td>
                                     <td>{{ $dato->tipoproyecto->nombre ?? '' }}</td>
                                     <td>{{ $dato->fecha_fmt }}</td>
                                     <td>{{ $dato->descripcion ?? '' }}</td>
@@ -88,7 +90,6 @@
         </div>
     </div>
 </section>
-
 
 <script>
     $('[data-toggle="tooltip"]').tooltip();

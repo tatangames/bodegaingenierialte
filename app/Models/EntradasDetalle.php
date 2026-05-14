@@ -21,7 +21,8 @@ class EntradasDetalle extends Model
 
     public function material()
     {
-        return $this->belongsTo(Materiales::class, 'id_material');
+        return $this->belongsTo(Materiales::class, 'id_material', 'id');
+        // Ajusta 'id_material' según la FK real en entradas_detalle
     }
 
     public function entrada()

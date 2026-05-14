@@ -1397,28 +1397,28 @@ class ReportesController extends Controller
         }
 
         $encabezado = "
-    <table width='100%' style='border-collapse:collapse; font-family:Arial, sans-serif; margin-bottom:6px;'>
-        <tr>
-            <td style='width:30%; border:0.8px solid #000; padding:6px 8px;'>
-                <table width='100%'>
-                    <tr>
-                        <td style='width:35%; text-align:left;'>
-                            <img src='{$logoalcaldia}' style='height:40px'>
-                        </td>
-                        <td style='width:65%; text-align:left; color:#104e8c;
-                                    font-size:12px; font-weight:bold; line-height:1.4;'>
-                            SANTA ANA NORTE<br>EL SALVADOR
-                        </td>
-                    </tr>
-                </table>
-            </td>
-            <td style='width:70%; border:0.8px solid #000;
-                        padding:8px; text-align:center; vertical-align:middle;'>
-                <h2 style='margin:0;'>Reporte de Materiales Recibidos</h2>
-                <p style='margin:0; font-size:12px;'>$fechaLabel</p>
-            </td>
-        </tr>
-    </table>";
+<table width='100%' style='border-collapse:collapse; font-family:Arial, sans-serif; margin-bottom:6px;'>
+    <tr>
+        <td style='width:30%; border:0.8px solid #000; padding:6px 8px;'>
+            <table width='100%'>
+                <tr>
+                    <td style='width:35%; text-align:left;'>
+                        <img src='{$logoalcaldia}' style='height:40px'>
+                    </td>
+                    <td style='width:65%; text-align:left; color:#104e8c;
+                                font-size:12px; font-weight:bold; line-height:1.4;'>
+                        SANTA ANA NORTE<br>EL SALVADOR
+                    </td>
+                </tr>
+            </table>
+        </td>
+        <td style='width:70%; border:0.8px solid #000;
+                    padding:8px; text-align:center; vertical-align:middle;'>
+            <h2 style='margin:0;'>Reporte de Materiales Recibidos</h2>
+            <p style='margin:0; font-size:12px;'>$fechaLabel</p>
+        </td>
+    </tr>
+</table>";
 
         $totalCantidad = 0;
 
@@ -1431,12 +1431,10 @@ class ReportesController extends Controller
             }
             $idsEntradas = $query->orderBy('fecha', 'ASC')->pluck('id');
 
-            // Todos los entradas_detalle de esas entradas
             $detalles = EntradasDetalle::with('material.unidadMedida')
                 ->whereIn('id_entradas', $idsEntradas)
                 ->get();
 
-            // Agrupar por material
             $dataArray = [];
             $granTotal = 0;
 
@@ -1457,17 +1455,17 @@ class ReportesController extends Controller
 
                 $dataArray[$idMat]['cantidad']      += $det->cantidad_inicial;
                 $dataArray[$idMat]['totalMaterial']  += ($det->precio * $det->cantidad_inicial);
-                $dataArray[$idMat]['precioUnitario']  = $det->precio; // último precio
+                $dataArray[$idMat]['precioUnitario']  = $det->precio;
             }
 
-            // Ordenar por nombre
             usort($dataArray, fn($a, $b) => strcmp($a['nombre'], $b['nombre']));
 
             foreach ($dataArray as $item) {
                 $granTotal += $item['totalMaterial'];
             }
 
-            $granTotalFmt = number_format($granTotal, 2);
+            $granTotalFmt    = number_format($granTotal, 2);
+            $totalCantidadFmt = number_format($totalCantidad, 2);
 
             $mpdf = new \Mpdf\Mpdf(['tempDir' => sys_get_temp_dir(), 'format' => 'LETTER']);
             $mpdf->SetTitle('Reporte de Materiales Recibidos');
@@ -1477,44 +1475,51 @@ class ReportesController extends Controller
             $tabla .= "<p style='font-size:15px;'><span style='font-weight:bold;'>Proyecto:</span> {$infoProyecto->nombre}</p>";
 
             $tabla .= "
-        <table width='100%' id='tablaFor'>
-            <tbody>
-                <tr>
-                    <td style='font-weight:bold; width:13%; font-size:13px;'>Código</td>
-                    <td style='font-weight:bold; width:35%; font-size:13px;'>Material</td>
-                    <td style='font-weight:bold; width:12%; font-size:13px;'>Medida</td>
-                    <td style='font-weight:bold; width:11%; font-size:13px;'>Cantidad</td>
-                    <td style='font-weight:bold; width:15%; font-size:13px;'>Precio Unit.</td>
-                    <td style='font-weight:bold; width:15%; font-size:13px;'>Total ($)</td>
-                </tr>";
+    <table width='100%' id='tablaFor'>
+        <tbody>
+            <tr>
+                <td style='font-weight:bold; width:13%; font-size:13px;'>Código</td>
+                <td style='font-weight:bold; width:35%; font-size:13px;'>Material</td>
+                <td style='font-weight:bold; width:12%; font-size:13px;'>Medida</td>
+                <td style='font-weight:bold; width:11%; font-size:13px;'>Cantidad</td>
+                <td style='font-weight:bold; width:15%; font-size:13px;'>Precio Unit.</td>
+                <td style='font-weight:bold; width:15%; font-size:13px;'>Total ($)</td>
+            </tr>";
 
             foreach ($dataArray as $info) {
                 $precioFmt = number_format($info['precioUnitario'], 4);
                 $totalFmt  = number_format($info['totalMaterial'], 4);
 
                 $tabla .= "
-                <tr>
-                    <td style='font-size:12px;'>{$info['codigo']}</td>
-                    <td style='text-align:left; font-size:12px;'>{$info['nombre']}</td>
-                    <td style='font-size:12px;'>{$info['medida']}</td>
-                    <td style='font-size:12px;'>{$info['cantidad']}</td>
-                    <td style='font-size:12px;'>$ $precioFmt</td>
-                    <td style='font-size:12px;'>$ $totalFmt</td>
-                </tr>";
+            <tr>
+                <td style='font-size:12px;'>{$info['codigo']}</td>
+                <td style='text-align:left; font-size:12px;'>{$info['nombre']}</td>
+                <td style='font-size:12px;'>{$info['medida']}</td>
+                <td style='font-size:12px;'>{$info['cantidad']}</td>
+                <td style='font-size:12px;'>$ $precioFmt</td>
+                <td style='font-size:12px;'>$ $totalFmt</td>
+            </tr>";
             }
 
             $tabla .= "
-                <tr>
-                    <td colspan='5' style='font-weight:bold; font-size:13px; text-align:right;
-                                            border-top:1.5px solid #000; padding-top:4px;'>
-                        TOTAL GENERAL:
-                    </td>
-                    <td style='font-weight:bold; font-size:13px; border-top:1.5px solid #000; padding-top:4px;'>
-                        $ $granTotalFmt
-                    </td>
-                </tr>
-            </tbody>
-        </table>";
+            <tr>
+                <td colspan='3' style='font-weight:bold; font-size:13px; text-align:right;
+                                        border-top:1.5px solid #000; padding-top:4px;'>
+                    TOTAL CANTIDAD:
+                </td>
+                <td style='font-weight:bold; font-size:13px; border-top:1.5px solid #000; padding-top:4px;'>
+                    $totalCantidadFmt
+                </td>
+                <td style='font-weight:bold; font-size:13px; text-align:right;
+                            border-top:1.5px solid #000; padding-top:4px;'>
+                    TOTAL GENERAL:
+                </td>
+                <td style='font-weight:bold; font-size:13px; border-top:1.5px solid #000; padding-top:4px;'>
+                    $ $granTotalFmt
+                </td>
+            </tr>
+        </tbody>
+    </table>";
 
             // ─── TIPO 2: SEPARADOS ────────────────────────────────────────
         } else {
@@ -1546,37 +1551,39 @@ class ReportesController extends Controller
                 $factura     = $entrada->factura ?? '';
 
                 $tabla .= "
-            <table width='100%' id='tablaFor'>
-                <tbody>
-                    <tr>
-                        <td style='font-weight:bold; width:15%; font-size:13px;'>Fecha</td>
-                        <td style='font-weight:bold; width:20%; font-size:13px;'>Factura</td>
-                        <td style='font-weight:bold; width:65%; font-size:13px;'>Descripción</td>
-                    </tr>
-                    <tr>
-                        <td style='font-size:12px;'>$fechaFmt</td>
-                        <td style='font-size:12px;'>$factura</td>
-                        <td style='font-size:12px;'>$descripcion</td>
-                    </tr>
-                </tbody>
-            </table>";
+        <table width='100%' id='tablaFor'>
+            <tbody>
+                <tr>
+                    <td style='font-weight:bold; width:15%; font-size:13px;'>Fecha</td>
+                    <td style='font-weight:bold; width:20%; font-size:13px;'>Factura</td>
+                    <td style='font-weight:bold; width:65%; font-size:13px;'>Descripción</td>
+                </tr>
+                <tr>
+                    <td style='font-size:12px;'>$fechaFmt</td>
+                    <td style='font-size:12px;'>$factura</td>
+                    <td style='font-size:12px;'>$descripcion</td>
+                </tr>
+            </tbody>
+        </table>";
 
                 $tabla .= "
-            <table width='100%' id='tablaFor'>
-                <tbody>
-                    <tr>
-                        <td style='font-weight:bold; width:13%; font-size:13px;'>Código</td>
-                        <td style='font-weight:bold; width:12%; font-size:13px;'>Medida</td>
-                        <td style='font-weight:bold; width:30%; font-size:13px;'>Material</td>
-                        <td style='font-weight:bold; width:11%; font-size:13px;'>Cantidad</td>
-                        <td style='font-weight:bold; width:15%; font-size:13px;'>Precio Unit.</td>
-                        <td style='font-weight:bold; width:15%; font-size:13px;'>Total ($)</td>
-                    </tr>";
+        <table width='100%' id='tablaFor'>
+            <tbody>
+                <tr>
+                    <td style='font-weight:bold; width:13%; font-size:13px;'>Código</td>
+                    <td style='font-weight:bold; width:12%; font-size:13px;'>Medida</td>
+                    <td style='font-weight:bold; width:30%; font-size:13px;'>Material</td>
+                    <td style='font-weight:bold; width:11%; font-size:13px;'>Cantidad</td>
+                    <td style='font-weight:bold; width:15%; font-size:13px;'>Precio Unit.</td>
+                    <td style='font-weight:bold; width:15%; font-size:13px;'>Total ($)</td>
+                </tr>";
 
-                $subtotal = 0;
+                $subtotal         = 0;
+                $subtotalCantidad = 0;
 
                 foreach ($entrada->detalle as $det) {
-                    $totalCantidad += $det->cantidad_inicial;
+                    $totalCantidad    += $det->cantidad_inicial;
+                    $subtotalCantidad += $det->cantidad_inicial;
 
                     $totalLinea  = $det->precio * $det->cantidad_inicial;
                     $granTotal  += $totalLinea;
@@ -1589,53 +1596,67 @@ class ReportesController extends Controller
                     $totalFmt    = number_format($totalLinea, 4);
 
                     $tabla .= "
-                    <tr>
-                        <td style='font-size:12px;'>$codigo</td>
-                        <td style='font-size:12px;'>$medida</td>
-                        <td style='font-size:12px;'>$nombreMat</td>
-                        <td style='font-size:12px;'>{$det->cantidad_inicial}</td>
-                        <td style='font-size:12px;'>$ $precioFmt</td>
-                        <td style='font-size:12px;'>$ $totalFmt</td>
-                    </tr>";
+                <tr>
+                    <td style='font-size:12px;'>$codigo</td>
+                    <td style='font-size:12px;'>$medida</td>
+                    <td style='font-size:12px;'>$nombreMat</td>
+                    <td style='font-size:12px;'>{$det->cantidad_inicial}</td>
+                    <td style='font-size:12px;'>$ $precioFmt</td>
+                    <td style='font-size:12px;'>$ $totalFmt</td>
+                </tr>";
                 }
 
-                $subtotalFmt = number_format($subtotal, 4);
+                $subtotalFmt         = number_format($subtotal, 4);
+                $subtotalCantidadFmt = number_format($subtotalCantidad, 2);
 
                 $tabla .= "
-                    <tr>
-                        <td colspan='5' style='font-weight:bold; font-size:12px; text-align:right;
-                                               border-top:1px solid #000; padding-top:3px;'>
-                            Subtotal:
-                        </td>
-                        <td style='font-weight:bold; font-size:12px; border-top:1px solid #000; padding-top:3px;'>
-                            $ $subtotalFmt
-                        </td>
-                    </tr>
-                </tbody>
-            </table><br>";
-            }
-
-            $granTotalFmt = number_format($granTotal, 4);
-
-            $tabla .= "
-        <table width='100%' style='margin-top:10px;'>
-            <tbody>
                 <tr>
-                    <td style='font-weight:bold; font-size:14px; text-align:right;
-                                border-top:2px solid #000; padding-top:6px;'>
-                        TOTAL GENERAL:&nbsp;&nbsp;
+                    <td colspan='3' style='font-weight:bold; font-size:12px; text-align:right;
+                                           border-top:1px solid #000; padding-top:3px;'>
+                        Subtotal Cantidad:
                     </td>
-                    <td style='font-weight:bold; font-size:14px; width:18%;
-                                border-top:2px solid #000; padding-top:6px;'>
-                        $ $granTotalFmt
+                    <td style='font-weight:bold; font-size:12px; border-top:1px solid #000; padding-top:3px;'>
+                        $subtotalCantidadFmt
+                    </td>
+                    <td style='font-weight:bold; font-size:12px; text-align:right;
+                                border-top:1px solid #000; padding-top:3px;'>
+                        Subtotal:
+                    </td>
+                    <td style='font-weight:bold; font-size:12px; border-top:1px solid #000; padding-top:3px;'>
+                        $ $subtotalFmt
                     </td>
                 </tr>
             </tbody>
-        </table>";
+        </table><br>";
+            }
+
+            $granTotalFmt     = number_format($granTotal, 4);
+            $totalCantidadFmt = number_format($totalCantidad, 2);
+
+            $tabla .= "
+    <table width='100%' style='margin-top:10px;'>
+        <tbody>
+            <tr>
+                <td style='font-weight:bold; font-size:14px; text-align:right;
+                            border-top:2px solid #000; padding-top:6px;'>
+                    TOTAL CANTIDAD:&nbsp;&nbsp;
+                </td>
+                <td style='font-weight:bold; font-size:14px; width:12%;
+                            border-top:2px solid #000; padding-top:6px;'>
+                    $totalCantidadFmt
+                </td>
+                <td style='font-weight:bold; font-size:14px; text-align:right;
+                            border-top:2px solid #000; padding-top:6px;'>
+                    TOTAL GENERAL:&nbsp;&nbsp;
+                </td>
+                <td style='font-weight:bold; font-size:14px; width:18%;
+                            border-top:2px solid #000; padding-top:6px;'>
+                    $ $granTotalFmt
+                </td>
+            </tr>
+        </tbody>
+    </table>";
         }
-
-
-        //return $totalCantidad;
 
         $stylesheet = file_get_contents('css/cssregistro.css');
         $mpdf->WriteHTML($stylesheet, 1);

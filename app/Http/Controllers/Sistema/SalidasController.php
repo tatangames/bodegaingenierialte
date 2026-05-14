@@ -175,9 +175,6 @@ class SalidasController extends Controller
 
 
 
-
-
-
     public function guardarSalida(Request $request)
     {
         $rules = [
@@ -196,14 +193,23 @@ class SalidasController extends Controller
             return ['success' => 1];
         }
 
+        // ✅ Agrupar por id_entrada_detalle y sumar cantidades del mismo lote
+        $agrupado = [];
+        foreach ($contenedor as $item) {
+            $id = $item['infoIdEntradaDeta'];
+            if (!isset($agrupado[$id])) {
+                $agrupado[$id] = 0;
+            }
+            $agrupado[$id] += (int) $item['infoCantidad'];
+        }
+
         DB::beginTransaction();
 
         try {
 
-            // Validar cantidades antes de guardar
-            foreach ($contenedor as $i => $item) {
-                $idEntradaDetalle = $item['infoIdEntradaDeta'];
-                $cantidadSalida   = (int) $item['infoCantidad'];
+            // ✅ Validar con cantidades ya acumuladas
+            $fila = 1;
+            foreach ($agrupado as $idEntradaDetalle => $cantidadSalida) {
 
                 $disponible = DB::table('entradas_detalle as ed')
                     ->leftJoin(
@@ -220,25 +226,38 @@ class SalidasController extends Controller
 
                 if (is_null($disponible) || $cantidadSalida > $disponible) {
                     DB::rollback();
-                    return ['success' => 2, 'fila' => $i + 1];
+
+                    $nombreMaterial = DB::table('entradas_detalle as ed')
+                        ->join('materiales as m', 'm.id', '=', 'ed.id_material')
+                        ->where('ed.id', $idEntradaDetalle)
+                        ->value('m.nombre');
+
+                    return [
+                        'success'         => 2,
+                        'fila'            => $fila,
+                        'nombre_material' => $nombreMaterial ?? 'Material desconocido',
+                        'cantidad_pedida' => $cantidadSalida,
+                        'disponible'      => (int) $disponible,
+                    ];
                 }
+
+                $fila++;
             }
 
-            // Guardar cabecera en tabla salidas
-            $salida = new Salidas();
-            $salida->fecha = Carbon::parse($request->fecha)
-                ->setTimeFrom(Carbon::now());
+            // Guardar cabecera
+            $salida                  = new Salidas();
+            $salida->fecha           = Carbon::parse($request->fecha)->setTimeFrom(Carbon::now());
             $salida->descripcion     = $request->descripcion;
-            $salida->id_tipoproyecto = 5;
+            $salida->id_tipoproyecto = $request->proyecto;
             $salida->es_transferencia= 0;
             $salida->save();
 
-            // Guardar detalle en salidas_detalle
-            foreach ($contenedor as $item) {
-                $detalle = new SalidasDetalle();
-                $detalle->id_salida          = $salida->id;
-                $detalle->id_entrada_detalle = $item['infoIdEntradaDeta'];
-                $detalle->cantidad_salida    = (int) $item['infoCantidad'];
+            // ✅ Guardar detalle con cantidades agrupadas
+            foreach ($agrupado as $idEntradaDetalle => $cantidadSalida) {
+                $detalle                      = new SalidasDetalle();
+                $detalle->id_salida           = $salida->id;
+                $detalle->id_entrada_detalle  = $idEntradaDetalle;
+                $detalle->cantidad_salida     = $cantidadSalida;
                 $detalle->save();
             }
 
@@ -251,6 +270,9 @@ class SalidasController extends Controller
             return ['success' => 99];
         }
     }
+
+
+
 
 
 

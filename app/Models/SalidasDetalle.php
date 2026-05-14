@@ -14,11 +14,19 @@ class SalidasDetalle extends Model
 
     public function entradaDetalle()
     {
-        return $this->belongsTo(EntradasDetalle::class, 'id_entrada_detalle');
+        return $this->belongsTo(EntradasDetalle::class, 'id_entrada_detalle', 'id');
     }
 
     public function salida()
     {
-        return $this->belongsTo(\App\Models\Salidas::class, 'id_salida');
+        return $this->belongsTo(Salidas::class, 'id_salida');
+    }
+
+    public function material()
+    {
+        return $this->belongsTo(Materiales::class, 'id_material', 'id');
+        // Ajusta: Material::class  → nombre real de tu modelo
+        //         'id_material'    → FK en salidasdetalle
+        //         'id'             → PK en la tabla materiales
     }
 }

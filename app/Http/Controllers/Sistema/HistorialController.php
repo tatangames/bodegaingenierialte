@@ -252,6 +252,15 @@ class HistorialController extends Controller
             ->when($request->fecha_hasta, fn($q) =>
             $q->whereDate('fecha', '<=', $request->fecha_hasta)
             )
+            // ── Filtro por material ──────────────────────────────
+            ->when($request->material, function ($q) use ($request) {
+                $busqueda = '%' . $request->material . '%';
+                $q->whereHas('detalles.entradaDetalle.material', function ($q2) use ($busqueda) {
+                    $q2->where('nombre', 'LIKE', $busqueda)
+                        ->orWhere('codigo', 'LIKE', $busqueda);
+                });
+            })
+            // ────────────────────────────────────────────────────
             ->orderBy('fecha', 'desc')
             ->get()
             ->map(function ($item) {

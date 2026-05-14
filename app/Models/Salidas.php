@@ -20,4 +20,12 @@ class Salidas extends Model
     {
         return $this->hasMany(SalidasDetalle::class, 'id_salida');
     }
+
+    public function detalles()
+    {
+        return $this->hasMany(SalidasDetalle::class, 'id_salida', 'id');
+        // Ajusta: SalidaDetalle::class  → nombre real de tu modelo de detalles
+        //         'id_salida'           → FK en la tabla de detalles
+        //         'id'                  → PK en la tabla salidas
+    }
 }
