@@ -44,7 +44,7 @@ class HistorialController extends Controller
             ->orderBy('fecha', 'desc')
             ->get()
             ->map(function ($item) {
-                $item->fecha_fmt = date('d/m/Y h:i A', strtotime($item->fecha));
+                $item->fecha_fmt = date('d/m/Y', strtotime($item->fecha));
                 return $item;
             });
 
@@ -172,7 +172,7 @@ class HistorialController extends Controller
 
     public function editarDetalleEntrada(Request $request)
     {
-        $detalle = \App\Models\EntradasDetalle::find($request->id);
+        $detalle = EntradasDetalle::find($request->id);
 
         if (!$detalle) {
             return response()->json(['success' => 0]);
@@ -264,7 +264,7 @@ class HistorialController extends Controller
             ->orderBy('fecha', 'desc')
             ->get()
             ->map(function ($item) {
-                $item->fecha_fmt = date('d/m/Y h:i A', strtotime($item->fecha));
+                $item->fecha_fmt = date('d/m/Y', strtotime($item->fecha));
                 return $item;
             });
 

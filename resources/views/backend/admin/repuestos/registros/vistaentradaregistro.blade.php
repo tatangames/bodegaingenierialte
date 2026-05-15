@@ -216,7 +216,7 @@
                             <table class="table table-bordered table-hover mb-0" id="matriz" data-toggle="table">
                                 <thead>
                                 <tr>
-                                    <th style="width: 6%">#</th>
+                                    <th style="width: 9%">#</th>
                                     <th style="width: 40%">Descripción</th>
                                     <th style="width: 12%">Cantidad</th>
                                     <th style="width: 14%">Código</th>

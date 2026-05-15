@@ -246,7 +246,7 @@ class SalidasController extends Controller
 
             // Guardar cabecera
             $salida                  = new Salidas();
-            $salida->fecha           = Carbon::parse($request->fecha)->setTimeFrom(Carbon::now());
+            $salida->fecha           = Carbon::parse($request->fecha);
             $salida->descripcion     = $request->descripcion;
             $salida->id_tipoproyecto = $request->proyecto;
             $salida->es_transferencia= 0;
@@ -361,8 +361,7 @@ class SalidasController extends Controller
 
             // Cabecera en salidas para descontar inventario del proyecto origen
             $salidaTransf                   = new Salidas();
-            $salidaTransf->fecha = Carbon::parse($request->fecha)
-                ->setTimeFrom(Carbon::now());
+            $salidaTransf->fecha = Carbon::parse($request->fecha);
             $salidaTransf->descripcion      = $request->descripcion;
             $salidaTransf->id_tipoproyecto  = $request->idproyecto;
             $salidaTransf->es_transferencia = 1;
@@ -379,8 +378,7 @@ class SalidasController extends Controller
             // Cabecera entrada en bodega general (id_tipoproyecto = 1)
             $entrada                             = new Entradas();
             $entrada->id_tipoproyecto            = 1;
-            $entrada->fecha = Carbon::parse($request->fecha)
-                ->setTimeFrom(Carbon::now());
+            $entrada->fecha = Carbon::parse($request->fecha);
             $entrada->descripcion                = $request->descripcion;
             $entrada->es_transferencia           = 1;
             $entrada->id_tipoproyecto_transferencia = $request->idproyecto;

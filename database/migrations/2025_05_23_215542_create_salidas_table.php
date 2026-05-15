@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('salidas', function (Blueprint $table) {
             $table->id();
             $table->bigInteger('id_tipoproyecto')->unsigned();
-            $table->dateTime('fecha');
+            $table->date('fecha');
             $table->string('descripcion', 800)->nullable();
 
             $table->boolean('es_transferencia')->default(false);
