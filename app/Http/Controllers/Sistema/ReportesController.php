@@ -1402,10 +1402,19 @@ class ReportesController extends Controller
 
         // ── Firma ──
         $html .= "
-<div style='text-align:center; font-size:13px; margin-top:180px;'>
-    F._____________________________<br><br>
-    <span style='font-weight:bold; font-size:12px;'>UNIDAD OBRA DE BANCO</span>
-</div>
+<table width='100%'>
+    <tbody>
+        <tr>
+            <td style='height:80px;'></td>
+        </tr>
+        <tr>
+            <td style='text-align:center; font-size:13px;'>
+                F._____________________________<br><br>
+                <span style='font-weight:bold; font-size:12px;'>UNIDAD ESTRUCTURAS METÁLICAS</span>
+            </td>
+        </tr>
+    </tbody>
+</table>
 ";
 
         $mpdf->setFooter("Página {PAGENO} de {nb}");

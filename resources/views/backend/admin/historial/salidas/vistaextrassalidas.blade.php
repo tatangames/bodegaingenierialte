@@ -233,8 +233,9 @@
     <script src="{{ asset('js/alertaPersonalizada.js') }}"></script>
 
     <script>
-        const ID_SALIDA = {{ $salida->id }};
-        window.seguroBuscador = true;
+        const ID_SALIDA   = {{ $salida->id }};
+        const ID_PROYECTO = {{ $salida->id_tipoproyecto ?? 'null' }};  {{-- 👈 nuevo --}}
+            window.seguroBuscador = true;
 
         $(document).ready(function () {
             $(document).click(function () { $(".droplista").hide(); });
@@ -258,13 +259,15 @@
             if (Number(input.value) > maxCantidad) input.value = maxCantidad;
         }
 
-        // Reutiliza el mismo endpoint de búsqueda de disponibilidad
         function buscarMaterial(e) {
             if (seguroBuscador) {
                 seguroBuscador = false;
                 var row   = $(e).closest('tr');
                 var texto = e.value;
-                axios.post(urlAdmin + '/admin/buscar/material/disponible', { query: texto })
+                axios.post(urlAdmin + '/admin/buscar/material/disponible', {
+                    query:       texto,
+                    id_proyecto: ID_PROYECTO   // 👈 nuevo
+                })
                     .then((response) => {
                         seguroBuscador = true;
                         $(row).find(".droplista").fadeIn().html(response.data);
@@ -273,7 +276,6 @@
             }
         }
 
-        // Reutiliza el mismo endpoint de disponibilidad por material
         function modificarValor(edrop) {
             openLoading();
             $("#matrizM tbody tr").remove();

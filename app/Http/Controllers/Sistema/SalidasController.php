@@ -34,6 +34,9 @@ class SalidasController extends Controller
 
     public function buscadorMaterialDisponible(Request $request)
     {
+
+        Log::info($request->all());
+
         if ($request->get('query')) {
 
             $query      = $request->get('query');

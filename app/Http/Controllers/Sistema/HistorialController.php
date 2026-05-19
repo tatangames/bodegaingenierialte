@@ -343,9 +343,7 @@ class HistorialController extends Controller
                 ->with('error', 'El proyecto está cerrado, no se pueden agregar extras');
         }
 
-        if (!$salida) {
-            return redirect()->route('admin.historial.salidas.index');
-        }
+
 
         return view('backend.admin.historial.salidas.vistaextrassalidas', compact('salida'));
     }
