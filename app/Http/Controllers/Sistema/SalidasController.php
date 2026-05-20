@@ -464,7 +464,7 @@ class SalidasController extends Controller
                         DB::rollback();
                         return [
                             'success'          => 3,
-                            'nombre_material'  => $entradaDetalle->nombre,
+                            'nombre_material'  => $entradaDetalle->material->nombre,
                             'cantidad_pedida'  => $cantidad,
                             'disponible'       => $libre,
                         ];

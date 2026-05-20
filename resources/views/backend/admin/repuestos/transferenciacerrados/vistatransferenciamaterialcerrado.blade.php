@@ -653,6 +653,8 @@
                     if (response.data.success === 1) {
                         toastr.error('Sin ítems en el contenedor');
                     } else if (response.data.success === 3) {
+
+
                         Swal.fire({
                             title: 'Cantidad no disponible',
                             html:  '<b>' + response.data.nombre_material + '</b><br><br>' +

@@ -542,36 +542,36 @@ class ReportesController extends Controller
         $porMaterial = [];
 
         foreach ($detallesSnapshot as $det) {
-            $key = $det->nombre_material ?? 'SIN NOMBRE';
+
+            // ── Clave por id_entrada_detalle, no por nombre ────────────────
+            $key = $det->id_entrada_detalle;
+
+            $entradaDet = EntradasDetalle::with('material.unidadMedida', 'material.objetoEspecifico')
+                ->find($det->id_entrada_detalle);
+
+            $cantAdquirida = $entradaDet?->cantidad_inicial ?? 0;
+
+            $cantUtilizada = \App\Models\SalidasDetalle::where('id_entrada_detalle', $det->id_entrada_detalle)
+                ->whereHas('salida', function ($q) use ($idtrans) {
+                    $q->where('id_tipoproyecto', $idtrans)
+                        ->where('es_transferencia', false);
+                })
+                ->sum('cantidad_salida');
 
             if (!isset($porMaterial[$key])) {
-                $entradaDet = EntradasDetalle::with('material.unidadMedida', 'material.objetoEspecifico')
-                    ->find($det->id_entrada_detalle);
-
-                // ── Cantidad adquirida (del registro original de entrada) ──
-                $cantAdquirida = $entradaDet?->cantidad_inicial ?? 0;
-
-                // ── Cantidad utilizada = total salidas de ese detalle en este proyecto ──
-                $cantUtilizada = \App\Models\SalidasDetalle::where('id_entrada_detalle', $det->id_entrada_detalle)
-                    ->whereHas('salida', function ($q) use ($idtrans) {
-                        $q->where('id_tipoproyecto', $idtrans)
-                            ->where('es_transferencia', false);
-                    })
-                    ->sum('cantidad_salida');
-
                 $porMaterial[$key] = [
-                    'nombre'           => $entradaDet?->material?->nombre ?? $det->nombre_material ?? '—',
-                    'medida'           => $entradaDet?->material?->unidadMedida?->nombre ?? '—',
-                    'codigo'           => $entradaDet?->material?->objetoEspecifico?->codigo ?? '—',
-                    'cant_adquirida'   => $cantAdquirida,
-                    'cant_utilizada'   => $cantUtilizada,
-                    'cantidad_cierre'  => 0,
-                    'precio'           => $det->precio,
-                    'estado'           => '—',      // Si lo guardas en BD, jalarlo aquí
-                    'observaciones'    => '—',
+                    'nombre'          => $entradaDet?->material?->nombre ?? $det->nombre_material ?? '—',
+                    'medida'          => $entradaDet?->material?->unidadMedida?->nombre ?? '—',
+                    'codigo'          => $entradaDet?->material?->objetoEspecifico?->codigo ?? '—',
+                    'cant_adquirida'  => 0,
+                    'cant_utilizada'  => 0,
+                    'cantidad_cierre' => 0,
+                    'precio'          => $det->precio,
                 ];
             }
 
+            $porMaterial[$key]['cant_adquirida']  += $cantAdquirida;
+            $porMaterial[$key]['cant_utilizada']  += $cantUtilizada;
             $porMaterial[$key]['cantidad_cierre'] += $det->cantidad_sobrante;
         }
 
@@ -642,7 +642,7 @@ class ReportesController extends Controller
             <th style='{$thStyle} width:9%;'>Cant.<br>Sobrante</th>
             <th style='{$thStyle} width:10%;'>Precio<br>Unit.</th>
             <th style='{$thStyle} width:10%;'>Total ($)</th>
-            <th style='{$thStyle} width:9%;'>Estado</th>
+
         </tr>
     </thead>
     <tbody>";
@@ -664,7 +664,7 @@ class ReportesController extends Controller
             <td style='{$tdC} font-weight:bold;'>{$mat['cantidad_cierre']}</td>
             <td style='{$tdR}'>{$precioFmt}</td>
             <td style='{$tdR}'>{$totalFmt}</td>
-            <td style='{$tdC}'>{$mat['estado']}</td>
+
         </tr>";
         }
 
@@ -672,7 +672,7 @@ class ReportesController extends Controller
 
         $tabla .= "
         <tr>
-            <td colspan='7' style='font-weight:bold; font-size:12px; text-align:right;
+            <td colspan='6' style='font-weight:bold; font-size:12px; text-align:right;
                                     border-top:1.5px solid #000; border:0.8px solid #000;
                                     padding:5px 4px;'>
                 TOTAL GENERAL:
@@ -689,7 +689,7 @@ class ReportesController extends Controller
         $informacionGeneral = InformacionGeneral::where('id', 1)->first();
 
         // ── Sección de firmas ─────────────────────────────────────────────
-       $firmaStyle = "width:33%; text-align:center; font-size:11px; padding-top:{$informacionGeneral->px_sobrantes}px;";
+       $firmaStyle = "width:33%; text-align:center; font-size:14px; padding-top:{$informacionGeneral->px_sobrantes}px;";
         $tabla .= "
 <table width='100%' style='margin-top:30px; border-collapse:collapse;'>
     <tr>
@@ -1053,106 +1053,95 @@ class ReportesController extends Controller
         return view('backend.admin.repuestos.reporte.vistareporteporcodigos', compact('proyectos'));
     }
 
-    public function reportePDFProyectoCodigos($idproy, $desde, $hasta)
+
+
+    public function reportePDFProyectoCodigos($idproy, $desde, $hasta, $descripcion = '')
     {
         $start = Carbon::parse($desde)->startOfDay();
         $end   = Carbon::parse($hasta)->endOfDay();
 
-        $desdeFormat = Carbon::parse($desde)->format('d/m/Y');
-        $hastaFormat = Carbon::parse($hasta)->format('d/m/Y');
+        $desdeFormat  = Carbon::parse($desde)->format('d/m/Y');
+        $hastaFormat  = Carbon::parse($hasta)->format('d/m/Y');
+        $descripcion  = urldecode($descripcion);
 
-        // Info del proyecto
         $proyecto = DB::table('tipoproyecto')->where('id', $idproy)->first();
 
-        // ── Consulta base ──
         $rows = DB::select("
-        WITH entradas AS (
-            SELECT
-                ed.id              AS id_entradadetalle,
-                ed.id_material,
-                ed.precio,
-                ed.codigo          AS codigo_detalle,
-                ed.nombre          AS nombre_copia,
-                ed.cantidad_inicial AS cantidad_entrada,
-                e.fecha            AS fecha_entrada
-            FROM entradas_detalle ed
-            JOIN entradas e ON e.id = ed.id_entradas
-            WHERE e.id_tipoproyecto = ?
-        ),
-        salidas AS (
-            SELECT
-                sd.id_entrada_detalle,
-                sd.cantidad_salida,
-                s.fecha AS fecha_salida
-            FROM salidas_detalle sd
-            JOIN salidas s ON s.id = sd.id_salida
-            WHERE s.id_tipoproyecto = ?
-        ),
-        in_before AS (
-            SELECT id_entradadetalle, SUM(cantidad_entrada) AS qty_in_before
-            FROM entradas
-            WHERE fecha_entrada < ?
-            GROUP BY id_entradadetalle
-        ),
-        out_before AS (
-            SELECT id_entrada_detalle, SUM(cantidad_salida) AS qty_out_before
-            FROM salidas
-            WHERE fecha_salida < ?
-            GROUP BY id_entrada_detalle
-        ),
-        in_period AS (
-            SELECT id_entradadetalle, SUM(cantidad_entrada) AS qty_in_period
-            FROM entradas
-            WHERE fecha_entrada >= ? AND fecha_entrada <= ?
-            GROUP BY id_entradadetalle
-        ),
-        out_period AS (
-            SELECT id_entrada_detalle, SUM(cantidad_salida) AS qty_out_period
-            FROM salidas
-            WHERE fecha_salida >= ? AND fecha_salida <= ?
-            GROUP BY id_entrada_detalle
-        )
-
+    WITH entradas AS (
         SELECT
-            en.id_entradadetalle,
-            en.id_material,
-            obj.codigo                          AS codigo_obj,
-            COALESCE(m.nombre, en.nombre_copia) AS descripcion,
-            en.precio,
-
-            COALESCE(ib.qty_in_before, 0) - COALESCE(ob.qty_out_before, 0)  AS saldo_inicial_cant,
-            COALESCE(ip.qty_in_period,  0)                                   AS entradas_cant,
-            COALESCE(op.qty_out_period, 0)                                   AS salidas_cant,
-            (COALESCE(ib.qty_in_before, 0) - COALESCE(ob.qty_out_before, 0)
-             + COALESCE(ip.qty_in_period, 0)
-             - COALESCE(op.qty_out_period, 0))                               AS saldo_final_cant,
-
-            ((COALESCE(ib.qty_in_before, 0) - COALESCE(ob.qty_out_before, 0)) * en.precio) AS saldo_inicial_money,
-            (COALESCE(ip.qty_in_period,  0) * en.precio)                                   AS entradas_money,
-            (COALESCE(op.qty_out_period, 0) * en.precio)                                   AS salidas_money,
-            ((COALESCE(ib.qty_in_before, 0) - COALESCE(ob.qty_out_before, 0)
-              + COALESCE(ip.qty_in_period, 0)
-              - COALESCE(op.qty_out_period, 0)) * en.precio)                               AS saldo_final_money
-
-        FROM entradas en
-        LEFT JOIN materiales m          ON m.id  = en.id_material
-        LEFT JOIN objeto_especifico obj ON obj.id = m.id_objespecifico
-        LEFT JOIN in_before  ib ON ib.id_entradadetalle   = en.id_entradadetalle
-        LEFT JOIN out_before ob ON ob.id_entrada_detalle  = en.id_entradadetalle
-        LEFT JOIN in_period  ip ON ip.id_entradadetalle   = en.id_entradadetalle
-        LEFT JOIN out_period op ON op.id_entrada_detalle  = en.id_entradadetalle
-
-        ORDER BY obj.codigo, descripcion, en.precio
+            ed.id               AS id_entradadetalle,
+            ed.id_material,
+            ed.precio,
+            ed.codigo           AS codigo_detalle,
+            ed.nombre           AS nombre_copia,
+            ed.cantidad_inicial AS cantidad_entrada,
+            e.fecha             AS fecha_entrada
+        FROM entradas_detalle ed
+        JOIN entradas e ON e.id = ed.id_entradas
+        WHERE e.id_tipoproyecto = ?
+    ),
+    salidas AS (
+        SELECT
+            sd.id_entrada_detalle,
+            sd.cantidad_salida,
+            s.fecha AS fecha_salida
+        FROM salidas_detalle sd
+        JOIN salidas s ON s.id = sd.id_salida
+        WHERE s.id_tipoproyecto = ?
+    ),
+    in_before AS (
+        SELECT id_entradadetalle, SUM(cantidad_entrada) AS qty_in_before
+        FROM entradas WHERE fecha_entrada < ?
+        GROUP BY id_entradadetalle
+    ),
+    out_before AS (
+        SELECT id_entrada_detalle, SUM(cantidad_salida) AS qty_out_before
+        FROM salidas WHERE fecha_salida < ?
+        GROUP BY id_entrada_detalle
+    ),
+    in_period AS (
+        SELECT id_entradadetalle, SUM(cantidad_entrada) AS qty_in_period
+        FROM entradas WHERE fecha_entrada >= ? AND fecha_entrada <= ?
+        GROUP BY id_entradadetalle
+    ),
+    out_period AS (
+        SELECT id_entrada_detalle, SUM(cantidad_salida) AS qty_out_period
+        FROM salidas WHERE fecha_salida >= ? AND fecha_salida <= ?
+        GROUP BY id_entrada_detalle
+    )
+    SELECT
+        en.id_entradadetalle,
+        en.id_material,
+        obj.codigo                          AS codigo_obj,
+        COALESCE(m.nombre, en.nombre_copia) AS descripcion,
+        en.precio,
+        COALESCE(ib.qty_in_before, 0) - COALESCE(ob.qty_out_before, 0)  AS saldo_inicial_cant,
+        COALESCE(ip.qty_in_period,  0)                                   AS entradas_cant,
+        COALESCE(op.qty_out_period, 0)                                   AS salidas_cant,
+        (COALESCE(ib.qty_in_before, 0) - COALESCE(ob.qty_out_before, 0)
+         + COALESCE(ip.qty_in_period, 0)
+         - COALESCE(op.qty_out_period, 0))                               AS saldo_final_cant,
+        ((COALESCE(ib.qty_in_before, 0) - COALESCE(ob.qty_out_before, 0)) * en.precio) AS saldo_inicial_money,
+        (COALESCE(ip.qty_in_period,  0) * en.precio)                                   AS entradas_money,
+        (COALESCE(op.qty_out_period, 0) * en.precio)                                   AS salidas_money,
+        ((COALESCE(ib.qty_in_before, 0) - COALESCE(ob.qty_out_before, 0)
+          + COALESCE(ip.qty_in_period, 0)
+          - COALESCE(op.qty_out_period, 0)) * en.precio)                               AS saldo_final_money
+    FROM entradas en
+    LEFT JOIN materiales m          ON m.id  = en.id_material
+    LEFT JOIN objeto_especifico obj ON obj.id = m.id_objespecifico
+    LEFT JOIN in_before  ib ON ib.id_entradadetalle  = en.id_entradadetalle
+    LEFT JOIN out_before ob ON ob.id_entrada_detalle = en.id_entradadetalle
+    LEFT JOIN in_period  ip ON ip.id_entradadetalle  = en.id_entradadetalle
+    LEFT JOIN out_period op ON op.id_entrada_detalle = en.id_entradadetalle
+    ORDER BY obj.codigo, descripcion, en.precio
     ", [
-            $idproy,
-            $idproy,
-            $start->toDateString(),
-            $start->toDateString(),
+            $idproy, $idproy,
+            $start->toDateString(), $start->toDateString(),
             $start->toDateString(), $end->toDateString(),
             $start->toDateString(), $end->toDateString(),
         ]);
 
-        // ── Totales generales + sumatorias por código ──
         $totales = [
             'inicial_cant'   => 0, 'entradas_cant'  => 0,
             'salidas_cant'   => 0, 'final_cant'      => 0,
@@ -1160,7 +1149,7 @@ class ReportesController extends Controller
             'salidas_money'  => 0.0, 'final_money'    => 0.0,
         ];
 
-        $sumPorCodigo = []; // 👈 igual que en el primer reporte
+        $sumPorCodigo = [];
 
         foreach ($rows as $r) {
             $totales['inicial_cant']   += (int)   ($r->saldo_inicial_cant  ?? 0);
@@ -1172,20 +1161,15 @@ class ReportesController extends Controller
             $totales['salidas_money']  += (float) ($r->salidas_money       ?? 0);
             $totales['final_money']    += (float) ($r->saldo_final_money   ?? 0);
 
-            // 👈 acumular por código objeto específico
             $codigo = $r->codigo_obj ?? 'SIN-CODIGO';
 
             if (!isset($sumPorCodigo[$codigo])) {
                 $sumPorCodigo[$codigo] = [
                     'codigo'         => $codigo,
-                    'inicial_cant'   => 0,
-                    'entradas_cant'  => 0,
-                    'salidas_cant'   => 0,
-                    'final_cant'     => 0,
-                    'inicial_money'  => 0.0,
-                    'entradas_money' => 0.0,
-                    'salidas_money'  => 0.0,
-                    'final_money'    => 0.0,
+                    'inicial_cant'   => 0, 'entradas_cant'  => 0,
+                    'salidas_cant'   => 0, 'final_cant'      => 0,
+                    'inicial_money'  => 0.0, 'entradas_money' => 0.0,
+                    'salidas_money'  => 0.0, 'final_money'    => 0.0,
                 ];
             }
 
@@ -1199,7 +1183,6 @@ class ReportesController extends Controller
             $sumPorCodigo[$codigo]['final_money']    += (float) ($r->saldo_final_money   ?? 0);
         }
 
-        // ── PDF ──
         $mpdf = new \Mpdf\Mpdf([
             'tempDir'     => sys_get_temp_dir(),
             'format'      => 'LETTER',
@@ -1212,6 +1195,7 @@ class ReportesController extends Controller
         $logoalcaldia   = 'images/gobiernologo.jpg';
         $nombreProyecto = $proyecto->nombre ?? 'Proyecto';
 
+        // ── Encabezado ────────────────────────────────────────────────────
         $encabezado = "
 <table width='100%' style='border-collapse:collapse; font-family:Arial, sans-serif;'>
     <tr>
@@ -1227,9 +1211,9 @@ class ReportesController extends Controller
                 </tr>
             </table>
         </td>
-        <td style='width:50%; border-top:0.8px solid #000; border-bottom:0.8px solid #000; padding:6px 8px; text-align:center; font-size:15px; font-weight:bold;'>
-            CONTROL DE ENTRADAS/SALIDAS<br>
-            <span style='font-size:12px; font-weight:normal;'>{$nombreProyecto}</span>
+        <td style='width:50%; border-top:0.8px solid #000; border-bottom:0.8px solid #000;
+                   padding:6px 8px; text-align:center; font-size:15px; font-weight:bold;'>
+            CONTROL DE ENTRADAS/SALIDAS
         </td>
         <td style='width:25%; border:0.8px solid #000; padding:0; vertical-align:top;'>
             <table width='100%' style='font-size:10px;'>
@@ -1250,15 +1234,17 @@ class ReportesController extends Controller
     </tr>
 </table>
 <br>
+<strong>Proyecto:</strong> {$nombreProyecto}<br>
 <strong>Del {$desdeFormat} al {$hastaFormat}</strong><br><br>
 ";
+
 
         if (file_exists(public_path('css/cssbodega.css'))) {
             $stylesheet = file_get_contents(public_path('css/cssbodega.css'));
             $mpdf->WriteHTML($stylesheet, \Mpdf\HTMLParserMode::HEADER_CSS);
         }
 
-        // ── Tabla detalle ──
+        // ── Tabla detalle ─────────────────────────────────────────────────
         $html  = $encabezado;
         $html .= "
 <table width='100%' border='1' cellspacing='0' cellpadding='4'
@@ -1290,21 +1276,21 @@ class ReportesController extends Controller
                 : "<span style='color:#dc3545; font-weight:bold;'>S/C</span>";
 
             $html .= "
-    <tr>
-        <td>{$i}</td>
-        <td style='text-align:center;'>{$codigoHtml}</td>
-        <td>".e($r->descripcion)."</td>
-        <td style='text-align:right;'>$".number_format($r->precio             ?? 0, 4)."</td>
-        <td style='text-align:right;'>".number_format($r->saldo_inicial_cant  ?? 0)."</td>
-        <td style='text-align:right;'>$".number_format($r->saldo_inicial_money ?? 0, 2)."</td>
-        <td style='text-align:right;'>".number_format($r->entradas_cant       ?? 0)."</td>
-        <td style='text-align:right;'>$".number_format($r->entradas_money     ?? 0, 2)."</td>
-        <td style='text-align:right;'>".number_format($r->salidas_cant        ?? 0)."</td>
-        <td style='text-align:right;'>$".number_format($r->salidas_money      ?? 0, 2)."</td>
-        <td style='text-align:right;'>".number_format($r->saldo_final_cant    ?? 0)."</td>
-        <td style='text-align:right;'>$".number_format($r->saldo_final_money  ?? 0, 2)."</td>
-    </tr>
-    ";
+<tr>
+    <td>{$i}</td>
+    <td style='text-align:center;'>{$codigoHtml}</td>
+    <td>".e($r->descripcion)."</td>
+    <td style='text-align:right;'>$".number_format($r->precio              ?? 0, 4)."</td>
+    <td style='text-align:right;'>".number_format($r->saldo_inicial_cant   ?? 0)."</td>
+    <td style='text-align:right;'>$".number_format($r->saldo_inicial_money ?? 0, 2)."</td>
+    <td style='text-align:right;'>".number_format($r->entradas_cant        ?? 0)."</td>
+    <td style='text-align:right;'>$".number_format($r->entradas_money      ?? 0, 2)."</td>
+    <td style='text-align:right;'>".number_format($r->salidas_cant         ?? 0)."</td>
+    <td style='text-align:right;'>$".number_format($r->salidas_money       ?? 0, 2)."</td>
+    <td style='text-align:right;'>".number_format($r->saldo_final_cant     ?? 0)."</td>
+    <td style='text-align:right;'>$".number_format($r->saldo_final_money   ?? 0, 2)."</td>
+</tr>
+";
             $i++;
         }
 
@@ -1330,7 +1316,7 @@ class ReportesController extends Controller
 </table>
 ";
 
-        // ── Resumen del período ──
+        // ── Resumen del período ───────────────────────────────────────────
         $html .= "
 <br>
 <table width='55%' border='1' cellspacing='0' cellpadding='6'
@@ -1366,7 +1352,7 @@ class ReportesController extends Controller
 </table>
 ";
 
-        // ── Tabla de sumatorias por código objeto específico ──
+        // ── Resumen por código objeto específico ──────────────────────────
         if (!empty($sumPorCodigo)) {
 
             $totalSaldoFinalCodigos = 0;
@@ -1379,16 +1365,12 @@ class ReportesController extends Controller
         <tr>
             <th style='width:4%;'>#</th>
             <th style='width:10%;'>Código</th>
-
             <th style='text-align:right; width:6%;'>INICIAL</th>
             <th style='text-align:right; width:10%;'>\$ INICIAL</th>
-
             <th style='text-align:right; width:6%;'>ENTRADAS</th>
             <th style='text-align:right; width:10%;'>\$ ENTRADAS</th>
-
             <th style='text-align:right; width:6%;'>SALIDAS</th>
             <th style='text-align:right; width:10%;'>\$ SALIDAS</th>
-
             <th style='text-align:right; width:6%;'>SALDO</th>
             <th style='text-align:right; width:10%;'>\$ SALDO</th>
         </tr>
@@ -1402,23 +1384,19 @@ class ReportesController extends Controller
                 $totalSaldoFinalCodigos += (float) $s['final_money'];
 
                 $html .= "
-    <tr>
-        <td>{$j}</td>
-        <td>".e($s['codigo'])."</td>
-
-        <td style='text-align:right;'>".number_format($s['inicial_cant'])."</td>
-        <td style='text-align:right;'>$".number_format($s['inicial_money'],  2)."</td>
-
-        <td style='text-align:right;'>".number_format($s['entradas_cant'])."</td>
-        <td style='text-align:right;'>$".number_format($s['entradas_money'], 2)."</td>
-
-        <td style='text-align:right;'>".number_format($s['salidas_cant'])."</td>
-        <td style='text-align:right;'>$".number_format($s['salidas_money'],  2)."</td>
-
-        <td style='text-align:right;'>".number_format($s['final_cant'])."</td>
-        <td style='text-align:right;'>$".number_format($s['final_money'],    2)."</td>
-    </tr>
-    ";
+<tr>
+    <td>{$j}</td>
+    <td>".e($s['codigo'])."</td>
+    <td style='text-align:right;'>".number_format($s['inicial_cant'])."</td>
+    <td style='text-align:right;'>$".number_format($s['inicial_money'],  2)."</td>
+    <td style='text-align:right;'>".number_format($s['entradas_cant'])."</td>
+    <td style='text-align:right;'>$".number_format($s['entradas_money'], 2)."</td>
+    <td style='text-align:right;'>".number_format($s['salidas_cant'])."</td>
+    <td style='text-align:right;'>$".number_format($s['salidas_money'],  2)."</td>
+    <td style='text-align:right;'>".number_format($s['final_cant'])."</td>
+    <td style='text-align:right;'>$".number_format($s['final_money'],    2)."</td>
+</tr>
+";
                 $j++;
             }
 
@@ -1432,20 +1410,41 @@ class ReportesController extends Controller
 ";
         }
 
-        // ── Firma ──
+
+
+
+        // ── Observaciones ─────────────────────────────────────────────────
         $html .= "
-<table width='100%'>
-    <tbody>
-        <tr>
-            <td style='height:80px;'></td>
-        </tr>
-        <tr>
-            <td style='text-align:center; font-size:13px;'>
-                F._____________________________<br><br>
-                <span style='font-weight:bold; font-size:12px;'>UNIDAD ESTRUCTURAS METÁLICAS</span>
-            </td>
-        </tr>
-    </tbody>
+<br>
+<table width='100%' border='1' cellspacing='0' cellpadding='6'
+       style='border-collapse:collapse; font-size:11px;'>
+    <tr style='background:#f2f4f8;'>
+        <td style='font-weight:bold;'>Observaciones: </td>
+    </tr>
+    <tr>
+        <td style='height:50px; font-size: 14px; vertical-align:top;'>$descripcion</td>
+    </tr>
+</table>
+";
+
+        $informacionGeneral = InformacionGeneral::where('id', 1)->first();
+
+
+        // ── Firma central ─────────────────────────────────────────────────
+        $html .= "
+<table width='100%' style='border-collapse:collapse; margin-top:{$informacionGeneral->px_sobrantes}px;'>
+    <tr>
+        <td style='width:33%;'></td>
+        <td style='width:34%; height:60px;'></td>
+        <td style='width:33%;'></td>
+    </tr>
+    <tr>
+        <td style='width:33%;'></td>
+        <td style='width:34%; text-align:center; font-size:12px; border-top:0.8px solid #000; padding-top:6px;'>
+            <strong>UNIDAD ESTRUCTURAS METÁLICAS</strong>
+        </td>
+        <td style='width:33%;'></td>
+    </tr>
 </table>
 ";
 
@@ -1453,6 +1452,297 @@ class ReportesController extends Controller
         $mpdf->WriteHTML($html, \Mpdf\HTMLParserMode::HTML_BODY);
         $mpdf->Output();
     }
+
+
+
+
+
+
+
+
+    public function reporteDestinoSobrantes($idtrans, $tipo)
+    {
+        $infoProyecto  = Tipoproyecto::find($idtrans);
+        $fechaGenerado = date("d-m-Y");
+        $logoalcaldia  = 'images/logo.png';
+
+        $transferencia = Transferencia::where('id_tipoproyecto', $idtrans)
+            ->orderBy('id', 'desc')
+            ->first();
+
+        if (!$transferencia) {
+            $mpdf = new \Mpdf\Mpdf(['tempDir' => sys_get_temp_dir(), 'format' => 'LETTER-L']);
+            $mpdf->WriteHTML("<p style='font-family:Arial; font-size:14px; color:red;'>
+        Este proyecto no tiene registro de cierre generado.</p>", 2);
+            $mpdf->Output();
+            return;
+        }
+
+        $fechaCierre = date("d-m-Y", strtotime($transferencia->fecha));
+
+        $tituloTipo  = $tipo === 'proyecto' ? 'Transferidos a Otro Proyecto' : 'Salida General';
+        $colorHeader = $tipo === 'proyecto' ? '#1a5c3a' : '#7a4f1a';
+        $colorBg     = $tipo === 'proyecto' ? '#e8f5e9'  : '#fff3e0';
+
+        $detallesSnapshot = TransferenciaDetalle::where('id_transferencia', $transferencia->id)
+            ->get();
+
+        $porMaterial = [];
+
+        foreach ($detallesSnapshot as $det) {
+
+            // ── Clave por id_entrada_detalle ──────────────────────────────
+            $key = $det->id_entrada_detalle;
+
+            $entradaDet = EntradasDetalle::with('material.unidadMedida', 'material.objetoEspecifico')
+                ->find($det->id_entrada_detalle);
+
+            // ── Salidas filtradas por tipo desde salidas_detalle ──────────
+            $salidas = SalidasDetalle::where('id_entrada_detalle', $det->id_entrada_detalle)
+                ->whereHas('salida', function ($q) use ($idtrans, $tipo) {
+                    $q->where('id_tipoproyecto', $idtrans)
+                        ->where('es_transferencia', true);
+
+                    if ($tipo === 'proyecto') {
+                        // Transferencia a proyecto: tiene proyecto destino
+                        $q->whereNotNull('id_tipoproyecto_transferencia');
+                    } elseif ($tipo === 'general') {
+                        // Salida general: sin proyecto destino
+                        $q->whereNull('id_tipoproyecto_transferencia');
+                    }
+                })
+                ->with('salida')
+                ->get();
+
+            $cantDespachada = $salidas->sum('cantidad_salida');
+
+            // Si no hay salidas de este tipo, saltar
+            if ($cantDespachada <= 0) continue;
+
+            // ── Proyectos destino (solo aplica para tipo = 'proyecto') ────
+            $proyectosDestino = '—';
+            if ($tipo === 'proyecto') {
+                $proyectosDestino = $salidas
+                    ->map(fn($sd) => Tipoproyecto::find($sd->salida->id_tipoproyecto_transferencia)?->nombre)
+                    ->filter()
+                    ->unique()
+                    ->implode(', ') ?: '—';
+            }
+
+            // ── Fechas de despacho ────────────────────────────────────────
+            $fechasDespacho = $salidas
+                ->map(fn($sd) => date('d/m/Y', strtotime($sd->salida->fecha)))
+                ->unique()
+                ->implode(', ') ?: '—';
+
+            if (!isset($porMaterial[$key])) {
+                $porMaterial[$key] = [
+                    'nombre'            => $entradaDet?->material?->nombre ?? $det->nombre_material ?? '—',
+                    'medida'            => $entradaDet?->material?->unidadMedida?->nombre ?? '—',
+                    'codigo'            => $entradaDet?->material?->objetoEspecifico?->codigo ?? '—',
+                    'cant_sobrante'     => $det->cantidad_sobrante,
+                    'cant_despachada'   => 0,
+                    'proyectos_destino' => $proyectosDestino,
+                    'fechas_despacho'   => $fechasDespacho,
+                    'precio'            => $det->precio,
+                ];
+            }
+
+            $porMaterial[$key]['cant_despachada'] += $cantDespachada;
+
+            // ── Acumular destinos y fechas si hay múltiples entradas ──────
+            if ($porMaterial[$key]['proyectos_destino'] === '—' && $proyectosDestino !== '—') {
+                $porMaterial[$key]['proyectos_destino'] = $proyectosDestino;
+            }
+            if ($porMaterial[$key]['fechas_despacho'] === '—' && $fechasDespacho !== '—') {
+                $porMaterial[$key]['fechas_despacho'] = $fechasDespacho;
+            }
+        }
+
+        usort($porMaterial, fn($a, $b) => strcmp($a['nombre'], $b['nombre']));
+
+        if (empty($porMaterial)) {
+            $mpdf = new \Mpdf\Mpdf(['tempDir' => sys_get_temp_dir(), 'format' => 'LETTER-L']);
+            $mpdf->WriteHTML("<p style='font-family:Arial; font-size:14px; color:#888; padding:20px;'>
+        No hay registros de <b>{$tituloTipo}</b> para este proyecto.</p>", 2);
+            $mpdf->Output();
+            return;
+        }
+
+        $granTotal = 0;
+
+        $mpdf = new \Mpdf\Mpdf(['tempDir' => sys_get_temp_dir(), 'format' => 'LETTER-L']);
+        $mpdf->SetTitle('Destino de Sobrantes - ' . $tituloTipo);
+        $mpdf->showImageErrors = false;
+
+        // ── Encabezado ────────────────────────────────────────────────────
+        $tabla = "
+<table width='100%' style='border-collapse:collapse; font-family:Arial, sans-serif;'>
+    <tr>
+        <td style='width:25%; border:0.8px solid #000; padding:6px 8px;'>
+            <table width='100%'>
+                <tr>
+                    <td style='width:30%; text-align:left;'>
+                        <img src='{$logoalcaldia}' style='height:38px'>
+                    </td>
+                    <td style='width:70%; text-align:left; color:#104e8c; font-size:13px; font-weight:bold; line-height:1.3;'>
+                        SANTA ANA NORTE<br>EL SALVADOR
+                    </td>
+                </tr>
+            </table>
+        </td>
+        <td style='width:50%; border-top:0.8px solid #000; border-bottom:0.8px solid #000;
+                   padding:6px 8px; text-align:center; font-size:15px; font-weight:bold;'>
+            CONTROL DE ENTRADAS/SALIDAS
+        </td>
+        <td style='width:25%; border:0.8px solid #000; padding:0; vertical-align:top;'>
+            <table width='100%' style='font-size:10px;'>
+                <tr>
+                    <td width='40%' style='border-right:0.8px solid #000; border-bottom:0.8px solid #000; padding:4px 6px;'><strong>Código:</strong></td>
+                    <td width='60%' style='border-bottom:0.8px solid #000; padding:4px 6px; text-align:center;'>GEAD-001-INFO</td>
+                </tr>
+                <tr>
+                    <td style='border-right:0.8px solid #000; border-bottom:0.8px solid #000; padding:4px 6px;'><strong>Versión:</strong></td>
+                    <td style='border-bottom:0.8px solid #000; padding:4px 6px; text-align:center;'>000</td>
+                </tr>
+                <tr>
+                    <td style='border-right:0.8px solid #000; padding:4px 6px;'><strong>Fecha de vigencia:</strong></td>
+                    <td style='padding:4px 6px; text-align:center;'></td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+<br>
+
+";
+
+
+
+
+
+
+        $tabla .= "
+<table width='100%' style='margin-bottom:4px; border-collapse:collapse;'>
+    <tr>
+        <td style='font-size:13px; padding:4px 0;'>
+            <span style='font-weight:bold;'>Proyecto:</span> {$infoProyecto->nombre}
+        </td>
+         <td style='font-size:13px; padding:4px 0;'>
+            <span style='font-weight:bold;'>Generado:</span> {$infoProyecto->nombre}
+        </td>
+    </tr>
+</table>";
+
+        // ── Tabla de materiales ───────────────────────────────────────────
+        $thStyle = "font-weight:bold; font-size:11px; border:0.8px solid #000;
+                padding:5px 4px; background:#d9e1f2; text-align:center;";
+        $tdStyle = "font-size:11px; border:0.8px solid #000; padding:4px;";
+        $tdC     = $tdStyle . " text-align:center;";
+        $tdR     = $tdStyle . " text-align:right;";
+
+        $thDestino = $tipo === 'proyecto'
+            ? "<th style='{$thStyle} width:20%;'>Proyecto Destino</th>"
+            : '';
+
+        $tabla .= "
+<table width='100%' style='border-collapse:collapse;'>
+    <thead>
+        <tr>
+            <th style='{$thStyle} width:8%;'>Obj.<br>Espec.</th>
+            <th style='{$thStyle} width:25%;'>Material</th>
+            <th style='{$thStyle} width:8%;'>Medida</th>
+            <th style='{$thStyle} width:9%;'>Cant.<br>Sobrante</th>
+            <th style='{$thStyle} width:9%;'>Cant.<br>Despachada</th>
+            <th style='{$thStyle} width:10%;'>Fecha(s)<br>Despacho</th>
+            {$thDestino}
+            <th style='{$thStyle} width:9%;'>Precio<br>Unit.</th>
+            <th style='{$thStyle} width:9%;'>Total ($)</th>
+        </tr>
+    </thead>
+    <tbody>";
+
+        foreach ($porMaterial as $mat) {
+            $totalLinea = $mat['cant_despachada'] * $mat['precio'];
+            $granTotal += $totalLinea;
+
+            $precioFmt = '$ ' . number_format($mat['precio'], 4);
+            $totalFmt  = '$ ' . number_format($totalLinea, 4);
+
+            $tdDestino = $tipo === 'proyecto'
+                ? "<td style='{$tdStyle} font-size:9px;'>{$mat['proyectos_destino']}</td>"
+                : '';
+
+            $tabla .= "
+        <tr>
+            <td style='{$tdC}'>{$mat['codigo']}</td>
+            <td style='{$tdStyle}'>{$mat['nombre']}</td>
+            <td style='{$tdC}'>{$mat['medida']}</td>
+            <td style='{$tdC}'>{$mat['cant_sobrante']}</td>
+            <td style='{$tdC} font-weight:bold; background:{$colorBg};'>{$mat['cant_despachada']}</td>
+            <td style='{$tdC} font-size:9px;'>{$mat['fechas_despacho']}</td>
+            {$tdDestino}
+            <td style='{$tdR}'>{$precioFmt}</td>
+            <td style='{$tdR}'>{$totalFmt}</td>
+        </tr>";
+        }
+
+        $granTotalFmt = '$ ' . number_format($granTotal, 4);
+        $colspanTotal = $tipo === 'proyecto' ? 7 : 6;
+
+        $tabla .= "
+        <tr>
+            <td colspan='{$colspanTotal}' style='font-weight:bold; font-size:12px; text-align:right;
+                                    border:0.8px solid #000; padding:5px 4px;'>
+                TOTAL GENERAL:
+            </td>
+            <td colspan='2' style='font-weight:bold; font-size:12px;
+                                    border:0.8px solid #000; padding:5px 4px;'>
+                {$granTotalFmt}
+            </td>
+        </tr>
+    </tbody>
+</table>";
+
+        $informacionGeneral = InformacionGeneral::where('id', 1)->first();
+
+        $tabla .= "
+<table width='100%' style='margin-top:30px; border-collapse:collapse;'>
+    <tr>
+        <td style='width:33%; height:{$informacionGeneral->px_sobrantes}px;'></td>
+        <td style='width:33%; height:{$informacionGeneral->px_sobrantes}px;'></td>
+        <td style='width:33%; height:{$informacionGeneral->px_sobrantes}px;'></td>
+    </tr>
+    <tr>
+        <td style='width:33%; text-align:center; font-size:13px;
+                   border-top:0.8px solid #000; padding-top:4px;'>
+            Responsable de Ejecución
+        </td>
+        <td style='width:33%; text-align:center; font-size:13px;
+                   border-top:0.8px solid #000; padding-top:4px;'>
+            Supervisor / Jefe Inmediato
+        </td>
+        <td style='width:33%; text-align:center; font-size:13px;
+                   border-top:0.8px solid #000; padding-top:4px;'>
+            Bodeguero / Responsable Asignado
+        </td>
+    </tr>
+</table>";
+
+        $stylesheet = file_get_contents('css/cssregistro.css');
+        $mpdf->WriteHTML($stylesheet, 1);
+        $mpdf->setFooter("Página: " . '{PAGENO}' . "/" . '{nb}');
+        $mpdf->WriteHTML($tabla, 2);
+        $mpdf->Output();
+    }
+
+
+
+
+
+
+
+
 
 
 

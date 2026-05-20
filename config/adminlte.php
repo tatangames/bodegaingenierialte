@@ -412,7 +412,7 @@ return [
         ],
 
         [
-            'text'    => 'Códigos',
+            'text'    => 'Configuración',
             'icon'    => 'fas fa-pen-alt',
             'can'     => 'sidebar.inventario',
             'submenu' => [
@@ -430,6 +430,11 @@ return [
                     'text' => 'Objeto Específico',
                     'icon' => 'far fa-circle',
                     'route' => 'admin.objetoespecifico.index',
+                ],
+                [
+                    'text' => 'Unidades',
+                    'icon' => 'far fa-circle',
+                    'route' => 'admin.departamentos.index',
                 ],
             ],
         ],

@@ -55,6 +55,9 @@
         .reporte-header.completado {
             background: linear-gradient(135deg, #3d1f6b, #6f42c1);
         }
+        .reporte-header.destino {
+            background: linear-gradient(135deg, #1a5c3a, #28a745);
+        }
         .reporte-header i {
             font-size: 22px;
             color: #fff;
@@ -102,6 +105,11 @@
             background: linear-gradient(135deg, #3d1f6b, #6f42c1);
             color: #fff;
             box-shadow: 0 4px 14px rgba(111,66,193,.35);
+        }
+        .btn-pdf.verde {
+            background: linear-gradient(135deg, #1a5c3a, #28a745);
+            color: #fff;
+            box-shadow: 0 4px 14px rgba(40,167,69,.35);
         }
         .btn-pdf:hover { transform: translateY(-1px); filter: brightness(1.08); color: #fff; }
         .divider {
@@ -176,6 +184,45 @@
                         </div>
                     </div>
 
+                    {{-- ══ REPORTE 3: Destino de Sobrantes ══ --}}
+                    <div class="col-md-6">
+                        <div class="reporte-card">
+                            <div class="reporte-header destino">
+                                <i class="fas fa-share-alt"></i>
+                                <h5>Destino de Sobrantes por Proyecto</h5>
+                            </div>
+                            <div class="reporte-body">
+                                <p style="font-size:13px; color:#666; margin-bottom:14px;">
+                                    Muestra qué pasó con los materiales sobrantes de un proyecto cerrado
+                                    según el tipo de destino seleccionado.
+                                </p>
+                                <hr class="divider">
+                                <label class="field-label">
+                                    <i class="fas fa-lock mr-1"></i>Proyecto Cerrado
+                                </label>
+                                <select class="form-control" id="select-proyecto-destino">
+                                    @foreach($transferido as $dd)
+                                        <option value="{{ $dd->id }}">{{ $dd->nombre }}</option>
+                                    @endforeach
+                                </select>
+
+                                <div class="mt-3" style="display:flex; gap:10px; flex-wrap:wrap;">
+                                    <button type="button" onclick="generarPdfDestino('proyecto')" class="btn-pdf verde">
+                                        <img src="{{ asset('images/logopdf.png') }}" width="22px" height="22px">
+                                        A Otro Proyecto
+                                    </button>
+                                    <button type="button" onclick="generarPdfDestino('general')" class="btn-pdf"
+                                            style="background:linear-gradient(135deg,#7a4f1a,#fd7e14);
+                               color:#fff; box-shadow:0 4px 14px rgba(253,126,20,.35);">
+                                        <img src="{{ asset('images/logopdf.png') }}" width="22px" height="22px">
+                                        Salida General
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
                 </div>
             </div>
         </section>
@@ -202,6 +249,11 @@
                 theme: "bootstrap-5",
                 language: { noResults: function () { return "Búsqueda no encontrada"; } }
             });
+
+            $('#select-proyecto-destino').select2({
+                theme: "bootstrap-5",
+                language: { noResults: function () { return "Búsqueda no encontrada"; } }
+            });
         });
 
         function generarPdfActivo() {
@@ -214,6 +266,12 @@
             var idtrans = $('#select-proyecto-completado').val();
             if (!idtrans) { toastr.error('Proyecto es requerido'); return; }
             window.open("{{ URL::to('admin/reporte/inventario/sobranteterminado/proy') }}/" + idtrans);
+        }
+
+        function generarPdfDestino(tipo) {
+            var idtrans = $('#select-proyecto-destino').val();
+            if (!idtrans) { toastr.error('Proyecto es requerido'); return; }
+            window.open("{{ URL::to('admin/reporte/inventario/destino/sobrantes') }}/" + idtrans + "/" + tipo);
         }
     </script>
 @endsection

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Sistema;
 
 use App\Http\Controllers\Controller;
 use App\Models\Cuenta;
+use App\Models\Departamentos;
 use App\Models\ObjetoEspecifico;
 use App\Models\Rubro;
 use App\Models\UnidadMedida;
@@ -81,6 +82,83 @@ class ConfiguracionController extends Controller
             return ['success' => 2];
         }
     }
+
+
+    //********* DEPARTAMENTOS **************************************************************
+
+
+    public function indexDepartamentos(){
+        return view('backend.admin.configuracion.departamentos.vistadepartamentos');
+    }
+
+    public function tablaDepartamentos(){
+
+        $lista = Departamentos::orderBy('nombre', 'ASC')->get();
+        return view('backend.admin.configuracion.departamentos.tabladepartamentos', compact('lista'));
+    }
+
+    public function nuevaDepartamentos(Request $request){
+        $regla = array(
+            'nombre' => 'required',
+        );
+
+        $validar = Validator::make($request->all(), $regla);
+
+        if ($validar->fails()){ return ['success' => 0];}
+
+        $dato = new Departamentos();
+        $dato->nombre = $request->nombre;
+
+        if($dato->save()){
+            return ['success' => 1];
+        }else{
+            return ['success' => 2];
+        }
+    }
+
+    public function informacionDepartamentos(Request $request){
+        $regla = array(
+            'id' => 'required',
+        );
+
+        $validar = Validator::make($request->all(), $regla);
+
+        if ($validar->fails()){ return ['success' => 0];}
+
+        if($lista = Departamentos::where('id', $request->id)->first()){
+
+            return ['success' => 1, 'info' => $lista];
+        }else{
+            return ['success' => 2];
+        }
+    }
+
+    public function editarDepartamentos(Request $request){
+
+        $regla = array(
+            'id' => 'required',
+            'nombre' => 'required'
+        );
+
+        $validar = Validator::make($request->all(), $regla);
+
+        if ($validar->fails()){ return ['success' => 0];}
+
+        if(Departamentos::where('id', $request->id)->first()){
+
+            Departamentos::where('id', $request->id)->update([
+                'nombre' => $request->nombre
+            ]);
+
+            return ['success' => 1];
+        }else{
+            return ['success' => 2];
+        }
+    }
+
+
+
+
 
 
 

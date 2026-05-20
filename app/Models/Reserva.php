@@ -11,4 +11,9 @@ class Reserva extends Model
     protected $table = 'reservas';
     public $timestamps = false;
 
+    public function proyectoDestino()
+    {
+        return $this->belongsTo(Tipoproyecto::class, 'id_tipoproyecto_destino');
+    }
+
 }

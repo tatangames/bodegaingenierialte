@@ -60,6 +60,13 @@ Route::middleware('auth:admin')->group(function () {
     Route::post('/admin/unidadmedida/informacion', [ConfiguracionController::class, 'informacionUnidadMedida']);
     Route::post('/admin/unidadmedida/editar', [ConfiguracionController::class, 'editarUnidadMedida']);
 
+    // --- DEPARTAMENTOS ---
+    Route::get('/admin/departamentos/index', [ConfiguracionController::class,'indexDepartamentos'])->name('admin.departamentos.index');
+    Route::get('/admin/departamentos/tabla/index', [ConfiguracionController::class,'tablaDepartamentos']);
+    Route::post('/admin/departamentos/nuevo', [ConfiguracionController::class, 'nuevaDepartamentos']);
+    Route::post('/admin/departamentos/informacion', [ConfiguracionController::class, 'informacionDepartamentos']);
+    Route::post('/admin/departamentos/editar', [ConfiguracionController::class, 'editarDepartamentos']);
+
     // --- RUBRO ---
     Route::get('/admin/rubro/index', [ConfiguracionController::class,'indexRubro'])->name('admin.rubro.index');
     Route::get('/admin/rubro/tabla/index', [ConfiguracionController::class,'tablaRubro']);
@@ -166,10 +173,23 @@ Route::middleware('auth:admin')->group(function () {
     Route::get('/admin/reporte/inventario/sobranteterminado/proyecto', [ReportesController::class,'vistaProyectoCompletado'])->name('admin.reporte.inventario.proyectocompletado.index');
     Route::get('/admin/reporte/inventario/sobranteterminado/proy/{idtrans}', [ReportesController::class,'reporteProyectoTerminado']);
 
+
+
+
+
+
+    // Destino de sobrantes — a proyecto o salida general
+    Route::get('/admin/reporte/inventario/destino/sobrantes/{idtrans}/{tipo}',
+        [ReportesController::class, 'reporteDestinoSobrantes']);
+
+
+
+
+
     // --- REPORTE / ENTREGAS MENSUALES
     Route::get('/admin/reporte/proyectos/codigos', [ReportesController::class,'vistaReporteProyectoCodigos'])->name('admin.reporte.proyectos.codigos.index');
-    Route::get('/admin/reporte/proyectos/codigos/pdf/{idproy}/{desde}/{hasta}', [ReportesController::class,'reportePDFProyectoCodigos']);
-
+    Route::get('/admin/reporte/proyectos/codigos/pdf/{idproy}/{desde}/{hasta}/{descripcion?}',
+        [ReportesController::class, 'reportePDFProyectoCodigos']);
 
 
 

@@ -35,7 +35,6 @@
 @section('content')
     <style>
         *:focus { outline: none; }
-
         .reporte-card {
             border: none; border-radius: 12px;
             box-shadow: 0 2px 18px rgba(0,0,0,.10);
@@ -46,7 +45,6 @@
             align-items: center; gap: 12px;
         }
         .reporte-header.entradas { background: linear-gradient(135deg, #1a6b2a, #28a745); }
-        .reporte-header.salidas  { background: linear-gradient(135deg, #6b1a1a, #dc3545); }
         .reporte-header i  { font-size: 22px; color: #fff; }
         .reporte-header h5 {
             color: #fff; font-size: 14px; font-weight: 700;
@@ -66,7 +64,6 @@
             transition: all .2s;
         }
         .btn-pdf.verde { background: linear-gradient(135deg, #1a6b2a, #28a745); color: #fff; box-shadow: 0 4px 14px rgba(40,167,69,.35); }
-        .btn-pdf.rojo  { background: linear-gradient(135deg, #6b1a1a, #dc3545); color: #fff; box-shadow: 0 4px 14px rgba(220,53,69,.35); }
         .btn-pdf:hover { transform: translateY(-1px); filter: brightness(1.08); color: #fff; }
     </style>
 
@@ -74,8 +71,6 @@
         <section class="content">
             <div class="container-fluid">
                 <div class="row">
-
-                    {{-- ══ ENTRADAS ══ --}}
                     <div class="col-md-10">
                         <div class="reporte-card">
                             <div class="reporte-header entradas">
@@ -88,20 +83,22 @@
                                 </p>
                                 <hr class="divider">
 
-                                {{-- Fila fechas --}}
+                                {{-- Fechas --}}
                                 <div class="row mb-3">
                                     <div class="col-auto">
                                         <label class="field-label">Desde</label>
-                                        <input type="date" class="form-control form-control-sm" id="entrada-desde" style="width:145px;">
+                                        <input type="date" class="form-control form-control-sm"
+                                               id="entrada-desde" style="width:145px;">
                                     </div>
                                     <div class="col-auto">
                                         <label class="field-label">Hasta</label>
-                                        <input type="date" class="form-control form-control-sm" id="entrada-hasta" style="width:145px;">
+                                        <input type="date" class="form-control form-control-sm"
+                                               id="entrada-hasta" style="width:145px;">
                                     </div>
                                 </div>
 
-                                {{-- Fila proyecto --}}
-                                <div class="row mb-2">
+                                {{-- Proyecto --}}
+                                <div class="row mb-3">
                                     <div class="col">
                                         <label class="field-label">
                                             <i class="fas fa-project-diagram mr-1"></i>Proyecto
@@ -117,20 +114,31 @@
                                     </div>
                                 </div>
 
+                                {{-- Descripción --}}
+                                <div class="row mb-3">
+                                    <div class="col">
+                                        <label class="field-label">
+                                            <i class="fas fa-align-left mr-1"></i>Descripción
+                                        </label>
+                                        <input type="text"
+                                               class="form-control form-control-sm"
+                                               id="entrada-descripcion"
+                                               placeholder="Descripción opcional del reporte"
+                                               maxlength="300">
+                                    </div>
+                                </div>
+
                                 <button type="button" onclick="generarPdf()" class="btn-pdf verde">
                                     <img src="{{ asset('images/logopdf.png') }}" width="22px" height="22px">
                                     Generar PDF
                                 </button>
-
                             </div>
                         </div>
                     </div>
-
                 </div>
             </div>
         </section>
     </div>
-
 @stop
 
 @section('js')
@@ -140,7 +148,6 @@
     <script src="{{ asset('js/select2.min.js') }}"></script>
 
     <script>
-
         function formatProyecto(option) {
             if (!option.id) return option.text;
             var esCerrado = $(option.element).data('cerrado');
@@ -169,15 +176,17 @@
             var idproy = $('#select-proyecto-entrada').val();
             var desde  = document.getElementById('entrada-desde').value;
             var hasta  = document.getElementById('entrada-hasta').value;
+            var desc   = document.getElementById('entrada-descripcion').value.trim();
 
             if (!idproy) { toastr.error('Proyecto es requerido'); return; }
             if (!desde)  { toastr.error('Fecha Desde es requerida'); return; }
             if (!hasta)  { toastr.error('Fecha Hasta es requerida'); return; }
             if (hasta < desde) { toastr.error('Fecha Hasta no puede ser menor a Fecha Desde'); return; }
 
-            window.open("{{ URL::to('admin/reporte/proyectos/codigos/pdf') }}/"
-                + idproy + "/" + desde + "/" + hasta);
-        }
+            var descEncoded = encodeURIComponent(desc);
 
+            window.open("{{ URL::to('admin/reporte/proyectos/codigos/pdf') }}/"
+                + idproy + "/" + desde + "/" + hasta + "/" + descEncoded);
+        }
     </script>
 @endsection
