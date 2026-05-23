@@ -150,6 +150,31 @@ Route::middleware('auth:admin')->group(function () {
     // Ruta nueva para cargar materiales del proyecto cerrado
     Route::post('/admin/transferencia/materiales/cerrado', [SalidasController::class, 'materialesDisponiblesCerrado']);
 
+
+
+
+    Route::post('/admin/reporte/form/solicitud/preview',
+        [ReportesController::class, 'formSolicitudPreview'])
+        ->name('reporte.form.solicitud.preview');
+
+
+
+
+    Route::post('/admin/reporte/acta/preview',
+        [ReportesController::class, 'actaRecepcionPreview'])
+        ->name('reporte.acta.preview');
+
+    Route::get('/admin/reporte/acta/recepcion/{id_salida}',
+        [ReportesController::class, 'actaRecepcionPorSalida'])
+        ->name('reporte.acta.recepcion');
+
+
+
+
+
+
+
+
     // --- RESERVAS ---
     Route::get('/admin/reservas/index', [ReservasController::class,'indexReservasPendientes'])->name('admin.reservas.index');
     Route::post('/admin/reservas/listar', [ReservasController::class, 'listar']);

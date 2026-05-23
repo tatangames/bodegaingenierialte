@@ -66,7 +66,6 @@
             border: none; border-top: 2px solid #e8eef8; margin: 18px 0;
         }
 
-        /* Pills destino */
         .destino-pills { display: flex; gap: 10px; flex-wrap: wrap; }
         .destino-pill {
             flex: 1; min-width: 140px; padding: 14px 10px;
@@ -84,7 +83,6 @@
         .destino-pill.activo-reserva i  { color: #6f42c1; }
         .destino-pill span { font-size: 12px; font-weight: 700; color: #444; text-transform: uppercase; }
 
-        /* Tabla materiales */
         #tablaMaterialesCerrado thead th {
             background: #495057; color: #fff; font-size: 11px;
             font-weight: 700; text-transform: uppercase;
@@ -92,7 +90,6 @@
         }
         #tablaMaterialesCerrado tbody td { vertical-align: middle; font-size: 13px; padding: 7px 10px; }
 
-        /* Tabla detalle */
         #matriz thead tr th {
             background: #2156af; color: #fff; font-size: 11px;
             font-weight: 700; text-transform: uppercase;
@@ -109,6 +106,16 @@
         .btn-guardar-salida:hover {
             transform: translateY(-1px);
             box-shadow: 0 6px 18px rgba(40,167,69,.45); color: #fff;
+        }
+        .btn-form-solicitud {
+            background: linear-gradient(135deg, #7a4f1a, #fd7e14);
+            color: #fff; border: none; border-radius: 8px;
+            padding: 10px 20px; font-weight: 400; font-size: 14px;
+            box-shadow: 0 4px 14px rgba(253,126,20,.35); transition: all .2s;
+        }
+        .btn-form-solicitud:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 18px rgba(253,126,20,.45); color: #fff;
         }
 
         .badge-reservado {
@@ -161,7 +168,7 @@
                         <h3><i class="fas fa-boxes mr-2"></i>Paso 2 — Materiales Disponibles</h3>
                         <span id="lblProyectoCerrado"
                               style="background:rgba(255,255,255,.2); color:#fff; border-radius:20px;
-                                 padding:2px 14px; font-size:12px; font-weight:700"></span>
+                                     padding:2px 14px; font-size:12px; font-weight:700"></span>
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive">
@@ -231,7 +238,6 @@
                             </div>
                         </div>
 
-                        {{-- Solo si destino = proyecto --}}
                         <div id="seccion-proyecto-destino" style="display:none">
                             <hr class="divider-azul">
                             <div class="row">
@@ -243,7 +249,7 @@
                                     <select class="form-control" id="select-proyecto-destino">
                                         <option value="0" disabled selected>Seleccionar proyecto destino…</option>
                                         @foreach($proyectosActivos as $item)
-                                            <option value="{{ $item->id }}">{{ $item->id }} — {{ $item->nombre }}</option>
+                                            <option value="{{ $item->id }}">{{ $item->nombre }}</option>
                                         @endforeach
                                     </select>
                                 </div>
@@ -263,7 +269,7 @@
                         <h3><i class="fas fa-list mr-2"></i>Paso 4 — Detalle</h3>
                         <span id="contador-filas"
                               style="background:rgba(255,255,255,.2); color:#fff; border-radius:20px;
-                                 padding:2px 12px; font-size:12px; font-weight:700">0 ítems</span>
+                                     padding:2px 12px; font-size:12px; font-weight:700">0 ítems</span>
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive">
@@ -285,9 +291,14 @@
                     <div class="card-footer d-flex justify-content-between align-items-center"
                          style="border-top:2px solid #e8eef8; background:#f8faff; border-radius:0 0 10px 10px">
                         <small class="text-muted" id="lblTipoMovimiento">—</small>
-                        <button type="button" class="btn-guardar-salida" onclick="preguntaGuardar()">
-                            <i class="fas fa-save mr-1"></i> Guardar
-                        </button>
+                        <div style="display:flex; gap:10px;">
+                            <button type="button" class="btn-form-solicitud" onclick="abrirModalForm()">
+                                <i class="fas fa-file-alt mr-1"></i> GEAD-002-FORM
+                            </button>
+                            <button type="button" class="btn-guardar-salida" onclick="preguntaGuardar()">
+                                <i class="fas fa-save mr-1"></i> Guardar
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -331,6 +342,239 @@
             </div>
         </div>
 
+        {{-- ══ MODAL: GEAD-002-FORM ══ --}}
+        <div class="modal fade" id="modalForm" data-backdrop="static" data-keyboard="false">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header" style="background:linear-gradient(135deg,#7a4f1a,#fd7e14)">
+                        <h4 class="modal-title" style="color:#fff">
+                            <i class="fas fa-file-alt mr-2"></i>Formulario de Solicitud — GEAD-002-FORM
+                        </h4>
+                        <button type="button" class="close" data-dismiss="modal" style="color:#fff">
+                            <span>&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+
+                        <div class="alert alert-warning" style="font-size:12px;">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Complete los datos para generar el formulario de solicitud GEAD-002-FORM.
+                            Todos los campos son opcionales excepto la Unidad Solicitante.
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="field-label">
+                                        <i class="fas fa-hashtag mr-1"></i>No. de Solicitud
+                                    </label>
+                                    <input type="text" class="form-control" id="form-numero"
+                                           placeholder="Ej: 001-2025">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="field-label">
+                                        <i class="fas fa-hashtag mr-1"></i>No. de Proyecto
+                                    </label>
+                                    <input type="text" class="form-control" id="form-noproyecto"
+                                           placeholder="Ej: PROY-001-2025">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="field-label">
+                                        <i class="fas fa-file-alt mr-1"></i>Acuerdo de Aprobación del Proyecto
+                                    </label>
+                                    <input type="text" class="form-control" id="form-acuerdo"
+                                           placeholder="Ej: Acuerdo No. 123-2025">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="field-label">
+                                        <i class="fas fa-building mr-1"></i>Unidad Solicitante
+                                        <span style="color:red">*</span>
+                                    </label>
+                                    <select class="form-control" id="form-departamento">
+                                        <option value="">— Seleccionar —</option>
+                                        @foreach($departamentos as $d)
+                                            <option value="{{ $d->id }}" data-nombre="{{ $d->nombre }}">
+                                                {{ $d->nombre }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="field-label">
+                                        <i class="fas fa-user-tie mr-1"></i>Jefe o Encargado de Unidad Solicitante
+                                    </label>
+                                    <input type="text" class="form-control" id="form-jefe"
+                                           placeholder="Nombre completo">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="field-label">
+                                        <i class="fas fa-align-left mr-1"></i>Justificación del Destino
+                                    </label>
+                                    <textarea class="form-control" id="form-justificacion"
+                                              rows="2" placeholder="Justifique el uso de los materiales…"></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="field-label">
+                                <i class="fas fa-sticky-note mr-1"></i>Observaciones
+                            </label>
+                            <textarea class="form-control" id="form-observaciones"
+                                      rows="2" placeholder="Observaciones adicionales (opcional)"></textarea>
+                        </div>
+
+                    </div>
+                    <div class="modal-footer justify-content-between">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                            <i class="fas fa-times mr-1"></i>Cancelar
+                        </button>
+                        <button type="button" class="btn btn-warning" onclick="generarFormPDF()"
+                                style="color:#fff; font-weight:600;">
+                            <i class="fas fa-file-pdf mr-1"></i>Generar GEAD-002-FORM
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- ══ MODAL: Datos del Acta GEAD-002-ACTA ══ --}}
+        <div class="modal fade" id="modalActa" data-backdrop="static" data-keyboard="false">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header" style="background:linear-gradient(135deg,#1a3a6b,#2156af)">
+                        <h4 class="modal-title" style="color:#fff">
+                            <i class="fas fa-file-alt mr-2"></i>Datos del Acta — GEAD-002-ACTA
+                        </h4>
+                        <button type="button" class="close" data-dismiss="modal" style="color:#fff">
+                            <span>&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+
+                        <div class="alert alert-info" style="font-size:12px;">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Complete los datos del acta. La Unidad Solicitante es requerida.
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="field-label">
+                                        <i class="fas fa-hashtag mr-1"></i>No. de Acta de Recepción
+                                    </label>
+                                    <input type="text" class="form-control" id="acta-numero"
+                                           placeholder="Ej: 001-2025">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="field-label">
+                                        <i class="fas fa-file-invoice mr-1"></i>Referencia de la Solicitud
+                                    </label>
+                                    <input type="text" class="form-control" id="acta-referencia"
+                                           placeholder="Ej: GEAD-002-FORM No. 001">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="field-label">
+                                        <i class="fas fa-building mr-1"></i>Unidad Solicitante
+                                        <span style="color:red">*</span>
+                                    </label>
+                                    <select class="form-control" id="acta-departamento">
+                                        <option value="">— Seleccionar —</option>
+                                        @foreach($departamentos as $d)
+                                            <option value="{{ $d->id }}" data-nombre="{{ $d->nombre }}">
+                                                {{ $d->nombre }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="field-label">
+                                        <i class="fas fa-user mr-1"></i>Nombre del Solicitante
+                                    </label>
+                                    <input type="text" class="form-control" id="acta-nombre-solicitante"
+                                           placeholder="Nombre completo">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="field-label">
+                                        <i class="fas fa-id-badge mr-1"></i>Cargo del Solicitante
+                                    </label>
+                                    <input type="text" class="form-control" id="acta-cargo-solicitante"
+                                           placeholder="Cargo o puesto">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="field-label">
+                                        <i class="fas fa-tag mr-1"></i>Tipo de Destino / Uso
+                                        <small style="text-transform:none; font-weight:400; color:#888;">
+                                            (puede editarlo)
+                                        </small>
+                                    </label>
+                                    <input type="text" class="form-control" id="acta-tipo-destino"
+                                           placeholder="Ej: Mantenimiento edificio principal…">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="field-label">
+                                <i class="fas fa-sticky-note mr-1"></i>Observaciones
+                            </label>
+                            <textarea class="form-control" id="acta-observaciones"
+                                      rows="2" placeholder="Observaciones adicionales (opcional)"></textarea>
+                        </div>
+
+                    </div>
+                    <div class="modal-footer justify-content-between">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                            <i class="fas fa-times mr-1"></i>Cancelar
+                        </button>
+                        <div>
+                            <button type="button" class="btn btn-info mr-2" onclick="guardar('pdf')">
+                                <i class="fas fa-file-pdf mr-1"></i>PDF
+                            </button>
+                            <button type="button" class="btn btn-success mr-2" onclick="guardar('guardar')">
+                                <i class="fas fa-save mr-1"></i>Guardar
+                            </button>
+                            <button type="button" class="btn btn-primary" onclick="guardar('ambos')">
+                                <i class="fas fa-save mr-1"></i>Guardar y PDF
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>{{-- fin #divcontenedor --}}
 @stop
 
@@ -357,13 +601,21 @@
                 theme: "bootstrap-5",
                 language: { noResults: function () { return "Búsqueda no encontrada"; } }
             });
-
             $('#select-proyecto-destino').select2({
                 theme: "bootstrap-5",
                 language: { noResults: function () { return "Búsqueda no encontrada"; } }
             });
+            $('#acta-departamento').select2({
+                theme: "bootstrap-5",
+                dropdownParent: $('#modalActa'),
+                language: { noResults: function () { return "No encontrado"; } }
+            });
+            $('#form-departamento').select2({
+                theme: "bootstrap-5",
+                dropdownParent: $('#modalForm'),
+                language: { noResults: function () { return "No encontrado"; } }
+            });
 
-            // Al cambiar proyecto → ocultar todo y resetear
             $('#select-proyecto').on('change', function () {
                 var val = $(this).val();
                 $('#btnCargarMateriales').prop('disabled', !val || val === '0');
@@ -372,7 +624,7 @@
             });
         });
 
-        // ── Ocultar pasos 2-4 y resetear estado ──────────────────────────
+        // ── Ocultar pasos ─────────────────────────────────────────────────
         function ocultarPasos() {
             $('#seccionMateriales').hide();
             $('#seccionDestino').hide();
@@ -415,7 +667,6 @@
                         return;
                     }
 
-                    // Limpiar y llenar tabla de materiales
                     $('#lblProyectoCerrado').text(nombreProy);
                     $('#tbodyMateriales').empty();
 
@@ -423,9 +674,7 @@
                         var badgeReservado = m.reservado > 0
                             ? ' <span class="badge-reservado">🔒 ' + m.reservado + ' reservado</span>'
                             : '';
-
                         var trClass = m.reservado > 0 ? 'tr-reservado' : '';
-
                         var btnSeleccionar = m.libre > 0
                             ? "<button class='btn btn-primary btn-xs' " +
                             "data-id='" + m.id_entrada_detalle + "' " +
@@ -435,7 +684,6 @@
                             "<i class='fas fa-plus'></i> Seleccionar</button>"
                             : "<span class='badge badge-secondary'>Sin stock libre</span>";
 
-                        // ── Nombre + medida en dos líneas ──
                         var celdaMaterial = m.nombre + badgeReservado +
                             "<br><small style='color:#888; font-size:10px'>" + (m.medida ?? '—') + "</small>";
 
@@ -452,12 +700,10 @@
                         $('#tbodyMateriales').append(fila);
                     });
 
-                    // Mostrar pasos 2, 3 y 4
                     $('#seccionMateriales').show();
                     $('#seccionDestino').show();
                     $('#seccionDetalle').show();
 
-                    // Resetear detalle y pills
                     $('#matriz tbody tr').remove();
                     actualizarContador();
                     tipoDestino = null;
@@ -498,7 +744,6 @@
                 );
             }
 
-            // Limpiar detalle al cambiar tipo
             $('#matriz tbody tr').remove();
             actualizarContador();
         }
@@ -510,7 +755,7 @@
             $('#seccion-proyecto-destino').hide();
         }
 
-        // ── Abrir modal cantidad ──────────────────────────────────────────
+        // ── Modal cantidad ────────────────────────────────────────────────
         function abrirModalCantidad(idEntradaDetalle, nombre, libre) {
             if (!tipoDestino) {
                 toastr.warning('Primero seleccione el tipo de movimiento en el Paso 3');
@@ -520,7 +765,6 @@
                 toastr.info('Sin stock libre disponible');
                 return;
             }
-
             $('#modal-id-entrada-detalle').val(idEntradaDetalle);
             $('#modal-nombre-material').val(nombre);
             $('#modal-max').val(libre);
@@ -580,7 +824,70 @@
             toastr.success('Agregado al detalle');
         }
 
-        // ── Confirmar guardar ─────────────────────────────────────────────
+        // ── Abrir modal FORM ──────────────────────────────────────────────
+        function abrirModalForm() {
+            if ($('#matriz > tbody > tr').length <= 0) {
+                toastr.error('Agregue al menos un material al detalle');
+                return;
+            }
+            $('#modalForm').modal('show');
+        }
+
+        // ── Generar PDF GEAD-002-FORM ─────────────────────────────────────
+        function generarFormPDF() {
+            var formDepto = $('#form-departamento').val();
+            if (!formDepto || formDepto === '') {
+                toastr.error('La Unidad Solicitante es requerida');
+                return;
+            }
+
+            var proyectoCerrado  = $('#select-proyecto').val();
+            var nombreProy       = $('#select-proyecto option:selected').text();
+            var proyectoDestino  = $('#select-proyecto-destino option:selected').text() || '';
+            var fecha            = document.getElementById('fecha').value;
+            var formNumero       = $('#form-numero').val().trim()       || '';
+            var formNoproyecto   = $('#form-noproyecto').val().trim()   || '';
+            var formAcuerdo      = $('#form-acuerdo').val().trim()      || '';
+            var formDeptoNombre  = $('#form-departamento option:selected').text() || '';
+            var formJefe         = $('#form-jefe').val().trim()         || '';
+            var formJustificacion= $('#form-justificacion').val().trim()|| '';
+            var formObservaciones= $('#form-observaciones').val().trim()|| '';
+
+            var materiales = [];
+            $('#matriz > tbody > tr').each(function () {
+                var nombre       = $(this).find("input[type='text']").val();
+                var cantidad     = $(this).find("input[name='salidaArray[]']").attr('data-cantidadSalida');
+                var idEntradaDet = $(this).find("input[name='idmaterialArray[]']").attr('data-idmaterialArray');
+                materiales.push({ nombre: nombre, cantidad: cantidad, id_entrada_detalle: idEntradaDet });
+            });
+
+            var form = $('<form>', {
+                method: 'POST',
+                action: "{{ URL::to('admin/reporte/form/solicitud/preview') }}",
+                target: '_blank'
+            });
+
+            form.append($('<input>', { type: 'hidden', name: '_token',           value: "{{ csrf_token() }}" }));
+            form.append($('<input>', { type: 'hidden', name: 'idproy',           value: proyectoCerrado }));
+            form.append($('<input>', { type: 'hidden', name: 'nombre_proyecto',  value: nombreProy }));
+            form.append($('<input>', { type: 'hidden', name: 'proyecto_destino', value: proyectoDestino }));
+            form.append($('<input>', { type: 'hidden', name: 'fecha',            value: fecha }));
+            form.append($('<input>', { type: 'hidden', name: 'numero',           value: formNumero }));
+            form.append($('<input>', { type: 'hidden', name: 'noproyecto',       value: formNoproyecto }));
+            form.append($('<input>', { type: 'hidden', name: 'acuerdo',          value: formAcuerdo }));
+            form.append($('<input>', { type: 'hidden', name: 'depto',            value: formDeptoNombre }));
+            form.append($('<input>', { type: 'hidden', name: 'jefe',             value: formJefe }));
+            form.append($('<input>', { type: 'hidden', name: 'justificacion',    value: formJustificacion }));
+            form.append($('<input>', { type: 'hidden', name: 'observaciones',    value: formObservaciones }));
+            form.append($('<input>', { type: 'hidden', name: 'tipo_destino',     value: tipoDestino }));
+            form.append($('<input>', { type: 'hidden', name: 'materiales',       value: JSON.stringify(materiales) }));
+
+            $('body').append(form);
+            form.submit();
+            form.remove();
+        }
+
+        // ── Abrir modal acta ──────────────────────────────────────────────
         function preguntaGuardar() {
             if (!tipoDestino) {
                 toastr.warning('Seleccione el tipo de movimiento en el Paso 3');
@@ -591,38 +898,122 @@
                 return;
             }
 
-            var textos = {
-                proyecto: '¿Transferir estos materiales al proyecto destino?',
-                general:  '¿Registrar salida general de estos materiales?',
-                reserva:  '¿Reservar estos materiales? Quedarán bloqueados hasta su despacho.',
+            var labelsTipo = {
+                proyecto: 'Transferencia a Proyecto de Inversión Pública',
+                general:  'Salida General — Mantenimiento de Instalaciones',
+                reserva:  'Reserva de Material',
             };
 
-            Swal.fire({
-                title: '¿Confirmar?',
-                text:  textos[tipoDestino],
-                icon:  'question',
-                showCancelButton:   true,
-                confirmButtonColor: '#28a745',
-                cancelButtonColor:  '#d33',
-                cancelButtonText:   'Cancelar',
-                confirmButtonText:  'Sí, confirmar'
-            }).then((result) => { if (result.isConfirmed) guardar(); });
+            var tipoLabel = labelsTipo[tipoDestino] || tipoDestino;
+
+            if (tipoDestino === 'proyecto') {
+                var nombreProyDest = $('#select-proyecto-destino option:selected').text();
+                if (nombreProyDest && nombreProyDest !== 'Seleccionar proyecto destino…') {
+                    tipoLabel = nombreProyDest;
+                }
+            }
+
+            $('#acta-tipo-destino').val(tipoLabel);
+
+            if (tipoDestino === 'reserva') {
+                Swal.fire({
+                    title: '¿Confirmar reserva?',
+                    text:  '¿Reservar estos materiales? Quedarán bloqueados hasta su despacho.',
+                    icon:  'question',
+                    showCancelButton:   true,
+                    confirmButtonColor: '#6f42c1',
+                    cancelButtonColor:  '#d33',
+                    cancelButtonText:   'Cancelar',
+                    confirmButtonText:  'Sí, reservar'
+                }).then((result) => { if (result.isConfirmed) ejecutarGuardar('guardar'); });
+            } else {
+                $('#modalActa').modal('show');
+            }
         }
 
-        // ── Guardar ───────────────────────────────────────────────────────
-        function guardar() {
+        // ── Guardar dispatcher ────────────────────────────────────────────
+        function guardar(accion) {
+            var fecha           = document.getElementById('fecha').value;
+            var proyectoCerrado = $('#select-proyecto').val();
+            var proyectoDestino = $('#select-proyecto-destino').val();
+            var actaIdDepto     = $('#acta-departamento').val();
+
+            if (!fecha) { toastr.error('Fecha es requerida'); return; }
+            if (!proyectoCerrado || proyectoCerrado === '0') {
+                toastr.error('Seleccione proyecto cerrado'); return;
+            }
+            if (tipoDestino === 'proyecto' && (!proyectoDestino || proyectoDestino === '0')) {
+                toastr.error('Seleccione el proyecto destino'); return;
+            }
+            if (!actaIdDepto || actaIdDepto === '') {
+                toastr.error('La Unidad Solicitante es requerida'); return;
+            }
+
+            if (accion === 'pdf') {
+                abrirPDFSinGuardar();
+                return;
+            }
+
+            ejecutarGuardar(accion);
+        }
+
+        // ── PDF ACTA sin guardar ──────────────────────────────────────────
+        function abrirPDFSinGuardar() {
+            var proyectoCerrado   = $('#select-proyecto').val();
+            var fecha             = document.getElementById('fecha').value;
+            var actaNumero        = $('#acta-numero').val().trim()                || '';
+            var actaReferencia    = $('#acta-referencia').val().trim()             || '';
+            var actaDepto         = $('#acta-departamento option:selected').text() || '';
+            var actaNombreSolic   = $('#acta-nombre-solicitante').val().trim()     || '';
+            var actaCargoSolic    = $('#acta-cargo-solicitante').val().trim()      || '';
+            var actaObservaciones = $('#acta-observaciones').val().trim()          || '';
+            var actaTipoDestino   = $('#acta-tipo-destino').val().trim()           || '';
+
+            var materiales = [];
+            $('#matriz > tbody > tr').each(function () {
+                var nombre       = $(this).find("input[type='text']").val();
+                var cantidad     = $(this).find("input[name='salidaArray[]']").attr('data-cantidadSalida');
+                var idEntradaDet = $(this).find("input[name='idmaterialArray[]']").attr('data-idmaterialArray');
+                materiales.push({ nombre: nombre, cantidad: cantidad, id_entrada_detalle: idEntradaDet });
+            });
+
+            var form = $('<form>', {
+                method: 'POST',
+                action: "{{ URL::to('admin/reporte/acta/preview') }}",
+                target: '_blank'
+            });
+
+            form.append($('<input>', { type: 'hidden', name: '_token',        value: "{{ csrf_token() }}" }));
+            form.append($('<input>', { type: 'hidden', name: 'idproy',        value: proyectoCerrado }));
+            form.append($('<input>', { type: 'hidden', name: 'fecha',         value: fecha }));
+            form.append($('<input>', { type: 'hidden', name: 'numero',        value: actaNumero }));
+            form.append($('<input>', { type: 'hidden', name: 'referencia',    value: actaReferencia }));
+            form.append($('<input>', { type: 'hidden', name: 'depto',         value: actaDepto }));
+            form.append($('<input>', { type: 'hidden', name: 'nombre',        value: actaNombreSolic }));
+            form.append($('<input>', { type: 'hidden', name: 'cargo',         value: actaCargoSolic }));
+            form.append($('<input>', { type: 'hidden', name: 'observaciones', value: actaObservaciones }));
+            form.append($('<input>', { type: 'hidden', name: 'tipodestino',   value: actaTipoDestino }));
+            form.append($('<input>', { type: 'hidden', name: 'materiales',    value: JSON.stringify(materiales) }));
+
+            $('body').append(form);
+            form.submit();
+            form.remove();
+        }
+
+        // ── Ejecutar guardado en BD ───────────────────────────────────────
+        function ejecutarGuardar(accion) {
             var fecha           = document.getElementById('fecha').value;
             var proyectoCerrado = $('#select-proyecto').val();
             var descripcion     = document.getElementById('descripcion').value;
             var proyectoDestino = $('#select-proyecto-destino').val();
 
-            if (!fecha) { toastr.error('Fecha es requerida'); return; }
-            if (!proyectoCerrado || proyectoCerrado === '0') { toastr.error('Seleccione proyecto cerrado'); return; }
-
-            if (tipoDestino === 'proyecto' && (!proyectoDestino || proyectoDestino === '0')) {
-                toastr.error('Seleccione el proyecto destino');
-                return;
-            }
+            var actaNumero         = $('#acta-numero').val().trim();
+            var actaReferencia     = $('#acta-referencia').val().trim();
+            var actaIdDepartamento = $('#acta-departamento').val();
+            var actaNombreSolic    = $('#acta-nombre-solicitante').val().trim();
+            var actaCargoSolic     = $('#acta-cargo-solicitante').val().trim();
+            var actaObservaciones  = $('#acta-observaciones').val().trim();
+            var actaTipoDestino    = $('#acta-tipo-destino').val().trim();
 
             var idEntradaDetalle = $("input[name='idmaterialArray[]']")
                 .map(function () { return $(this).attr("data-idmaterialArray"); }).get();
@@ -637,14 +1028,23 @@
                 });
             }
 
+            $('#modalActa').modal('hide');
             openLoading();
+
             var formData = new FormData();
-            formData.append('fecha',            fecha);
-            formData.append('proyecto_cerrado', proyectoCerrado);
-            formData.append('proyecto_destino', proyectoDestino || '');
-            formData.append('descripcion',      descripcion);
-            formData.append('tipo_destino',     tipoDestino);
-            formData.append('contenedorArray',  JSON.stringify(contenedorArray));
+            formData.append('fecha',                fecha);
+            formData.append('proyecto_cerrado',     proyectoCerrado);
+            formData.append('proyecto_destino',     proyectoDestino || '');
+            formData.append('descripcion',          descripcion);
+            formData.append('tipo_destino',         tipoDestino);
+            formData.append('contenedorArray',      JSON.stringify(contenedorArray));
+            formData.append('acta_numero',          actaNumero);
+            formData.append('acta_referencia',      actaReferencia);
+            formData.append('acta_id_departamento', actaIdDepartamento || '');
+            formData.append('acta_nombre_solic',    actaNombreSolic);
+            formData.append('acta_cargo_solic',     actaCargoSolic);
+            formData.append('acta_observaciones',   actaObservaciones);
+            formData.append('acta_tipo_destino',    actaTipoDestino);
 
             axios.post(urlAdmin + '/admin/transferencia/material/xproyecto', formData)
                 .then((response) => {
@@ -653,8 +1053,6 @@
                     if (response.data.success === 1) {
                         toastr.error('Sin ítems en el contenedor');
                     } else if (response.data.success === 3) {
-
-
                         Swal.fire({
                             title: 'Cantidad no disponible',
                             html:  '<b>' + response.data.nombre_material + '</b><br><br>' +
@@ -676,7 +1074,16 @@
                             allowOutsideClick:  false,
                             confirmButtonColor: '#28a745',
                             confirmButtonText:  'Aceptar'
-                        }).then((r) => { if (r.isConfirmed) location.reload(); });
+                        }).then((r) => {
+                            if (r.isConfirmed) {
+                                if (accion === 'ambos' && response.data.id_salida) {
+                                    window.open(
+                                        urlAdmin + '/admin/reporte/acta/recepcion/' + response.data.id_salida
+                                    );
+                                }
+                                location.reload();
+                            }
+                        });
                     } else {
                         toastr.error('Error al guardar');
                     }

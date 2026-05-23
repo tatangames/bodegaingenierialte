@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Sistema;
 
 use App\Http\Controllers\Controller;
+use App\Models\Departamentos;
 use App\Models\Entradas;
 use App\Models\EntradasDetalle;
+use App\Models\InformacionGeneral;
 use App\Models\Materiales;
 use App\Models\Reserva;
 use App\Models\Salidas;
@@ -390,10 +392,12 @@ class SalidasController extends Controller
     {
         $proyectosCerrados = TipoProyecto::where('transferido', 1)->orderBy('nombre')->get();
         $proyectosActivos  = TipoProyecto::where('transferido', 0)->orderBy('nombre')->get();
+        $departamentos     = Departamentos::orderBy('nombre')->get();
 
         return view('backend.admin.repuestos.transferenciacerrados.vistatransferenciamaterialcerrado', [
             'proyectosCerrados' => $proyectosCerrados,
             'proyectosActivos'  => $proyectosActivos,
+            'departamentos'     => $departamentos,
         ]);
     }
 
@@ -613,6 +617,19 @@ class SalidasController extends Controller
 
         return ['success' => 1, 'materiales' => $materiales];
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 }
