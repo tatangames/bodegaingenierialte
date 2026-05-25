@@ -169,7 +169,7 @@ Route::middleware('auth:admin')->group(function () {
     Route::post('/admin/historial/transferencias/informacion', [HistorialController::class, 'informacionTransferencia']);
     Route::post('/admin/historial/transferencias/eliminar', [HistorialController::class, 'eliminarTransferencia']);
     Route::post('/admin/historial/transferencias/detalle', [HistorialController::class, 'detalleTransferencia']);
-
+    Route::get('/admin/historial/transferencias/acta/pdf/{id}', [HistorialController::class, 'actaDesdeHistorial']);
 
 
 

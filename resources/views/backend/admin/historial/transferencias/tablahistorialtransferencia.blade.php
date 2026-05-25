@@ -8,12 +8,12 @@
                             <thead>
                             <tr>
                                 <th style="width: 5%">ID</th>
-                                <th style="width: 18%">Origen</th>
-                                <th style="width: 18%">Destino</th>
-                                <th style="width: 11%">Tipo</th>
+                                <th style="width: 16%">Origen</th>
+                                <th style="width: 16%">Destino</th>
+                                <th style="width: 10%">Tipo</th>
                                 <th style="width: 9%">Fecha</th>
-                                <th style="width: 17%">Descripción</th>
-                                <th style="width: 22%">Opciones</th>
+                                <th style="width: 15%">Descripción</th>
+                                <th style="width: 29%">Opciones</th>
                             </tr>
                             </thead>
                             <tbody>
@@ -49,6 +49,14 @@
                                                 )">
                                             <i class="fas fa-list"></i> Detalle
                                         </button>
+
+                                        {{-- Botón PDF — abre en nueva pestaña --}}
+                                        <a href="{{ url('admin/historial/transferencias/acta/pdf/' . $dato->id) }}"
+                                           target="_blank"
+                                           class="btn btn-secondary btn-xs"
+                                           style="margin: 3px">
+                                            <i class="fas fa-file-pdf"></i> PDF
+                                        </a>
 
                                         <button type="button"
                                                 class="btn btn-danger btn-xs"
