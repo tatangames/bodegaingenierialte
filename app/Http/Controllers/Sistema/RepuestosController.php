@@ -261,10 +261,22 @@ class RepuestosController extends Controller
             ->with('entrada.tipoproyecto')
             ->get()
             ->groupBy(fn($item) => $item->entrada->id_tipoproyecto)
-            ->map(fn($grupo) => [
-                'proyecto' => $grupo->first()->entrada->tipoproyecto->nombre ?? '—',
-                'entradas' => $grupo->sum('cantidad_inicial'),
-            ]);
+            ->map(function ($grupo) {
+
+                // Total de unidades que entraron al proyecto (real + transferencia)
+                $entradasTotal = $grupo->sum('cantidad_inicial');
+
+                // Solo las que son ingreso REAL (no transferencia) — cuentan al total general
+                $entradasReales = $grupo
+                    ->filter(fn($item) => ! $item->entrada->es_transferencia)
+                    ->sum('cantidad_inicial');
+
+                return [
+                    'proyecto'        => $grupo->first()->entrada->tipoproyecto->nombre ?? '—',
+                    'entradas'        => $entradasTotal,
+                    'entradas_reales' => $entradasReales,
+                ];
+            });
 
         // Salidas por proyecto usando whereIn
         $salidas = SalidasDetalle::whereIn('id_entrada_detalle', $idsEntradasDetalle)
@@ -277,16 +289,39 @@ class RepuestosController extends Controller
         $proyectos = $entradas->map(function ($dato, $idProyecto) use ($salidas) {
             $sal = $salidas[$idProyecto] ?? 0;
             return [
-                'proyecto'   => $dato['proyecto'],
-                'entradas'   => $dato['entradas'],
-                'salidas'    => $sal,
-                'disponible' => $dato['entradas'] - $sal,
+                'proyecto'        => $dato['proyecto'],
+                'entradas'        => $dato['entradas'],
+                'entradas_reales' => $dato['entradas_reales'],
+                'salidas'         => $sal,
+                'disponible'      => $dato['entradas'] - $sal,
             ];
         })->values();
+
+        // ── Totales ───────────────────────────────────────────────
+        // El total general usa SOLO las entradas reales (el material físico
+        // que de verdad ingresó). Las transferencias no suman: es el mismo
+        // material moviéndose entre proyectos.
+        $totalEntradas   = $proyectos->sum('entradas_reales');
+        $totalSalidas    = $proyectos->sum('salidas');
+
+        // Salidas por transferencia (las que salieron hacia otro proyecto)
+        // no son consumo real, así que el disponible global es entradas
+        // reales menos las salidas que NO son transferencia.
+        $salidasReales = SalidasDetalle::whereIn('id_entrada_detalle', $idsEntradasDetalle)
+            ->whereHas('salida', fn($q) => $q->where('es_transferencia', 0))
+            ->get()
+            ->sum('cantidad_salida');
+
+        $totalDisponible = $totalEntradas - $salidasReales;
 
         return response()->json([
             'success'   => 1,
             'proyectos' => $proyectos,
+            'totales'   => [
+                'entradas'   => $totalEntradas,
+                'salidas'    => $totalSalidas,
+                'disponible' => $totalDisponible,
+            ],
         ]);
     }
 

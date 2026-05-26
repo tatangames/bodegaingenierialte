@@ -137,45 +137,12 @@
             </div>
         </section>
 
-        {{-- ══ PASO 2 ══ --}}
-        <section class="content" id="seccionMateriales" style="margin-bottom:0; display:none">
-            <div class="container-fluid">
-                <div class="card card-info">
-                    <div class="seccion-header" style="display:flex; justify-content:space-between; align-items:center">
-                        <h3><i class="fas fa-boxes mr-2"></i>Paso 2 — Materiales Disponibles</h3>
-                        <span id="lblProyectoCerrado"
-                              style="background:rgba(255,255,255,.2); color:#fff; border-radius:20px;
-                                     padding:2px 14px; font-size:12px; font-weight:700"></span>
-                    </div>
-                    <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="table table-bordered table-striped mb-0"
-                                   id="tablaMaterialesCerrado" style="width:100%">
-                                <thead>
-                                <tr>
-                                    <th style="width:5%">#</th>
-                                    <th style="width:33%">Material</th>
-                                    <th style="width:10%">U/M</th>
-                                    <th style="width:12%">Disponible</th>
-                                    <th style="width:12%">Reservado</th>
-                                    <th style="width:12%">Libre</th>
-                                    <th style="width:16%">Acción</th>
-                                </tr>
-                                </thead>
-                                <tbody id="tbodyMateriales"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        {{-- ══ PASO 3 ══ --}}
+        {{-- ══ PASO 2 — Tipo de Movimiento ══ --}}
         <section class="content" id="seccionDestino" style="margin-bottom:0; display:none">
             <div class="container-fluid">
                 <div class="card card-info">
                     <div class="seccion-header">
-                        <h3><i class="fas fa-route mr-2"></i>Paso 3 — Tipo de Movimiento</h3>
+                        <h3><i class="fas fa-route mr-2"></i>Paso 2 — Tipo de Movimiento</h3>
                     </div>
                     <div class="card-body">
                         <div class="destino-pills mb-4">
@@ -226,6 +193,39 @@
                                     </select>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        {{-- ══ PASO 3 — Materiales Disponibles ══ --}}
+        <section class="content" id="seccionMateriales" style="margin-bottom:0; display:none">
+            <div class="container-fluid">
+                <div class="card card-info">
+                    <div class="seccion-header" style="display:flex; justify-content:space-between; align-items:center">
+                        <h3><i class="fas fa-boxes mr-2"></i>Paso 3 — Materiales Disponibles</h3>
+                        <span id="lblProyectoCerrado"
+                              style="background:rgba(255,255,255,.2); color:#fff; border-radius:20px;
+                                     padding:2px 14px; font-size:12px; font-weight:700"></span>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped mb-0"
+                                   id="tablaMaterialesCerrado" style="width:100%">
+                                <thead>
+                                <tr>
+                                    <th style="width:5%">#</th>
+                                    <th style="width:33%">Material</th>
+                                    <th style="width:10%">U/M</th>
+                                    <th style="width:12%">Disponible</th>
+                                    <th style="width:12%">Reservado</th>
+                                    <th style="width:12%">Libre</th>
+                                    <th style="width:16%">Acción</th>
+                                </tr>
+                                </thead>
+                                <tbody id="tbodyMateriales"></tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -742,7 +742,7 @@
         });
 
         function ocultarPasos() {
-            $('#seccionMateriales, #seccionDestino, #seccionDetalle').hide();
+            $('#seccionDestino, #seccionMateriales, #seccionDetalle').hide();
             $('#tbodyMateriales').empty();
             $('#matriz tbody tr').remove();
             actualizarContador();
@@ -797,7 +797,7 @@
                         );
                     });
 
-                    $('#seccionMateriales, #seccionDestino, #seccionDetalle').show();
+                    $('#seccionDestino, #seccionMateriales, #seccionDetalle').show();
                     $('#matriz tbody tr').remove();
                     actualizarContador();
                     tipoDestino = null;
@@ -869,7 +869,7 @@
         }
 
         function abrirModalCantidad(idEntradaDetalle, nombre, libre) {
-            if (!tipoDestino) { toastr.warning('Primero seleccione el tipo de movimiento en el Paso 3'); return; }
+            if (!tipoDestino) { toastr.warning('Primero seleccione el tipo de movimiento en el Paso 2'); return; }
             if (libre <= 0)   { toastr.info('Sin stock libre disponible'); return; }
             $('#modal-id-entrada-detalle').val(idEntradaDetalle);
             $('#modal-nombre-material').val(nombre);
@@ -1010,20 +1010,16 @@
         }
 
         function preguntaGuardar() {
-            if (!tipoDestino) { toastr.warning('Seleccione el tipo de movimiento en el Paso 3'); return; }
+            if (!tipoDestino) { toastr.warning('Seleccione el tipo de movimiento en el Paso 2'); return; }
             if ($('#matriz > tbody > tr').length <= 0) { toastr.error('Agregue al menos un material al detalle'); return; }
 
             var labelsTipo = {
-                proyecto: 'Transferencia a Proyecto de Inversión Pública',
-                general:  'Salida General — Mantenimiento de Instalaciones',
-                reserva:  'Reserva de Material',
+                proyecto: '',
+                general: '',
+                reserva: ''
             };
-            var tipoLabel = labelsTipo[tipoDestino] || tipoDestino;
 
-            if (tipoDestino === 'proyecto') {
-                var nombreProyDest = $('#select-proyecto-destino option:selected').text();
-                if (nombreProyDest && nombreProyDest !== 'Seleccionar proyecto destino…') tipoLabel = nombreProyDest;
-            }
+            var tipoLabel = labelsTipo[tipoDestino] || '';
 
             $('#acta-tipo-destino').val(tipoLabel);
 

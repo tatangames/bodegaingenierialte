@@ -243,14 +243,7 @@
                             </tr>
                             </thead>
                             <tbody id="proyectos-tbody"></tbody>
-                            <tfoot>
-                            <tr class="font-weight-bold">
-                                <td colspan="2" class="text-right">Total</td>
-                                <td class="text-center" id="proyectos-total-entradas"></td>
-                                <td class="text-center" id="proyectos-total-salidas"></td>
-                                <td class="text-center" id="proyectos-total-disponible"></td>
-                            </tr>
-                            </tfoot>
+
                         </table>
                     </div>
                     <div id="proyectos-vacio" class="text-center text-muted py-4" style="display:none;">
@@ -549,9 +542,7 @@
                         });
 
                         $('#proyectos-tbody').html(html);
-                        $('#proyectos-total-entradas').text(totalEntradas);
-                        $('#proyectos-total-salidas').text(totalSalidas);
-                        $('#proyectos-total-disponible').html('<strong>' + totalDisponible + '</strong>');
+
                         $('#proyectos-contenido').show();
                     } else {
                         $('#proyectos-vacio').show();

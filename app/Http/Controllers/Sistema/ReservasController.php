@@ -228,6 +228,18 @@ class ReservasController extends Controller
                 // ==========================================================
                 if ($tipoDestino === 'proyecto' && $idDestino) {
 
+
+                    // ── Blindaje: el proyecto destino debe estar ACTIVO ──
+                    $proyDestino = TipoProyecto::find($idDestino);
+
+                    if (!$proyDestino || $proyDestino->transferido == 1) {
+                        DB::rollback();
+                        return [
+                            'success' => 4,
+                            'msg'     => 'El proyecto destino está cerrado y no puede recibir materiales',
+                        ];
+                    }
+
                     // SALIDA del proyecto cerrado origen
                     $salida = new Salidas();
                     $salida->fecha = Carbon::parse($request->fecha);
@@ -273,6 +285,7 @@ class ReservasController extends Controller
                     $transferencia->descripcion = $request->descripcion ?? $reserva->descripcion;
                     $transferencia->documento = null;
                     $transferencia->tipo_salida = 'proyecto';
+                    $transferencia->origen_registro = 'reserva';
                     $transferencia->save();
 
                     // HISTORIAL DETALLE
@@ -324,6 +337,7 @@ class ReservasController extends Controller
                     $transferencia->descripcion = $request->descripcion ?? $reserva->descripcion;
                     $transferencia->documento = null;
                     $transferencia->tipo_salida = 'general';
+                    $transferencia->origen_registro = 'reserva';
                     $transferencia->save();
 
                     // HISTORIAL DETALLE

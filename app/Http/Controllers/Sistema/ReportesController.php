@@ -781,7 +781,7 @@ class ReportesController extends Controller
         <td style='width:50%; padding-left:40px; vertical-align:top;'>
             <div style='font-weight:bold; font-size:13px; margin-bottom:8px;'>REVISADO POR:</div>
             <table width='100%' style='border-collapse:collapse;'>
-                <tr><td style='height:{$alturaFirma}px;'></td></tr>
+                <tr><td style='height:{$informacionGeneral->px_firmas}px;'></td></tr>
                 <tr>
                     <td style='font-size:12px; padding-bottom:8px;'>
                         FIRMA:

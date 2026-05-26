@@ -173,6 +173,7 @@
                             <thead class="thead-dark">
                             <tr>
                                 <th>#</th>
+                                <th>Detalle</th>
                                 <th>Marca</th>
                                 <th>Material</th>
                                 <th class="text-center">Cantidad</th>
@@ -428,11 +429,49 @@
                     axios.post(urlAdmin + '/admin/historial/entradas/eliminar', { id: id })
                         .then((response) => {
                             closeLoading();
-                            if (response.data.success === 1) {
-                                toastr.success('Entrada eliminada correctamente');
-                                recargar();
-                            } else {
-                                toastr.error('Error al eliminar');
+
+                            switch (response.data.success) {
+
+                                case 1:
+                                    toastr.success('Entrada eliminada correctamente');
+                                    recargar();
+                                    break;
+
+                                case 2:
+                                    // Reservas ya despachadas
+                                    Swal.fire({
+                                        title: 'No se puede eliminar',
+                                        text:  response.data.msg ||
+                                            'Esta entrada tiene reservas ya despachadas y no puede eliminarse.',
+                                        icon:  'warning',
+                                        confirmButtonColor: '#d33',
+                                        confirmButtonText:  'Entendido'
+                                    });
+                                    break;
+
+                                case 3:
+                                    // La entrada es destino de una transferencia
+                                    Swal.fire({
+                                        title: 'No se puede eliminar aquí',
+                                        text:  response.data.msg ||
+                                            'Esta entrada proviene de una transferencia. Elimínela desde el Historial de Transferencias.',
+                                        icon:  'info',
+                                        confirmButtonColor: '#2156af',
+                                        confirmButtonText:  'Entendido'
+                                    });
+                                    break;
+
+                                case 0:
+                                    toastr.error('La entrada no existe o ya fue eliminada');
+                                    recargar();
+                                    break;
+
+                                case 99:
+                                    toastr.error('Ocurrió un error al eliminar. Intente nuevamente.');
+                                    break;
+
+                                default:
+                                    toastr.error('Error al eliminar');
                             }
                         })
                         .catch(() => { closeLoading(); toastr.error('Error al eliminar'); });
@@ -484,6 +523,7 @@
                                 <tr>
                                     <td>${index + 1}</td>
                                     <td>${fila.codigo ?? ''}</td>
+                                    <td>${fila.marca ?? ''}</td>
                                     <td>${fila.material}</td>
                                     <td class="text-center">${fila.cantidad_inicial}</td>
                                     <td class="text-right">$${fila.precio}</td>

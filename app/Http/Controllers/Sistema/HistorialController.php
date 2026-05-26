@@ -100,37 +100,97 @@ class HistorialController extends Controller
             return response()->json(['success' => 0]);
         }
 
-        $idsDetalle = $entrada->detalle()->pluck('id');
+        DB::beginTransaction();
 
-        if ($idsDetalle->isNotEmpty()) {
+        try {
 
-            // 4. IDs de salidas afectadas ANTES de borrar sus detalles
-            $idsSalidas = SalidasDetalle::whereIn('id_entrada_detalle', $idsDetalle)
-                ->pluck('id_salida')
-                ->unique();
+            // ──────────────────────────────────────────────────────────
+            // BLOQUEO: la entrada es DESTINO de una transferencia
+            // ──────────────────────────────────────────────────────────
+            // Si esta entrada nació de una transferencia, borrarla por
+            // separado dejaría viva la salida del proyecto origen y el
+            // material quedaría descuadrado. Debe eliminarse desde el
+            // Historial de Transferencias (eliminarTransferencia borra
+            // el par completo: salida + entrada + historial).
+            $esDestinoTransferencia = Transferencia::where('id_entrada', $entrada->id)
+                ->exists();
 
-            // 5. Borrar salidas_detalle que apuntan a estos entradas_detalle
-            SalidasDetalle::whereIn('id_entrada_detalle', $idsDetalle)->delete();
-
-            // 6. Borrar salidas que quedaron sin ningún detalle
-            if ($idsSalidas->isNotEmpty()) {
-                $salidasHuerfanas = Salidas::whereIn('id', $idsSalidas)
-                    ->whereDoesntHave('detalle')
-                    ->pluck('id');
-
-                if ($salidasHuerfanas->isNotEmpty()) {
-                    Salidas::whereIn('id', $salidasHuerfanas)->delete();
-                }
+            if ($esDestinoTransferencia) {
+                DB::rollback();
+                return response()->json([
+                    'success' => 3,
+                    'msg'     => 'Esta entrada proviene de una transferencia. '
+                        . 'Elimínela desde el Historial de Transferencias.',
+                ]);
             }
 
-            // 7. Borrar entradas_detalle
-            $entrada->detalle()->delete();
+            $idsDetalle = $entrada->detalle()->pluck('id');
+
+            if ($idsDetalle->isNotEmpty()) {
+
+                // ──────────────────────────────────────────────────────
+                // RESERVAS asociadas a estos entradas_detalle
+                // ──────────────────────────────────────────────────────
+                $reservas = Reserva::whereIn('id_entrada_detalle', $idsDetalle)->get();
+
+                // Reservas ya despachadas → no se puede borrar
+                $hayDespachadas = $reservas->where('despachado', 1)->count() > 0;
+
+                if ($hayDespachadas) {
+                    DB::rollback();
+                    return response()->json([
+                        'success' => 2,
+                        'msg'     => 'Esta entrada tiene reservas ya despachadas. '
+                            . 'No se puede eliminar.',
+                    ]);
+                }
+
+                // Borrar en cascada las reservas PENDIENTES (despachado = 0)
+                Reserva::whereIn('id_entrada_detalle', $idsDetalle)
+                    ->where('despachado', 0)
+                    ->delete();
+
+                // ──────────────────────────────────────────────────────
+                // SALIDAS afectadas (IDs antes de borrar sus detalles)
+                // ──────────────────────────────────────────────────────
+                $idsSalidas = SalidasDetalle::whereIn('id_entrada_detalle', $idsDetalle)
+                    ->pluck('id_salida')
+                    ->unique();
+
+                // Borrar salidas_detalle que apuntan a estos entradas_detalle
+                SalidasDetalle::whereIn('id_entrada_detalle', $idsDetalle)->delete();
+
+                // Borrar salidas que quedaron sin ningún detalle
+                if ($idsSalidas->isNotEmpty()) {
+                    $salidasHuerfanas = Salidas::whereIn('id', $idsSalidas)
+                        ->whereDoesntHave('detalle')
+                        ->pluck('id');
+
+                    if ($salidasHuerfanas->isNotEmpty()) {
+                        Salidas::whereIn('id', $salidasHuerfanas)->delete();
+                    }
+                }
+
+                // ──────────────────────────────────────────────────────
+                // TRANSFERENCIA_DETALLE huérfano que apunte a estos detalles
+                // ──────────────────────────────────────────────────────
+                TransferenciaDetalle::whereIn('id_entrada_detalle', $idsDetalle)->delete();
+
+                // Borrar entradas_detalle
+                $entrada->detalle()->delete();
+            }
+
+            // Borrar la entrada
+            $entrada->delete();
+
+            DB::commit();
+            return response()->json(['success' => 1]);
+
+        } catch (\Throwable $e) {
+            DB::rollback();
+            Log::error('eliminarEntrada: ' . $e->getMessage());
+            return response()->json(['success' => 99]);
         }
-
-        // 8. Borrar la entrada
-        $entrada->delete();
-
-        return response()->json(['success' => 1]);
     }
 
     public function detalleEntrada(Request $request)
@@ -148,6 +208,7 @@ class HistorialController extends Controller
                 return [
                     'id'             => $item->id,
                     'codigo'         => $item->codigo ?? '',
+                    'marca'            => $item->material->codigo ?? '',
                     'material'       => $item->material->nombre ?? '',
                     'cantidad_inicial'=> $item->cantidad_inicial,
                     'precio'         => number_format($item->precio, 4),
@@ -429,44 +490,45 @@ class HistorialController extends Controller
             'tipoproyectoOrigen',   // origen
         ])
 
-            // Proyecto (filtra por ORIGEN)
+            // Proyecto + tipo de búsqueda (origen | destino)
             ->when($request->proyecto, function ($q) use ($request) {
 
-                // especial: salida general
-                if ($request->proyecto == 'general') {
-                    $q->where('tipo_salida', 'general');
+                $tipoBusqueda = $request->tipo_busqueda ?: 'origen';
+
+                if ($tipoBusqueda === 'destino') {
+
+                    // buscar por DESTINO
+                    if ($request->proyecto == 'general') {
+                        $q->where('tipo_salida', 'general');
+                    } else {
+                        $q->where('tipo_salida', '!=', 'general')
+                            ->where('id_tipoproyecto', $request->proyecto);
+                    }
+
                 } else {
-                    $q->where(
-                        'id_tipoproyecto_origen',
-                        $request->proyecto
-                    );
+
+                    // buscar por ORIGEN
+                    if ($request->proyecto == 'general') {
+                        $q->where('tipo_salida', 'general');
+                    } else {
+                        $q->where('id_tipoproyecto_origen', $request->proyecto);
+                    }
                 }
             })
 
             // Tipo de salida (proyecto | general)
             ->when($request->tipo_salida, function ($q) use ($request) {
-                $q->where(
-                    'tipo_salida',
-                    $request->tipo_salida
-                );
+                $q->where('tipo_salida', $request->tipo_salida);
             })
 
             // Fecha desde
             ->when($request->fecha_desde, function ($q) use ($request) {
-                $q->whereDate(
-                    'fecha',
-                    '>=',
-                    $request->fecha_desde
-                );
+                $q->whereDate('fecha', '>=', $request->fecha_desde);
             })
 
             // Fecha hasta
             ->when($request->fecha_hasta, function ($q) use ($request) {
-                $q->whereDate(
-                    'fecha',
-                    '<=',
-                    $request->fecha_hasta
-                );
+                $q->whereDate('fecha', '<=', $request->fecha_hasta);
             })
 
             // Material
@@ -475,22 +537,14 @@ class HistorialController extends Controller
                 $busqueda = '%' . trim($request->material) . '%';
 
                 $q->whereHas('detalle', function ($q2) use ($busqueda) {
-                    $q2->where(
-                        'nombre_material',
-                        'LIKE',
-                        $busqueda
-                    );
+                    $q2->where('nombre_material', 'LIKE', $busqueda);
                 });
             })
 
             // Documento
             ->when($request->documento, function ($q) use ($request) {
 
-                $q->where(
-                    'documento',
-                    'LIKE',
-                    '%' . trim($request->documento) . '%'
-                );
+                $q->where('documento', 'LIKE', '%' . trim($request->documento) . '%');
             })
 
             ->orderByDesc('fecha')
@@ -499,21 +553,37 @@ class HistorialController extends Controller
 
             ->map(function ($item) {
 
-                $item->fecha_fmt = date(
-                    'd/m/Y',
-                    strtotime($item->fecha)
-                );
+                $item->fecha_fmt = date('d/m/Y', strtotime($item->fecha));
 
                 // Proyecto de ORIGEN (de donde vino el material)
-                $item->nombre_origen =
-                    $item->tipoproyectoOrigen?->nombre
-                    ?? '—';
+                $item->nombre_origen = $item->tipoproyectoOrigen?->nombre ?? '—';
 
                 // Proyecto de DESTINO (a donde se mandó)
                 $item->nombre_destino =
                     $item->tipo_salida === 'general'
                         ? 'Mantenimiento de instalaciones'
                         : ($item->tipoproyecto?->nombre ?? '—');
+
+                // ¿Viene de un despacho de reserva? (sin datos para PDF)
+                $item->es_reserva = $item->origen_registro === 'reserva';
+
+                // ¿El material que entró al destino ya fue usado o reservado?
+                $item->se_puede_borrar = true;
+
+                if ($item->id_entrada) {
+                    $idsDetalle = EntradasDetalle::where('id_entradas', $item->id_entrada)
+                        ->pluck('id');
+
+                    $usado = SalidasDetalle::whereIn('id_entrada_detalle', $idsDetalle)
+                        ->sum('cantidad_salida');
+
+                    $reservado = Reserva::whereIn('id_entrada_detalle', $idsDetalle)
+                        ->sum('cantidad');
+
+                    if ($usado > 0 || $reservado > 0) {
+                        $item->se_puede_borrar = false;
+                    }
+                }
 
                 return $item;
             });
@@ -678,6 +748,10 @@ class HistorialController extends Controller
 
         if (!$transferencia) {
             abort(404, 'Transferencia no encontrada');
+        }
+
+        if ($transferencia->origen_registro === 'reserva') {
+            abort(404); // o redirigir con un mensaje
         }
 
         $informacionGeneral = InformacionGeneral::where('id', 1)->first();

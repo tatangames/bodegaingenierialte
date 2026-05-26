@@ -52,12 +52,13 @@
                     </div>
                     <div class="card-body">
 
-                        {{-- Fila 1: Proyecto + Fechas + Botones --}}
+                        {{-- Fila 1: Proyecto + Toggle + Fecha desde + Botones --}}
                         <div class="row align-items-end">
                             <div class="col-md-4">
                                 <label class="font-weight-bold">Proyecto</label>
                                 <select class="form-control" id="filtro-proyecto">
                                     <option value="">— Todos —</option>
+                                    <option value="general">Salida General</option>
                                     @foreach($arrayProyectos as $p)
                                         <option value="{{ $p->id }}"
                                                 data-cerrado="{{ $p->transferido ? '1' : '0' }}">
@@ -67,12 +68,23 @@
                                 </select>
                             </div>
                             <div class="col-md-3">
-                                <label class="font-weight-bold">Fecha desde</label>
-                                <input type="date" class="form-control" id="filtro-fecha-desde">
+                                <label class="font-weight-bold d-block">Buscar como</label>
+                                <div class="btn-group btn-block" role="group" id="toggle-tipo-busqueda">
+                                    <button type="button"
+                                            class="btn btn-primary active"
+                                            data-tipo="origen">
+                                        <i class="fas fa-sign-out-alt mr-1"></i> Origen
+                                    </button>
+                                    <button type="button"
+                                            class="btn btn-outline-primary"
+                                            data-tipo="destino">
+                                        <i class="fas fa-sign-in-alt mr-1"></i> Destino
+                                    </button>
+                                </div>
                             </div>
                             <div class="col-md-3">
-                                <label class="font-weight-bold">Fecha hasta</label>
-                                <input type="date" class="form-control" id="filtro-fecha-hasta">
+                                <label class="font-weight-bold">Fecha desde</label>
+                                <input type="date" class="form-control" id="filtro-fecha-desde">
                             </div>
                             <div class="col-md-2">
                                 <button class="btn btn-primary btn-block mb-1" onclick="recargar()">
@@ -84,9 +96,13 @@
                             </div>
                         </div>
 
-                        {{-- Fila 2: Material + Documento --}}
+                        {{-- Fila 2: Fecha hasta + Material + Documento --}}
                         <div class="row align-items-end mt-3">
-                            <div class="col-md-5">
+                            <div class="col-md-3">
+                                <label class="font-weight-bold">Fecha hasta</label>
+                                <input type="date" class="form-control" id="filtro-fecha-hasta">
+                            </div>
+                            <div class="col-md-4">
                                 <label class="font-weight-bold">
                                     <i class="fas fa-box mr-1 text-muted"></i> Buscar por material
                                 </label>
@@ -95,7 +111,7 @@
                                        id="filtro-material"
                                        placeholder="Ej: cemento, varilla...">
                             </div>
-                            <div class="col-md-5">
+                            <div class="col-md-4">
                                 <label class="font-weight-bold">
                                     <i class="fas fa-file-alt mr-1 text-muted"></i> Buscar por documento
                                 </label>
@@ -104,8 +120,8 @@
                                        id="filtro-documento"
                                        placeholder="Ej: TRF-001...">
                             </div>
-                            <div class="col-md-2 d-flex align-items-end">
-                                <small class="text-muted">Filtra por material en el detalle o número de documento.</small>
+                            <div class="col-md-1 d-flex align-items-end">
+                                <small class="text-muted">Filtra por material o documento.</small>
                             </div>
                         </div>
 
@@ -135,7 +151,7 @@
 
     {{-- ══ Modal Detalle ══ --}}
     <div class="modal fade" id="modalDetalle" tabindex="-1" role="dialog">
-        <div class="modal-dialog modal-xl" role="document">   {{-- modal-xl para más columnas --}}
+        <div class="modal-dialog modal-xl" role="document">
             <div class="modal-content">
                 <div class="modal-header bg-info">
                     <h5 class="modal-title text-white">
@@ -162,7 +178,7 @@
                             <tr>
                                 <th style="width:4%">#</th>
                                 <th style="width:28%">Material</th>
-                                <th style="width:28%">Objeto Específico</th>   {{-- ← nueva columna --}}
+                                <th style="width:28%">Objeto Específico</th>
                                 <th class="text-center" style="width:12%">Cantidad sobrante</th>
                                 <th class="text-right" style="width:14%">Precio unitario</th>
                                 <th class="text-right" style="width:14%">Subtotal</th>
@@ -202,6 +218,9 @@
         $(function () {
             const ruta = "{{ url('/admin/historial/transferencias/tabla') }}";
 
+            // ── Estado del toggle Origen / Destino ────────────────
+            let tipoBusqueda = 'origen';   // valor por defecto
+
             // ── Select2 ───────────────────────────────────────────
             $('#filtro-proyecto').select2({
                 theme: 'bootstrap-5',
@@ -209,7 +228,7 @@
                 allowClear: true,
                 language: { noResults: function () { return 'No encontrado'; } },
                 templateResult: function (data) {
-                    if (!data.id) return data.text;
+                    if (!data.id || data.id === 'general') return data.text;
                     var cerrado = $(data.element).data('cerrado') == '1';
                     return $('<span class="d-flex align-items-center justify-content-between">')
                         .append($('<span>').text(data.text))
@@ -218,7 +237,7 @@
                             .text(cerrado ? 'Cerrado' : 'Activo'));
                 },
                 templateSelection: function (data) {
-                    if (!data.id) return data.text;
+                    if (!data.id || data.id === 'general') return data.text;
                     var cerrado = $(data.element).data('cerrado') == '1';
                     return $('<span>')
                         .append($('<span>').text(data.text))
@@ -226,6 +245,19 @@
                             .addClass(cerrado ? 'badge badge-danger ml-2' : 'badge badge-success ml-2')
                             .text(cerrado ? 'Cerrado' : 'Activo'));
                 }
+            });
+
+            // ── Toggle Origen / Destino ───────────────────────────
+            $('#toggle-tipo-busqueda button').on('click', function () {
+                tipoBusqueda = $(this).data('tipo');
+
+                $('#toggle-tipo-busqueda button')
+                    .removeClass('btn-primary active')
+                    .addClass('btn-outline-primary');
+
+                $(this)
+                    .removeClass('btn-outline-primary')
+                    .addClass('btn-primary active');
             });
 
             // ── DataTable ─────────────────────────────────────────
@@ -275,7 +307,10 @@
                 const documento  = $('#filtro-documento').val().trim();
 
                 const params = new URLSearchParams();
-                if (proyecto)   params.append('proyecto',    proyecto);
+                if (proyecto) {
+                    params.append('proyecto',      proyecto);
+                    params.append('tipo_busqueda', tipoBusqueda);
+                }
                 if (fechaDesde) params.append('fecha_desde', fechaDesde);
                 if (fechaHasta) params.append('fecha_hasta', fechaHasta);
                 if (material)   params.append('material',    material);
@@ -285,16 +320,28 @@
 
                 $('#tablaDatatable').load(url, function () {
                     initDataTable();
+                    $('[data-toggle="tooltip"]').tooltip(); // reinicializar tooltips
                 });
             }
 
-            window.recargar        = function () { cargarTabla(); };
-            window.limpiarFiltros  = function () {
+            window.recargar = function () { cargarTabla(); };
+
+            window.limpiarFiltros = function () {
                 $('#filtro-proyecto').val('').trigger('change');
                 $('#filtro-fecha-desde').val('');
                 $('#filtro-fecha-hasta').val('');
                 $('#filtro-material').val('');
                 $('#filtro-documento').val('');
+
+                // reset toggle a Origen
+                tipoBusqueda = 'origen';
+                $('#toggle-tipo-busqueda button')
+                    .removeClass('btn-primary active')
+                    .addClass('btn-outline-primary');
+                $('#toggle-tipo-busqueda button[data-tipo="origen"]')
+                    .removeClass('btn-outline-primary')
+                    .addClass('btn-primary active');
+
                 cargarTabla();
             };
 
@@ -400,11 +447,39 @@
                     axios.post(urlAdmin + '/admin/historial/transferencias/eliminar', { id: id })
                         .then((response) => {
                             closeLoading();
-                            if (response.data.success === 1) {
-                                toastr.success('Transferencia eliminada correctamente');
-                                recargar();
-                            } else {
-                                toastr.error('Error al eliminar');
+
+                            switch (response.data.success) {
+
+                                case 1:
+                                    toastr.success('Transferencia eliminada correctamente');
+                                    recargar();
+                                    break;
+
+                                case 2:
+                                    // El material que entró al destino ya fue usado o reservado
+                                    Swal.fire({
+                                        title: 'No se puede eliminar',
+                                        html: 'El material <b>' +
+                                            (response.data.nombre_material || '—') +
+                                            '</b> ya fue usado o reservado en el proyecto destino.<br><br>' +
+                                            'Debe revertir esos movimientos antes de eliminar la transferencia.',
+                                        type: 'warning',
+                                        confirmButtonColor: '#d33',
+                                        confirmButtonText: 'Entendido'
+                                    });
+                                    break;
+
+                                case 0:
+                                    toastr.error('La transferencia no existe o ya fue eliminada');
+                                    recargar();
+                                    break;
+
+                                case 99:
+                                    toastr.error('Ocurrió un error al eliminar. Intente nuevamente.');
+                                    break;
+
+                                default:
+                                    toastr.error('Error al eliminar');
                             }
                         })
                         .catch(() => { closeLoading(); toastr.error('Error al eliminar'); });

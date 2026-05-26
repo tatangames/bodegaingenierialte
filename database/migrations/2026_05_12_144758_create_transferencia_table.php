@@ -26,11 +26,14 @@ return new class extends Migration
 
             $table->enum('tipo_salida', [
                 'proyecto',
-                'general'
+                'general',
+                'snapshot',
             ])->default('proyecto');
 
-
-
+            // 'normal'  = transferencia creada desde el flujo normal
+            // 'reserva' = generada por un despacho de reserva (sin datos para PDF)
+            $table->string('origen_registro', 20)
+                ->default('normal')->nullable();
 
             $table->foreign('id_salida')->references('id')->on('salidas');
             $table->foreign('id_entrada')->references('id')->on('entradas');

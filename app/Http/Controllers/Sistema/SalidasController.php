@@ -345,9 +345,11 @@ class SalidasController extends Controller
             // Guardar registro de cierre
             $transferencia                  = new Transferencia();
             $transferencia->id_tipoproyecto = $request->idproyecto;
+            $transferencia->id_tipoproyecto_origen = $request->idproyecto;
             $transferencia->fecha           = Carbon::parse($request->fecha);
             $transferencia->descripcion     = $request->descripcion;
             $transferencia->documento       = $nomDocumento;
+            $transferencia->tipo_salida = 'snapshot';
             $transferencia->save();
 
             // ── Snapshot del inventario al momento del cierre ─────────────
@@ -434,6 +436,14 @@ class SalidasController extends Controller
                 return ['success' => 1];
             }
 
+            // ── Blindaje: el proyecto origen debe estar CERRADO ──────────
+            $proyOrigen = TipoProyecto::find($proyectoCerrado);
+
+            if (!$proyOrigen || $proyOrigen->transferido == 0) {
+                DB::rollback();
+                return ['success' => 5];   // origen no es un proyecto cerrado
+            }
+
             // Datos acta
             $actaNumero        = $request->acta_numero ?? null;
             $actaReferencia    = $request->acta_referencia ?? null;
@@ -450,6 +460,14 @@ class SalidasController extends Controller
             // TRANSFERENCIA A PROYECTO
             // ==========================================================
             if ($tipodestino === 'proyecto') {
+
+                // ── Blindaje: el proyecto destino debe estar ACTIVO ──────
+                $proyDestino = TipoProyecto::find($proyectoDestino);
+
+                if (!$proyDestino || $proyDestino->transferido == 1) {
+                    DB::rollback();
+                    return ['success' => 4];   // destino cerrado o inexistente
+                }
 
                 // SALIDA
                 $salida = new Salidas();
