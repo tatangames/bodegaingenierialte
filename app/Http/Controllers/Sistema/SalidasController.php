@@ -444,6 +444,22 @@ class SalidasController extends Controller
                 return ['success' => 5];   // origen no es un proyecto cerrado
             }
 
+
+            // ── Blindaje: la fecha de la transferencia NO puede ser
+            //    anterior a la fecha de cierre del proyecto ───────────────
+            $fechaTransferencia = \Carbon\Carbon::parse($request->fecha)->startOfDay();
+            $fechaCierre        = \Carbon\Carbon::parse($proyOrigen->fecha_cierre)->startOfDay();
+
+            if ($fechaTransferencia->lt($fechaCierre)) {
+                DB::rollback();
+                return [
+                    'success'      => 6,   // fecha de transferencia anterior al cierre
+                    'fecha_cierre' => $fechaCierre->format('d/m/Y'),
+                ];
+            }
+
+
+
             // Datos acta
             $actaNumero        = $request->acta_numero ?? null;
             $actaReferencia    = $request->acta_referencia ?? null;

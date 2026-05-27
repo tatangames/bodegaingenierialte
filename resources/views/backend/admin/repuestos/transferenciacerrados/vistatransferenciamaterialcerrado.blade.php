@@ -1196,16 +1196,54 @@
             axios.post(urlAdmin + '/admin/transferencia/material/xproyecto', formData)
                 .then((response) => {
                     closeLoading();
-                    if (response.data.success === 1) {
+                    if (response.data.success === 0) {
+                        toastr.error('Datos incompletos. Verifica los campos obligatorios.');
+
+                    } else if (response.data.success === 1) {
                         toastr.error('Sin ítems en el contenedor');
+
+                    } else if (response.data.success === 2) {
+                        toastr.error('Material no encontrado en la base de datos.');
+
                     } else if (response.data.success === 3) {
                         Swal.fire({
                             title: 'Cantidad no disponible',
                             html: '<b>' + response.data.nombre_material + '</b><br><br>' +
                                 'Solicitado: <b>' + response.data.cantidad_pedida + '</b><br>' +
                                 'Disponible libre: <b>' + response.data.disponible + '</b>',
-                            icon: 'warning', confirmButtonColor: '#d33', confirmButtonText: 'Entendido'
+                            icon: 'warning',
+                            confirmButtonColor: '#d33',
+                            confirmButtonText: 'Entendido'
                         });
+
+                    } else if (response.data.success === 4) {
+                        Swal.fire({
+                            title: 'Proyecto destino no válido',
+                            text: 'El proyecto destino está cerrado o no existe. Selecciona un proyecto activo.',
+                            icon: 'error',
+                            confirmButtonColor: '#d33',
+                            confirmButtonText: 'Entendido'
+                        });
+
+                    } else if (response.data.success === 5) {
+                        Swal.fire({
+                            title: 'Proyecto origen no válido',
+                            text: 'El proyecto origen no está cerrado. Esta operación solo aplica a proyectos cerrados.',
+                            icon: 'error',
+                            confirmButtonColor: '#d33',
+                            confirmButtonText: 'Entendido'
+                        });
+
+                    } else if (response.data.success === 6) {
+                        Swal.fire({
+                            title: 'Fecha no válida',
+                            html: 'La fecha de la transferencia no puede ser anterior al cierre del proyecto.<br><br>' +
+                                'Fecha de cierre: <b>' + response.data.fecha_cierre + '</b>',
+                            icon: 'error',
+                            confirmButtonColor: '#d33',
+                            confirmButtonText: 'Entendido'
+                        });
+
                     } else if (response.data.success === 10) {
                         var titulos = {
                             proyecto: 'Transferencia Registrada',
@@ -1218,6 +1256,16 @@
                             confirmButtonColor: '#28a745',
                             confirmButtonText: 'Aceptar'
                         }).then((r) => { if (r.isConfirmed) location.reload(); });
+
+                    } else if (response.data.success === 99) {
+                        Swal.fire({
+                            title: 'Error inesperado',
+                            text: 'Ocurrió un error al procesar la operación. Contacta al administrador.',
+                            icon: 'error',
+                            confirmButtonColor: '#d33',
+                            confirmButtonText: 'Entendido'
+                        });
+
                     } else {
                         toastr.error('Error al guardar');
                     }

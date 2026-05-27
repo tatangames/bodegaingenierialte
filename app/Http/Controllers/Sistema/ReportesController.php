@@ -1983,6 +1983,7 @@ class ReportesController extends Controller
 
 
 
+
     public function reporteDestinoSobrantes($idtrans, $tipo, Request $request)
     {
         $tipo = strtolower(trim($tipo));
@@ -2024,10 +2025,6 @@ Este proyecto no tiene registro de cierre generado.</p>", 2);
             : 'SALIDA GENERAL — MANTENIMIENTO DE INSTALACIONES MUNICIPALES';
 
         // ── Obtener los id_salida que corresponden a despachos de sobrantes ───
-        // El vínculo y la distinción proyecto/general se hacen ÚNICAMENTE por la
-        // tabla `transferencia` (campo tipo_salida). Ya NO se usa es_transferencia
-        // para distinguir, porque ahora todos los despachos de proyecto cerrado
-        // se guardan con es_transferencia = 1.
         $tipoSalidaBuscado = $tipo === 'proyecto' ? 'proyecto' : 'general';
 
         $idsSalidaValidos = Transferencia::where('id_tipoproyecto_origen', $idtrans)
@@ -2045,8 +2042,6 @@ No hay registros para este proyecto en el rango de fechas seleccionado.</p>", 2)
         }
 
         // ── Salidas reales, limitadas a los despachos de sobrantes ────────────
-        // El filtro de tipo ya viene dado por $idsSalidaValidos (tipo_salida en
-        // la tabla transferencia). Aquí solo se aplica el rango de fechas.
         $salidasQuery = SalidasDetalle::whereHas('salida', function ($q) use ($idsSalidaValidos, $idtrans, $desde, $hasta) {
             $q->whereIn('id', $idsSalidaValidos)
                 ->where('id_tipoproyecto', $idtrans);
@@ -2061,16 +2056,18 @@ No hay registros para este proyecto en el rango de fechas seleccionado.</p>", 2)
             ])
             ->get();
 
-        // ── Agrupar por salida ────────────────────────────────────────────────
-        // Dentro de cada salida, las líneas con el mismo material y el mismo
-        // precio unitario se unen (clave: id_material|precio).
-        $porSalida = [];
+        // ── Agrupar por PROYECTO DESTINO (o "general") ─────────────────────────
+        // Para tipo 'proyecto': se agrupa por id_tipoproyecto_transferencia.
+        // Para tipo 'general':  todo cae en una sola agrupación con id 0.
+        //
+        // Dentro de cada agrupación, los materiales con el mismo id_material y
+        // mismo precio unitario se fusionan acumulando la cantidad.
+        $porDestino = [];
 
         foreach ($salidasQuery as $sd) {
 
             if ($sd->cantidad_salida <= 0) continue;
 
-            $idSalida   = $sd->salida->id;
             $entradaDet = $sd->entradaDetalle;
             $material   = $entradaDet?->material;
 
@@ -2087,15 +2084,24 @@ No hay registros para este proyecto en el rango de fechas seleccionado.</p>", 2)
                 }
             }
 
-            // Cabecera de la salida (una sola vez)
-            if (!isset($porSalida[$idSalida])) {
-                $proyectoDestNombre = $sd->salida->id_tipoproyecto_transferencia
-                    ? (Tipoproyecto::find($sd->salida->id_tipoproyecto_transferencia)?->nombre ?? '—')
-                    : 'MANTENIMIENTO DE INSTALACIONES MUNICIPALES';
+            // Determinar la clave de agrupación según el tipo
+            if ($tipo === 'proyecto') {
+                $idDestino = (int) ($sd->salida->id_tipoproyecto_transferencia ?? 0);
+            } else {
+                $idDestino = 0;   // todas las salidas generales en un solo grupo
+            }
 
-                $porSalida[$idSalida] = [
-                    'fecha'            => date('d/m/Y', strtotime($sd->salida->fecha)),
-                    'descripcion'      => $sd->salida->descripcion ?? '—',
+            // Cabecera del grupo (una sola vez)
+            if (!isset($porDestino[$idDestino])) {
+                if ($tipo === 'proyecto') {
+                    $proyectoDestNombre = $idDestino
+                        ? (Tipoproyecto::find($idDestino)?->nombre ?? '—')
+                        : '—';
+                } else {
+                    $proyectoDestNombre = 'MANTENIMIENTO DE INSTALACIONES MUNICIPALES';
+                }
+
+                $porDestino[$idDestino] = [
                     'proyecto_destino' => $proyectoDestNombre,
                     'materiales'       => [],
                 ];
@@ -2109,8 +2115,8 @@ No hay registros para este proyecto en el rango de fechas seleccionado.</p>", 2)
             // Clave de unión: mismo material + mismo precio unitario.
             $clave = $idMaterial . '|' . number_format($precio, 4, '.', '');
 
-            if (!isset($porSalida[$idSalida]['materiales'][$clave])) {
-                $porSalida[$idSalida]['materiales'][$clave] = [
+            if (!isset($porDestino[$idDestino]['materiales'][$clave])) {
+                $porDestino[$idDestino]['materiales'][$clave] = [
                     'nombre'          => $nombre,
                     'medida'          => $material?->unidadMedida?->nombre ?? '—',
                     'codigo'          => $codigoObjEsp,
@@ -2120,10 +2126,10 @@ No hay registros para este proyecto en el rango de fechas seleccionado.</p>", 2)
             }
 
             // Acumular la cantidad en la fila unificada
-            $porSalida[$idSalida]['materiales'][$clave]['cant_despachada'] += $cantidad;
+            $porDestino[$idDestino]['materiales'][$clave]['cant_despachada'] += $cantidad;
         }
 
-        if (empty($porSalida)) {
+        if (empty($porDestino)) {
             $mpdf = new \Mpdf\Mpdf(['tempDir' => sys_get_temp_dir(), 'format' => 'LETTER-P']);
             $mpdf->WriteHTML("<p style='font-family:Arial; font-size:14px; color:#888; padding:20px;'>
 No hay registros para este proyecto en el rango de fechas seleccionado.</p>", 2);
@@ -2133,7 +2139,7 @@ No hay registros para este proyecto en el rango de fechas seleccionado.</p>", 2)
 
         $granTotal = 0;
 
-        // Acumulador de totales por código objeto específico (cruza todas las salidas)
+        // Acumulador de totales por código objeto específico (cruza todos los destinos)
         $totalPorCodigo = [];
 
         $mpdf = new \Mpdf\Mpdf(['tempDir' => sys_get_temp_dir(), 'format' => 'LETTER-P']);
@@ -2203,12 +2209,7 @@ No hay registros para este proyecto en el rango de fechas seleccionado.</p>", 2)
         <span style='font-weight:bold;'>Fecha de cierre:</span> {$fechaCierre}
     </td>
 </tr>
-<tr>
-    <td colspan='2' style='font-size:13px; padding:4px 0;'>
-        <span style='font-weight:bold;'>Tipo:</span>
-        <span style='font-weight:bold; color:{$colorTipo};'>{$textoTipo}</span>
-    </td>
-</tr>
+
 <tr>
     <td style='font-size:13px; padding:4px 0;'>
         <span style='font-weight:bold;'>Período:</span> {$periodoTexto}
@@ -2225,34 +2226,50 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
         $tdC     = $tdStyle . " text-align:center;";
         $tdR     = $tdStyle . " text-align:right;";
 
-        // ── Una sección por cada salida ───────────────────────────────────────
-        foreach ($porSalida as $idSalida => $salida) {
-
-            $subtotalSalida = 0;
-
-            $filaDestino = $tipo === 'proyecto'
-                ? "<tr>
-        <td colspan='2' style='font-size:12px; padding:4px 6px;
-                               border:0.8px solid #000; background:#f2f4f8;'>
-            <span style='font-weight:bold;'>Proyecto destino:</span>
-            {$salida['proyecto_destino']}
+        // Función auxiliar para imprimir la fila de subtotal por objeto específico
+        $filaSubtotalCodigo = function ($codigo, $cantidad, $monto) {
+            return "
+    <tr>
+        <td colspan='3' style='font-weight:bold; font-size:11px; text-align:center;
+                                border:0.8px solid #000; padding:5px 4px; background:#e8eef7;'>
+            SUBTOTAL [" . e($codigo) . "]
         </td>
-       </tr>"
-                : "";
+        <td style='font-weight:bold; font-size:11px; text-align:center;
+                    border:0.8px solid #000; padding:5px 4px; background:#e8eef7;'>
+            " . number_format($cantidad, 2) . "
+        </td>
+        <td style='border:0.8px solid #000; padding:5px 4px; background:#e8eef7;'></td>
+        <td style='font-weight:bold; font-size:11px; text-align:right;
+                    border:0.8px solid #000; padding:5px 4px; background:#e8eef7;'>
+            $ " . number_format($monto, 4) . "
+        </td>
+    </tr>";
+        };
+
+        // ── Una sección por cada destino unificado ────────────────────────────
+        foreach ($porDestino as $idDestino => $grupo) {
+
+            $subtotalDestino = 0;
+
+            // Ordenar los materiales por código objeto específico para agrupar
+            $materialesOrdenados = $grupo['materiales'];
+            uasort($materialesOrdenados, function ($a, $b) {
+                return strcmp($a['codigo'], $b['codigo']);
+            });
+
+            // Cabecera del bloque: solo el proyecto destino (tipo proyecto)
+            // o "MANTENIMIENTO DE INSTALACIONES MUNICIPALES" (tipo general)
+            $etiquetaCabecera = $tipo === 'proyecto' ? 'Proyecto destino:' : 'Destino:';
 
             $tabla .= "
 <table width='100%' style='border-collapse:collapse; margin-bottom:4px; margin-top:10px;'>
 <tr>
-    <td style='width:50%; font-size:12px; padding:4px 6px;
+    <td style='font-size:12px; padding:4px 6px;
                border:0.8px solid #000; background:#f2f4f8;'>
-        <span style='font-weight:bold;'>Fecha de salida:</span> {$salida['fecha']}
-    </td>
-    <td style='width:50%; font-size:12px; padding:4px 6px;
-               border:0.8px solid #000; background:#f2f4f8;'>
-        <span style='font-weight:bold;'>Descripción:</span> {$salida['descripcion']}
+        <span style='font-weight:bold;'>{$etiquetaCabecera}</span>
+        {$grupo['proyecto_destino']}
     </td>
 </tr>
-{$filaDestino}
 </table>";
 
             $tabla .= "
@@ -2269,13 +2286,18 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
 </thead>
 <tbody>";
 
-            foreach ($salida['materiales'] as $mat) {
+            // Variables para el subtotal por objeto específico dentro del destino
+            $codigoActual = null;
+            $cantGrupo    = 0;
+            $montoGrupo   = 0;
 
-                $totalLinea      = $mat['cant_despachada'] * $mat['precio'];
-                $subtotalSalida += $totalLinea;
-                $granTotal      += $totalLinea;
+            foreach ($materialesOrdenados as $mat) {
 
-                // Acumular en el total por código objeto específico
+                $totalLinea       = $mat['cant_despachada'] * $mat['precio'];
+                $subtotalDestino += $totalLinea;
+                $granTotal       += $totalLinea;
+
+                // Acumular en el resumen global por código objeto específico
                 $codObj = $mat['codigo'];
                 if (!isset($totalPorCodigo[$codObj])) {
                     $totalPorCodigo[$codObj] = [
@@ -2286,6 +2308,17 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
                 }
                 $totalPorCodigo[$codObj]['cantidad'] += $mat['cant_despachada'];
                 $totalPorCodigo[$codObj]['total']    += $totalLinea;
+
+                // Si cambió el código, cerrar el grupo anterior
+                if ($codigoActual !== null && $codObj !== $codigoActual) {
+                    $tabla .= $filaSubtotalCodigo($codigoActual, $cantGrupo, $montoGrupo);
+                    $cantGrupo  = 0;
+                    $montoGrupo = 0;
+                }
+
+                $codigoActual = $codObj;
+                $cantGrupo   += $mat['cant_despachada'];
+                $montoGrupo  += $totalLinea;
 
                 $precioFmt = '$ ' . number_format($mat['precio'], 4);
                 $totalFmt  = '$ ' . number_format($totalLinea, 4);
@@ -2301,16 +2334,25 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
 </tr>";
             }
 
-            $subtotalFmt = '$ ' . number_format($subtotalSalida, 4);
+            // Cerrar el subtotal del último grupo de este destino
+            if ($codigoActual !== null) {
+                $tabla .= $filaSubtotalCodigo($codigoActual, $cantGrupo, $montoGrupo);
+            }
+
+            $subtotalFmt = '$ ' . number_format($subtotalDestino, 4);
+
+            $etiquetaSubtotal = $tipo === 'proyecto'
+                ? 'Subtotal del proyecto destino:'
+                : 'Subtotal:';
 
             $tabla .= "
     <tr>
         <td colspan='5' style='font-weight:bold; font-size:11px; text-align:right;
-                                border:0.8px solid #000; padding:5px 4px; background:#f9fafb;'>
-            Subtotal:
+                                border:0.8px solid #000; padding:5px 4px; background:#d9e1f2;'>
+            {$etiquetaSubtotal}
         </td>
-        <td style='font-weight:bold; font-size:11px;
-                    border:0.8px solid #000; padding:5px 4px; background:#f9fafb;'>
+        <td style='font-weight:bold; font-size:11px; text-align:right;
+                    border:0.8px solid #000; padding:5px 4px; background:#d9e1f2;'>
             {$subtotalFmt}
         </td>
     </tr>
