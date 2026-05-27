@@ -1982,7 +1982,6 @@ class ReportesController extends Controller
 
 
 
-
     public function reporteDestinoSobrantes($idtrans, $tipo, Request $request)
     {
         $tipo = strtolower(trim($tipo));
@@ -2016,13 +2015,18 @@ Este proyecto no tiene registro de cierre generado.</p>", 2);
             ? "REPORTE DE MATERIALES SOBRANTES<br>TRANSFERIDOS A PROYECTO DE INVERSIÓN PÚBLICA"
             : "REPORTE DE SALIDAS DE MATERIALES SOBRANTES<br>PARA MANTENIMIENTO DE INSTALACIONES MUNICIPALES";
 
-        $codigoPDF  = 'GEAD-001-REPO';
-        $colorTipo  = '#000000';
-        $textoTipo  = $tipo === 'proyecto'
+        $codigoPDF = 'GEAD-001-REPO';
+
+        $colorTipo = '#000000';
+        $textoTipo = $tipo === 'proyecto'
             ? 'TRANSFERENCIA A PROYECTO DE INVERSIÓN PÚBLICA'
             : 'SALIDA GENERAL — MANTENIMIENTO DE INSTALACIONES MUNICIPALES';
 
-        // ── IDs de salida válidos para este tipo ──────────────────────────
+        // ── Obtener los id_salida que corresponden a despachos de sobrantes ───
+        // El vínculo y la distinción proyecto/general se hacen ÚNICAMENTE por la
+        // tabla `transferencia` (campo tipo_salida). Ya NO se usa es_transferencia
+        // para distinguir, porque ahora todos los despachos de proyecto cerrado
+        // se guardan con es_transferencia = 1.
         $tipoSalidaBuscado = $tipo === 'proyecto' ? 'proyecto' : 'general';
 
         $idsSalidaValidos = Transferencia::where('id_tipoproyecto_origen', $idtrans)
@@ -2039,22 +2043,12 @@ No hay registros para este proyecto en el rango de fechas seleccionado.</p>", 2)
             return;
         }
 
-        // ── Salidas reales filtradas ───────────────────────────────────────
-        $salidasQuery = SalidasDetalle::whereHas('salida', function ($q) use ($idsSalidaValidos, $idtrans, $tipo, $desde, $hasta) {
+        // ── Salidas reales, limitadas a los despachos de sobrantes ────────────
+        // El filtro de tipo ya viene dado por $idsSalidaValidos (tipo_salida en
+        // la tabla transferencia). Aquí solo se aplica el rango de fechas.
+        $salidasQuery = SalidasDetalle::whereHas('salida', function ($q) use ($idsSalidaValidos, $idtrans, $desde, $hasta) {
             $q->whereIn('id', $idsSalidaValidos)
                 ->where('id_tipoproyecto', $idtrans);
-
-            if ($tipo === 'proyecto') {
-                $q->where('es_transferencia', true)
-                    ->whereNotNull('id_tipoproyecto_transferencia');
-            } elseif ($tipo === 'general') {
-                $q->where(function ($sub) {
-                    $sub->where('es_transferencia', false)
-                        ->orWhereNull('es_transferencia');
-                })->whereNull('id_tipoproyecto_transferencia');
-            } else {
-                $q->whereRaw('1 = 0');
-            }
 
             if ($desde) $q->whereDate('fecha', '>=', $desde);
             if ($hasta) $q->whereDate('fecha', '<=', $hasta);
@@ -2066,45 +2060,20 @@ No hay registros para este proyecto en el rango de fechas seleccionado.</p>", 2)
             ])
             ->get();
 
-        if ($salidasQuery->isEmpty()) {
-            $mpdf = new \Mpdf\Mpdf(['tempDir' => sys_get_temp_dir(), 'format' => 'LETTER-P']);
-            $mpdf->WriteHTML("<p style='font-family:Arial; font-size:14px; color:#888; padding:20px;'>
-No hay registros para este proyecto en el rango de fechas seleccionado.</p>", 2);
-            $mpdf->Output();
-            return;
-        }
-
-        // ── Agrupar: proyecto_destino → codigo_obj_esp → material|precio ─
-        //
-        // Estructura:
-        //   $porDestino[label_destino] = [
-        //       'label'      => string,
-        //       'codigos'    => [
-        //           codigo => [
-        //               'codigo'     => string,
-        //               'materiales' => [ clave => [...] ],
-        //               'subtotal'   => float,
-        //           ],
-        //       ],
-        //       'total'      => float,
-        //   ]
-
-        $porDestino = [];
-        $granTotal  = 0;
+        // ── Agrupar por salida ────────────────────────────────────────────────
+        // Dentro de cada salida, las líneas con el mismo material y el mismo
+        // precio unitario se unen (clave: id_material|precio).
+        $porSalida = [];
 
         foreach ($salidasQuery as $sd) {
+
             if ($sd->cantidad_salida <= 0) continue;
 
+            $idSalida   = $sd->salida->id;
             $entradaDet = $sd->entradaDetalle;
             $material   = $entradaDet?->material;
 
-            // Etiqueta del destino
-            $idDestProy = $sd->salida->id_tipoproyecto_transferencia ?? null;
-            $labelDestino = $idDestProy
-                ? (Tipoproyecto::find($idDestProy)?->nombre ?? '—')
-                : 'MANTENIMIENTO DE INSTALACIONES MUNICIPALES';
-
-            // Código objeto específico
+            // Código del objeto específico
             $codigoObjEsp = '—';
             if ($material) {
                 if ($material->relationLoaded('objetoEspecifico') && $material->objetoEspecifico) {
@@ -2117,69 +2086,43 @@ No hay registros para este proyecto en el rango de fechas seleccionado.</p>", 2)
                 }
             }
 
-            $nombre     = $material?->nombre ?? $entradaDet?->nombre ?? '—';
-            $medida     = $material?->unidadMedida?->nombre ?? '—';
-            $idMaterial = $material?->id ?? ('X' . md5($nombre));
+            // Cabecera de la salida (una sola vez)
+            if (!isset($porSalida[$idSalida])) {
+                $proyectoDestNombre = $sd->salida->id_tipoproyecto_transferencia
+                    ? (Tipoproyecto::find($sd->salida->id_tipoproyecto_transferencia)?->nombre ?? '—')
+                    : 'MANTENIMIENTO DE INSTALACIONES MUNICIPALES';
+
+                $porSalida[$idSalida] = [
+                    'fecha'            => date('d/m/Y', strtotime($sd->salida->fecha)),
+                    'descripcion'      => $sd->salida->descripcion ?? '—',
+                    'proyecto_destino' => $proyectoDestNombre,
+                    'materiales'       => [],
+                ];
+            }
+
             $precio     = (float) ($entradaDet?->precio ?? 0);
             $cantidad   = (float) $sd->cantidad_salida;
+            $nombre     = $material?->nombre ?? $entradaDet?->nombre ?? '—';
+            $idMaterial = $material?->id ?? ('X' . md5($nombre));
 
-            // Inicializar destino
-            if (!isset($porDestino[$labelDestino])) {
-                $porDestino[$labelDestino] = [
-                    'label'   => $labelDestino,
-                    'codigos' => [],
-                    'total'   => 0,
-                ];
-            }
-
-            // Inicializar código dentro del destino
-            if (!isset($porDestino[$labelDestino]['codigos'][$codigoObjEsp])) {
-                $porDestino[$labelDestino]['codigos'][$codigoObjEsp] = [
-                    'codigo'     => $codigoObjEsp,
-                    'materiales' => [],
-                    'subtotal'   => 0,
-                ];
-            }
-
-            // Clave de unión: mismo material + mismo precio
+            // Clave de unión: mismo material + mismo precio unitario.
             $clave = $idMaterial . '|' . number_format($precio, 4, '.', '');
 
-            if (!isset($porDestino[$labelDestino]['codigos'][$codigoObjEsp]['materiales'][$clave])) {
-                $porDestino[$labelDestino]['codigos'][$codigoObjEsp]['materiales'][$clave] = [
+            if (!isset($porSalida[$idSalida]['materiales'][$clave])) {
+                $porSalida[$idSalida]['materiales'][$clave] = [
                     'nombre'          => $nombre,
-                    'medida'          => $medida,
+                    'medida'          => $material?->unidadMedida?->nombre ?? '—',
+                    'codigo'          => $codigoObjEsp,
                     'cant_despachada' => 0,
                     'precio'          => $precio,
                 ];
             }
 
-            $porDestino[$labelDestino]['codigos'][$codigoObjEsp]['materiales'][$clave]['cant_despachada'] += $cantidad;
+            // Acumular la cantidad en la fila unificada
+            $porSalida[$idSalida]['materiales'][$clave]['cant_despachada'] += $cantidad;
         }
 
-        // Calcular subtotales por código y totales por destino
-        foreach ($porDestino as $labelDestino => &$destino) {
-            foreach ($destino['codigos'] as $codigo => &$grupo) {
-                $grupo['subtotal'] = 0;
-                // Ordenar materiales del grupo alfabéticamente
-                uasort($grupo['materiales'], fn($a, $b) => strcmp($a['nombre'], $b['nombre']));
-                foreach ($grupo['materiales'] as &$mat) {
-                    $mat['total']       = $mat['cant_despachada'] * $mat['precio'];
-                    $grupo['subtotal'] += $mat['total'];
-                }
-                unset($mat);
-                $destino['total'] += $grupo['subtotal'];
-            }
-            unset($grupo);
-            // Ordenar grupos por código
-            ksort($destino['codigos']);
-            $granTotal += $destino['total'];
-        }
-        unset($destino);
-
-        // Ordenar destinos alfabéticamente
-        ksort($porDestino);
-
-        if (empty($porDestino)) {
+        if (empty($porSalida)) {
             $mpdf = new \Mpdf\Mpdf(['tempDir' => sys_get_temp_dir(), 'format' => 'LETTER-P']);
             $mpdf->WriteHTML("<p style='font-family:Arial; font-size:14px; color:#888; padding:20px;'>
 No hay registros para este proyecto en el rango de fechas seleccionado.</p>", 2);
@@ -2187,12 +2130,16 @@ No hay registros para este proyecto en el rango de fechas seleccionado.</p>", 2)
             return;
         }
 
-        // ── Inicializar mPDF ──────────────────────────────────────────────
+        $granTotal = 0;
+
+        // Acumulador de totales por código objeto específico (cruza todas las salidas)
+        $totalPorCodigo = [];
+
         $mpdf = new \Mpdf\Mpdf(['tempDir' => sys_get_temp_dir(), 'format' => 'LETTER-P']);
         $mpdf->SetTitle('Destino de Sobrantes');
         $mpdf->showImageErrors = false;
 
-        // ── Encabezado institucional ──────────────────────────────────────
+        // ── Encabezado institucional ──────────────────────────────────────────
         $tabla = "
 <table width='100%' style='border-collapse:collapse; font-family:Arial, sans-serif;'>
 <tr>
@@ -2244,7 +2191,7 @@ No hay registros para este proyecto en el rango de fechas seleccionado.</p>", 2)
 </tr>
 </table><br>";
 
-        // ── Datos generales ───────────────────────────────────────────────
+        // ── Datos generales ───────────────────────────────────────────────────
         $tabla .= "
 <table width='100%' style='margin-bottom:8px; border-collapse:collapse;'>
 <tr>
@@ -2272,27 +2219,41 @@ No hay registros para este proyecto en el rango de fechas seleccionado.</p>", 2)
 </table>";
 
         $thStyle = "font-weight:bold; font-size:11px; border:0.8px solid #000;
-        padding:5px 4px; background:#d9e1f2; text-align:center;";
+padding:5px 4px; background:#d9e1f2; text-align:center;";
         $tdStyle = "font-size:11px; border:0.8px solid #000; padding:4px;";
         $tdC     = $tdStyle . " text-align:center;";
         $tdR     = $tdStyle . " text-align:right;";
 
-        // ── Una sección por cada destino ──────────────────────────────────
-        foreach ($porDestino as $destino) {
+        // ── Una sección por cada salida ───────────────────────────────────────
+        foreach ($porSalida as $idSalida => $salida) {
 
-            // Cabecera del destino
+            $subtotalSalida = 0;
+
+            $filaDestino = $tipo === 'proyecto'
+                ? "<tr>
+        <td colspan='2' style='font-size:12px; padding:4px 6px;
+                               border:0.8px solid #000; background:#f2f4f8;'>
+            <span style='font-weight:bold;'>Proyecto destino:</span>
+            {$salida['proyecto_destino']}
+        </td>
+       </tr>"
+                : "";
+
             $tabla .= "
-<table width='100%' style='border-collapse:collapse; margin-top:12px; margin-bottom:4px;'>
+<table width='100%' style='border-collapse:collapse; margin-bottom:4px; margin-top:10px;'>
 <tr>
-    <td style='font-size:12px; padding:5px 8px; border:0.8px solid #000;
-               background:#e8edf7; font-weight:bold;'>
-        " . ($tipo === 'proyecto' ? 'PROYECTO DESTINO' : 'DESTINO') . ":
-        <span style='font-weight:normal;'>" . e($destino['label']) . "</span>
+    <td style='width:50%; font-size:12px; padding:4px 6px;
+               border:0.8px solid #000; background:#f2f4f8;'>
+        <span style='font-weight:bold;'>Fecha de salida:</span> {$salida['fecha']}
+    </td>
+    <td style='width:50%; font-size:12px; padding:4px 6px;
+               border:0.8px solid #000; background:#f2f4f8;'>
+        <span style='font-weight:bold;'>Descripción:</span> {$salida['descripcion']}
     </td>
 </tr>
+{$filaDestino}
 </table>";
 
-            // Tabla de materiales agrupados por código obj. específico
             $tabla .= "
 <table width='100%' style='border-collapse:collapse; margin-bottom:14px;'>
 <thead>
@@ -2307,72 +2268,120 @@ No hay registros para este proyecto en el rango de fechas seleccionado.</p>", 2)
 </thead>
 <tbody>";
 
-            foreach ($destino['codigos'] as $grupo) {
-                // Filas de materiales del grupo
-                foreach ($grupo['materiales'] as $mat) {
-                    $precioFmt = '$ ' . number_format($mat['precio'], 4);
-                    $totalFmt  = '$ ' . number_format($mat['total'], 4);
+            foreach ($salida['materiales'] as $mat) {
 
-                    $tabla .= "
-    <tr>
-        <td style='{$tdC}'>" . e($grupo['codigo']) . "</td>
-        <td style='{$tdStyle}'>" . e($mat['nombre']) . "</td>
-        <td style='{$tdC}'>" . e($mat['medida']) . "</td>
-        <td style='{$tdC} font-weight:bold;'>" . number_format($mat['cant_despachada']) . "</td>
-        <td style='{$tdR}'>{$precioFmt}</td>
-        <td style='{$tdR}'>{$totalFmt}</td>
-    </tr>";
+                $totalLinea      = $mat['cant_despachada'] * $mat['precio'];
+                $subtotalSalida += $totalLinea;
+                $granTotal      += $totalLinea;
+
+                // Acumular en el total por código objeto específico
+                $codObj = $mat['codigo'];
+                if (!isset($totalPorCodigo[$codObj])) {
+                    $totalPorCodigo[$codObj] = [
+                        'codigo'   => $codObj,
+                        'cantidad' => 0,
+                        'total'    => 0,
+                    ];
                 }
+                $totalPorCodigo[$codObj]['cantidad'] += $mat['cant_despachada'];
+                $totalPorCodigo[$codObj]['total']    += $totalLinea;
 
-                // Subtotal por código objeto específico
-                $subtotalFmt = '$ ' . number_format($grupo['subtotal'], 4);
+                $precioFmt = '$ ' . number_format($mat['precio'], 4);
+                $totalFmt  = '$ ' . number_format($totalLinea, 4);
+
                 $tabla .= "
-    <tr>
-        <td colspan='5' style='font-weight:bold; font-size:11px; text-align:center;
-                                border:0.8px solid #000; padding:5px 4px; background:#f2f4f8;'>
-            SUBTOTAL [" . e($grupo['codigo']) . "]
-        </td>
-        <td style='font-weight:bold; font-size:11px; text-align:right;
-                    border:0.8px solid #000; padding:5px 4px; background:#f2f4f8;'>
-            {$subtotalFmt}
-        </td>
-    </tr>";
+<tr>
+    <td style='{$tdC}'>{$mat['codigo']}</td>
+    <td style='{$tdStyle}'>{$mat['nombre']}</td>
+    <td style='{$tdC}'>{$mat['medida']}</td>
+    <td style='{$tdC} font-weight:bold;'>" . number_format($mat['cant_despachada']) . "</td>
+    <td style='{$tdR}'>{$precioFmt}</td>
+    <td style='{$tdR}'>{$totalFmt}</td>
+</tr>";
             }
 
-            // Total del destino
-            $totalDestinoFmt = '$ ' . number_format($destino['total'], 4);
+            $subtotalFmt = '$ ' . number_format($subtotalSalida, 4);
+
             $tabla .= "
     <tr>
-        <td colspan='5' style='font-weight:bold; font-size:12px; text-align:center;
-                                border:0.8px solid #000; padding:5px 4px; background:#d9e1f2;'>
-            TOTAL — " . e($destino['label']) . "
+        <td colspan='5' style='font-weight:bold; font-size:11px; text-align:right;
+                                border:0.8px solid #000; padding:5px 4px; background:#f9fafb;'>
+            Subtotal:
         </td>
-        <td style='font-weight:bold; font-size:12px; text-align:right;
-                    border:0.8px solid #000; padding:5px 4px; background:#d9e1f2;'>
-            {$totalDestinoFmt}
+        <td style='font-weight:bold; font-size:11px;
+                    border:0.8px solid #000; padding:5px 4px; background:#f9fafb;'>
+            {$subtotalFmt}
         </td>
     </tr>
 </tbody>
 </table>";
         }
 
-        // ── Total general ─────────────────────────────────────────────────
+        // ── Total general ─────────────────────────────────────────────────────
         $granTotalFmt = '$ ' . number_format($granTotal, 4);
+
         $tabla .= "
 <table width='100%' style='border-collapse:collapse; margin-top:4px;'>
 <tr>
-    <td style='font-weight:bold; font-size:12px; text-align:center;
-               border:0.8px solid #000; padding:6px 4px; background:#bcc8e8;'>
-        TOTAL GENERAL
+    <td style='font-weight:bold; font-size:12px; text-align:right;
+               border:0.8px solid #000; padding:5px 4px;'>
+        TOTAL GENERAL:
     </td>
-    <td style='font-weight:bold; font-size:12px; text-align:right; width:12%;
-               border:0.8px solid #000; padding:6px 4px; background:#bcc8e8;'>
+    <td style='font-weight:bold; font-size:12px; width:12%;
+               border:0.8px solid #000; padding:5px 4px;'>
         {$granTotalFmt}
     </td>
 </tr>
 </table>";
 
-        // ── Firmas ────────────────────────────────────────────────────────
+        // ── Resumen: totales por código objeto específico ─────────────────────
+        if (!empty($totalPorCodigo)) {
+
+            ksort($totalPorCodigo);   // ordena por código
+
+            $tabla .= "
+<br>
+<table width='60%' style='border-collapse:collapse; margin-top:8px;'>
+<thead>
+    <tr>
+        <td colspan='3' style='{$thStyle} font-size:12px;'>
+            RESUMEN POR CÓDIGO OBJETO ESPECÍFICO
+        </td>
+    </tr>
+    <tr>
+        <th style='{$thStyle} width:30%;'>Obj. Espec.</th>
+        <th style='{$thStyle} width:30%;'>Cant. Total</th>
+        <th style='{$thStyle} width:40%;'>Total ($)</th>
+    </tr>
+</thead>
+<tbody>";
+
+            foreach ($totalPorCodigo as $tc) {
+                $tabla .= "
+    <tr>
+        <td style='{$tdC}'>" . e($tc['codigo']) . "</td>
+        <td style='{$tdC} font-weight:bold;'>" . number_format($tc['cantidad']) . "</td>
+        <td style='{$tdR}'>$ " . number_format($tc['total'], 4) . "</td>
+    </tr>";
+            }
+
+            $tabla .= "
+    <tr>
+        <td style='font-weight:bold; font-size:11px; text-align:right;
+                    border:0.8px solid #000; padding:5px 4px; background:#d9e1f2;'>
+            TOTAL:
+        </td>
+        <td style='border:0.8px solid #000; padding:5px 4px; background:#d9e1f2;'></td>
+        <td style='font-weight:bold; font-size:11px; text-align:right;
+                    border:0.8px solid #000; padding:5px 4px; background:#d9e1f2;'>
+            $ " . number_format($granTotal, 4) . "
+        </td>
+    </tr>
+</tbody>
+</table>";
+        }
+
+        // ── Firmas ────────────────────────────────────────────────────────────
         $informacionGeneral = InformacionGeneral::where('id', 1)->first();
         $px2 = 60;
 
@@ -2461,8 +2470,6 @@ No hay registros para este proyecto en el rango de fechas seleccionado.</p>", 2)
         $mpdf->WriteHTML($tabla, 2);
         $mpdf->Output();
     }
-
-
 
 
     public function vistaReporteSobranteProyectoCerrado()
@@ -4443,196 +4450,363 @@ No hay registros para este proyecto en el rango de fechas seleccionado.</p>", 2)
     }
 
 
-
-
+    /**
+     * REPORTE DE SALDOS POR PERÍODOS — versión corregida
+     *
+     * CAMBIO PRINCIPAL
+     * ----------------
+     * Para un proyecto CERRADO el "sobrante" no es un movimiento con fecha:
+     * es un SALDO de arranque. Por eso, en estado 'cerrado':
+     *
+     *   - ENTRADAS del período          -> SIEMPRE 0
+     *   - SALDO / EXISTENCIA INICIAL    -> entradas originales del proyecto
+     *                                      menos salidas operativas
+     *                                      menos transferencias anteriores al período
+     *   - SALIDAS del período           -> SOLO transferencias (es_transferencia = 1)
+     *                                      dentro del rango [desde, hasta]
+     *   - EXISTENCIA ACTUAL             -> inicial - salidas
+     *
+     * Así, en tu ejemplo: inicial 20, entradas 0, salidas 2, actual 18.
+     *
+     * Para un proyecto ACTIVO la lógica es la de siempre (entradas y salidas
+     * operativas dentro/fuera del período).
+     */
     public function vistaPDFReportePorPeriodos(Request $request)
     {
         $idproy = $request->input('idproy');
         $estado = $request->input('estado', 'activo');   // 'activo' | 'cerrado'
-        $desde  = $request->input('desde');
-        $hasta  = $request->input('hasta');
+        $desde = $request->input('desde');
+        $hasta = $request->input('hasta');
 
         // Normalizar: solo se aceptan dos valores controlados
         $estado = ($estado === 'cerrado') ? 'cerrado' : 'activo';
 
         $start = \Carbon\Carbon::parse($desde)->startOfDay();
-        $end   = \Carbon\Carbon::parse($hasta)->endOfDay();
+        $end = \Carbon\Carbon::parse($hasta)->endOfDay();
 
         $desdeFormat = \Carbon\Carbon::parse($desde)->format('d/m/Y');
         $hastaFormat = \Carbon\Carbon::parse($hasta)->format('d/m/Y');
 
-        $proyecto     = \App\Models\TipoProyecto::find($idproy);
+        $proyecto = \App\Models\TipoProyecto::find($idproy);
         $logoalcaldia = 'images/logo.png';
 
         // ── Configuración según el estado del proyecto ─────────────────────
         if ($estado === 'cerrado') {
             $tituloReporte = 'REPORTE DE SALDOS DE MATERIALES SOBRANTES';
-
             $nombreCodigo = "GEAD-003-REPO";
-
-            // CERRADO: solo movimientos marcados como transferencia.
-            // Columna boolean es_transferencia en entradas y salidas.
-            $filtroEntradas = " AND e.es_transferencia = 1 ";
-            $filtroSalidas  = " AND s.es_transferencia = 1 ";
         } else {
             $tituloReporte = 'REPORTE DE SALDOS DE MATERIALES';
-
             $nombreCodigo = "";
-
-            // ACTIVO: todos los movimientos, sin filtro.
-            $filtroEntradas = '';
-            $filtroSalidas  = '';
         }
 
-        // ── Consulta: movimientos agrupados por producto ──────────────────
-        $rows = DB::select("
-    WITH entradas AS (
-        SELECT
-            ed.id           AS id_entradadetalle,
-            ed.id_material,
-            ed.precio,
-            ed.codigo       AS codigo_copia,
-            ed.nombre       AS nombre_copia,
-            ed.cantidad_inicial AS cantidad_entrada,
-            e.fecha         AS fecha_entrada
-        FROM entradas_detalle ed
-        JOIN entradas e ON e.id = ed.id_entradas
-        WHERE e.id_tipoproyecto = ?
-          {$filtroEntradas}
-    ),
-    salidas AS (
-        SELECT
-            sd.id_entrada_detalle,
-            sd.cantidad_salida,
-            s.fecha AS fecha_salida
-        FROM salidas_detalle sd
-        JOIN salidas s ON s.id = sd.id_salida
-        WHERE s.id_tipoproyecto = ?
-          {$filtroSalidas}
-    ),
-    in_before AS (
-        SELECT id_entradadetalle, SUM(cantidad_entrada) AS qty_in_before
-        FROM entradas
-        WHERE fecha_entrada < ?
-        GROUP BY id_entradadetalle
-    ),
-    out_before AS (
-        SELECT id_entrada_detalle, SUM(cantidad_salida) AS qty_out_before
-        FROM salidas
-        WHERE fecha_salida < ?
-        GROUP BY id_entrada_detalle
-    ),
-    in_period AS (
-        SELECT id_entradadetalle, SUM(cantidad_entrada) AS qty_in_period
-        FROM entradas
-        WHERE fecha_entrada >= ? AND fecha_entrada <= ?
-        GROUP BY id_entradadetalle
-    ),
-    out_period AS (
-        SELECT id_entrada_detalle, SUM(cantidad_salida) AS qty_out_period
-        FROM salidas
-        WHERE fecha_salida >= ? AND fecha_salida <= ?
-        GROUP BY id_entrada_detalle
-    ),
-    base AS (
-        SELECT
-            en.id_entradadetalle,
-            en.id_material,
-            obj.codigo AS codigo,
-            COALESCE(m.nombre, en.nombre_copia) AS descripcion,
-            um.nombre AS unidad_medida,
-            en.precio,
+        // ===================================================================
+        //  CONSULTA
+        // ===================================================================
+        //
+        //  Se usan los mismos CTEs base (entradas / salidas) pero las cuatro
+        //  agregaciones (in_before, out_before, in_period, out_period) cambian
+        //  de definición según el estado:
+        //
+        //  ACTIVO  -> comportamiento clásico por fechas.
+        //  CERRADO -> entradas del período = 0 (no hay CTE in_period real);
+        //             el saldo inicial absorbe TODO el material original menos
+        //             las transferencias previas; el período solo cuenta
+        //             transferencias.
+        //
+        if ($estado === 'cerrado') {
 
-            COALESCE(ib.qty_in_before, 0) - COALESCE(ob.qty_out_before, 0) AS saldo_inicial_cant,
-            COALESCE(ip.qty_in_period,  0) AS entradas_mes_cant,
-            COALESCE(op.qty_out_period, 0) AS salidas_mes_cant,
-            (COALESCE(ib.qty_in_before, 0) - COALESCE(ob.qty_out_before, 0)
-             + COALESCE(ip.qty_in_period, 0)
-             - COALESCE(op.qty_out_period, 0)) AS saldo_final_cant,
+            // En CERRADO:
+            //  - entradas: SIN filtro de es_transferencia (material original).
+            //  - salidas:  se separan en dos grupos:
+            //       * operativas (es_transferencia = 0 / NULL) -> consumen saldo
+            //         inicial SIEMPRE, sin importar fecha.
+            //       * transferencias (es_transferencia = 1)    -> son las
+            //         "salidas del período".
+            $rows = DB::select("
+            WITH entradas AS (
+                SELECT
+                    ed.id               AS id_entradadetalle,
+                    ed.id_material,
+                    ed.precio,
+                    ed.cantidad_inicial AS cantidad_entrada
+                FROM entradas_detalle ed
+                JOIN entradas e ON e.id = ed.id_entradas
+                WHERE e.id_tipoproyecto = ?
+            ),
+            salidas_oper AS (
+                -- salidas operativas (consumo normal cuando estaba activo)
+                SELECT
+                    sd.id_entrada_detalle,
+                    sd.cantidad_salida
+                FROM salidas_detalle sd
+                JOIN salidas s ON s.id = sd.id_salida
+                WHERE s.id_tipoproyecto = ?
+                  AND (s.es_transferencia = 0 OR s.es_transferencia IS NULL)
+            ),
+            salidas_transf AS (
+                -- transferencias / salidas generales tras el cierre
+                SELECT
+                    sd.id_entrada_detalle,
+                    sd.cantidad_salida,
+                    s.fecha AS fecha_salida
+                FROM salidas_detalle sd
+                JOIN salidas s ON s.id = sd.id_salida
+                WHERE s.id_tipoproyecto = ?
+                  AND s.es_transferencia = 1
+            ),
+            in_total AS (
+                SELECT id_entradadetalle, SUM(cantidad_entrada) AS qty
+                FROM entradas
+                GROUP BY id_entradadetalle
+            ),
+            out_oper AS (
+                SELECT id_entrada_detalle, SUM(cantidad_salida) AS qty
+                FROM salidas_oper
+                GROUP BY id_entrada_detalle
+            ),
+            transf_before AS (
+                SELECT id_entrada_detalle, SUM(cantidad_salida) AS qty
+                FROM salidas_transf
+                WHERE fecha_salida < ?
+                GROUP BY id_entrada_detalle
+            ),
+            transf_period AS (
+                SELECT id_entrada_detalle, SUM(cantidad_salida) AS qty
+                FROM salidas_transf
+                WHERE fecha_salida >= ? AND fecha_salida <= ?
+                GROUP BY id_entrada_detalle
+            ),
+            base AS (
+                SELECT
+                    en.id_entradadetalle,
+                    en.id_material,
+                    obj.codigo                          AS codigo,
+                    COALESCE(m.nombre, en.id_material)   AS descripcion,
+                    um.nombre                            AS unidad_medida,
+                    en.precio,
 
-            ((COALESCE(ib.qty_in_before, 0) - COALESCE(ob.qty_out_before, 0)) * en.precio) AS saldo_inicial_money,
-            (COALESCE(ip.qty_in_period,  0) * en.precio) AS entradas_mes_money,
-            (COALESCE(op.qty_out_period, 0) * en.precio) AS salidas_mes_money,
-            ((COALESCE(ib.qty_in_before, 0) - COALESCE(ob.qty_out_before, 0)
-              + COALESCE(ip.qty_in_period, 0) - COALESCE(op.qty_out_period, 0)) * en.precio) AS saldo_final_money
-        FROM entradas en
-        LEFT JOIN materiales m        ON m.id  = en.id_material
-        LEFT JOIN objeto_especifico obj ON obj.id = m.id_objespecifico
-        LEFT JOIN unidadmedida um     ON um.id = m.id_medida
-        LEFT JOIN in_before  ib ON ib.id_entradadetalle  = en.id_entradadetalle
-        LEFT JOIN out_before ob ON ob.id_entrada_detalle = en.id_entradadetalle
-        LEFT JOIN in_period  ip ON ip.id_entradadetalle  = en.id_entradadetalle
-        LEFT JOIN out_period op ON op.id_entrada_detalle = en.id_entradadetalle
-    )
-    SELECT
-        b.id_material,
-        MAX(b.codigo)        AS codigo,
-        MAX(b.descripcion)   AS descripcion,
-        MAX(b.unidad_medida) AS unidad_medida,
-        b.precio,
-        SUM(b.saldo_inicial_cant)  AS saldo_inicial_cant,
-        SUM(b.entradas_mes_cant)   AS entradas_mes_cant,
-        SUM(b.salidas_mes_cant)    AS salidas_mes_cant,
-        SUM(b.saldo_final_cant)    AS saldo_final_cant,
-        SUM(b.saldo_inicial_money) AS saldo_inicial_money,
-        SUM(b.entradas_mes_money)  AS entradas_mes_money,
-        SUM(b.salidas_mes_money)   AS salidas_mes_money,
-        SUM(b.saldo_final_money)   AS saldo_final_money
-    FROM base b
-    GROUP BY b.id_material, b.precio
-    ORDER BY MAX(b.codigo), MAX(b.descripcion)
-    ", [
-            $idproy,                 // entradas WHERE id_tipoproyecto
-            $idproy,                 // salidas  WHERE id_tipoproyecto
-            $start->toDateString(),  // in_before
-            $start->toDateString(),  // out_before
-            $start->toDateString(),  // in_period >=
-            $end->toDateString(),    // in_period <=
-            $start->toDateString(),  // out_period >=
-            $end->toDateString(),    // out_period <=
-        ]);
+                    -- SALDO INICIAL = todo lo original
+                    --                 - consumo operativo total
+                    --                 - transferencias anteriores al período
+                    (COALESCE(it.qty, 0)
+                     - COALESCE(oo.qty, 0)
+                     - COALESCE(tb.qty, 0))                       AS saldo_inicial_cant,
+
+                    -- ENTRADAS del período: SIEMPRE 0 en proyecto cerrado
+                    0                                             AS entradas_mes_cant,
+
+                    -- SALIDAS del período: solo transferencias dentro del rango
+                    COALESCE(tp.qty, 0)                           AS salidas_mes_cant,
+
+                    -- SALDO FINAL = inicial - salidas del período
+                    (COALESCE(it.qty, 0)
+                     - COALESCE(oo.qty, 0)
+                     - COALESCE(tb.qty, 0)
+                     - COALESCE(tp.qty, 0))                       AS saldo_final_cant,
+
+                    ((COALESCE(it.qty, 0)
+                      - COALESCE(oo.qty, 0)
+                      - COALESCE(tb.qty, 0)) * en.precio)         AS saldo_inicial_money,
+
+                    0                                             AS entradas_mes_money,
+
+                    (COALESCE(tp.qty, 0) * en.precio)             AS salidas_mes_money,
+
+                    ((COALESCE(it.qty, 0)
+                      - COALESCE(oo.qty, 0)
+                      - COALESCE(tb.qty, 0)
+                      - COALESCE(tp.qty, 0)) * en.precio)         AS saldo_final_money
+                FROM entradas en
+                LEFT JOIN materiales m          ON m.id  = en.id_material
+                LEFT JOIN objeto_especifico obj ON obj.id = m.id_objespecifico
+                LEFT JOIN unidadmedida um       ON um.id = m.id_medida
+                LEFT JOIN in_total       it ON it.id_entradadetalle  = en.id_entradadetalle
+                LEFT JOIN out_oper       oo ON oo.id_entrada_detalle = en.id_entradadetalle
+                LEFT JOIN transf_before  tb ON tb.id_entrada_detalle = en.id_entradadetalle
+                LEFT JOIN transf_period  tp ON tp.id_entrada_detalle = en.id_entradadetalle
+            )
+            SELECT
+                b.id_material,
+                MAX(b.codigo)        AS codigo,
+                MAX(b.descripcion)   AS descripcion,
+                MAX(b.unidad_medida) AS unidad_medida,
+                b.precio,
+                SUM(b.saldo_inicial_cant)  AS saldo_inicial_cant,
+                SUM(b.entradas_mes_cant)   AS entradas_mes_cant,
+                SUM(b.salidas_mes_cant)    AS salidas_mes_cant,
+                SUM(b.saldo_final_cant)    AS saldo_final_cant,
+                SUM(b.saldo_inicial_money) AS saldo_inicial_money,
+                SUM(b.entradas_mes_money)  AS entradas_mes_money,
+                SUM(b.salidas_mes_money)   AS salidas_mes_money,
+                SUM(b.saldo_final_money)   AS saldo_final_money
+            FROM base b
+            GROUP BY b.id_material, b.precio
+            HAVING (SUM(b.entradas_mes_cant)  <> 0
+                 OR SUM(b.salidas_mes_cant)   <> 0
+                 OR SUM(b.saldo_inicial_cant) <> 0
+                 OR SUM(b.saldo_final_cant)   <> 0)
+            ORDER BY MAX(b.codigo), MAX(b.descripcion)
+        ", [
+                $idproy,                 // entradas
+                $idproy,                 // salidas_oper
+                $idproy,                 // salidas_transf
+                $start->toDateString(),  // transf_before  <
+                $start->toDateString(),  // transf_period  >=
+                $end->toDateString(),    // transf_period  <=
+            ]);
+
+        } else {
+
+            // ── ACTIVO: lógica original (sin cambios) ──────────────────────
+            $filtroSalidas = " AND (s.es_transferencia = 0 OR s.es_transferencia IS NULL) ";
+
+            $rows = DB::select("
+            WITH entradas AS (
+                SELECT
+                    ed.id               AS id_entradadetalle,
+                    ed.id_material,
+                    ed.precio,
+                    ed.cantidad_inicial AS cantidad_entrada,
+                    e.fecha             AS fecha_entrada
+                FROM entradas_detalle ed
+                JOIN entradas e ON e.id = ed.id_entradas
+                WHERE e.id_tipoproyecto = ?
+            ),
+            salidas AS (
+                SELECT
+                    sd.id_entrada_detalle,
+                    sd.cantidad_salida,
+                    s.fecha AS fecha_salida
+                FROM salidas_detalle sd
+                JOIN salidas s ON s.id = sd.id_salida
+                WHERE s.id_tipoproyecto = ?
+                  {$filtroSalidas}
+            ),
+            in_before AS (
+                SELECT id_entradadetalle, SUM(cantidad_entrada) AS qty_in_before
+                FROM entradas
+                WHERE fecha_entrada < ?
+                GROUP BY id_entradadetalle
+            ),
+            out_before AS (
+                SELECT id_entrada_detalle, SUM(cantidad_salida) AS qty_out_before
+                FROM salidas
+                WHERE fecha_salida < ?
+                GROUP BY id_entrada_detalle
+            ),
+            in_period AS (
+                SELECT id_entradadetalle, SUM(cantidad_entrada) AS qty_in_period
+                FROM entradas
+                WHERE fecha_entrada >= ? AND fecha_entrada <= ?
+                GROUP BY id_entradadetalle
+            ),
+            out_period AS (
+                SELECT id_entrada_detalle, SUM(cantidad_salida) AS qty_out_period
+                FROM salidas
+                WHERE fecha_salida >= ? AND fecha_salida <= ?
+                GROUP BY id_entrada_detalle
+            ),
+            base AS (
+                SELECT
+                    en.id_entradadetalle,
+                    en.id_material,
+                    obj.codigo AS codigo,
+                    COALESCE(m.nombre, en.id_material) AS descripcion,
+                    um.nombre AS unidad_medida,
+                    en.precio,
+
+                    COALESCE(ib.qty_in_before, 0) - COALESCE(ob.qty_out_before, 0) AS saldo_inicial_cant,
+                    COALESCE(ip.qty_in_period,  0) AS entradas_mes_cant,
+                    COALESCE(op.qty_out_period, 0) AS salidas_mes_cant,
+                    (COALESCE(ib.qty_in_before, 0) - COALESCE(ob.qty_out_before, 0)
+                     + COALESCE(ip.qty_in_period, 0)
+                     - COALESCE(op.qty_out_period, 0)) AS saldo_final_cant,
+
+                    ((COALESCE(ib.qty_in_before, 0) - COALESCE(ob.qty_out_before, 0)) * en.precio) AS saldo_inicial_money,
+                    (COALESCE(ip.qty_in_period,  0) * en.precio) AS entradas_mes_money,
+                    (COALESCE(op.qty_out_period, 0) * en.precio) AS salidas_mes_money,
+                    ((COALESCE(ib.qty_in_before, 0) - COALESCE(ob.qty_out_before, 0)
+                      + COALESCE(ip.qty_in_period, 0) - COALESCE(op.qty_out_period, 0)) * en.precio) AS saldo_final_money
+                FROM entradas en
+                LEFT JOIN materiales m          ON m.id  = en.id_material
+                LEFT JOIN objeto_especifico obj ON obj.id = m.id_objespecifico
+                LEFT JOIN unidadmedida um       ON um.id = m.id_medida
+                LEFT JOIN in_before  ib ON ib.id_entradadetalle  = en.id_entradadetalle
+                LEFT JOIN out_before ob ON ob.id_entrada_detalle = en.id_entradadetalle
+                LEFT JOIN in_period  ip ON ip.id_entradadetalle  = en.id_entradadetalle
+                LEFT JOIN out_period op ON op.id_entrada_detalle = en.id_entradadetalle
+            )
+            SELECT
+                b.id_material,
+                MAX(b.codigo)        AS codigo,
+                MAX(b.descripcion)   AS descripcion,
+                MAX(b.unidad_medida) AS unidad_medida,
+                b.precio,
+                SUM(b.saldo_inicial_cant)  AS saldo_inicial_cant,
+                SUM(b.entradas_mes_cant)   AS entradas_mes_cant,
+                SUM(b.salidas_mes_cant)    AS salidas_mes_cant,
+                SUM(b.saldo_final_cant)    AS saldo_final_cant,
+                SUM(b.saldo_inicial_money) AS saldo_inicial_money,
+                SUM(b.entradas_mes_money)  AS entradas_mes_money,
+                SUM(b.salidas_mes_money)   AS salidas_mes_money,
+                SUM(b.saldo_final_money)   AS saldo_final_money
+            FROM base b
+            GROUP BY b.id_material, b.precio
+            HAVING (SUM(b.entradas_mes_cant) <> 0
+                 OR SUM(b.salidas_mes_cant)  <> 0
+                 OR SUM(b.saldo_inicial_cant) <> 0
+                 OR SUM(b.saldo_final_cant)   <> 0)
+            ORDER BY MAX(b.codigo), MAX(b.descripcion)
+        ", [
+                $idproy,                 // entradas
+                $idproy,                 // salidas
+                $start->toDateString(),  // in_before
+                $start->toDateString(),  // out_before
+                $start->toDateString(),  // in_period >=
+                $end->toDateString(),    // in_period <=
+                $start->toDateString(),  // out_period >=
+                $end->toDateString(),    // out_period <=
+            ]);
+        }
 
         // ── Totales ───────────────────────────────────────────────────────
         $totales = [
-            'inicial_cant'  => 0, 'entradas_cant' => 0, 'salidas_cant'  => 0, 'final_cant' => 0,
-            'inicial_money' => 0.0,'entradas_money'=> 0.0,'salidas_money' => 0.0,'final_money'=> 0.0,
+            'inicial_cant' => 0, 'entradas_cant' => 0, 'salidas_cant' => 0, 'final_cant' => 0,
+            'inicial_money' => 0.0, 'entradas_money' => 0.0, 'salidas_money' => 0.0, 'final_money' => 0.0,
         ];
 
-        // Sumatorias por código presupuestario
         $sumPorCodigo = [];
 
         foreach ($rows as $r) {
-            // 1) Totales generales
-            $totales['inicial_cant']   += (int) ($r->saldo_inicial_cant ?? 0);
-            $totales['entradas_cant']  += (int) ($r->entradas_mes_cant  ?? 0);
-            $totales['salidas_cant']   += (int) ($r->salidas_mes_cant   ?? 0);
-            $totales['final_cant']     += (int) ($r->saldo_final_cant   ?? 0);
-            $totales['inicial_money']  += (float) ($r->saldo_inicial_money ?? 0);
-            $totales['entradas_money'] += (float) ($r->entradas_mes_money  ?? 0);
-            $totales['salidas_money']  += (float) ($r->salidas_mes_money   ?? 0);
-            $totales['final_money']    += (float) ($r->saldo_final_money   ?? 0);
+            $totales['inicial_cant'] += (int)($r->saldo_inicial_cant ?? 0);
+            $totales['entradas_cant'] += (int)($r->entradas_mes_cant ?? 0);
+            $totales['salidas_cant'] += (int)($r->salidas_mes_cant ?? 0);
+            $totales['final_cant'] += (int)($r->saldo_final_cant ?? 0);
+            $totales['inicial_money'] += (float)($r->saldo_inicial_money ?? 0);
+            $totales['entradas_money'] += (float)($r->entradas_mes_money ?? 0);
+            $totales['salidas_money'] += (float)($r->salidas_mes_money ?? 0);
+            $totales['final_money'] += (float)($r->saldo_final_money ?? 0);
 
-            // 2) Sumas por código
             $codigo = $r->codigo ?? 'SIN-CODIGO';
 
             if (!isset($sumPorCodigo[$codigo])) {
                 $sumPorCodigo[$codigo] = [
-                    'codigo'         => $codigo,
-                    'inicial_cant'   => 0,  'entradas_cant'  => 0,
-                    'salidas_cant'   => 0,  'final_cant'     => 0,
-                    'inicial_money'  => 0.0,'entradas_money' => 0.0,
-                    'salidas_money'  => 0.0,'final_money'    => 0.0,
+                    'codigo' => $codigo,
+                    'inicial_cant' => 0, 'entradas_cant' => 0,
+                    'salidas_cant' => 0, 'final_cant' => 0,
+                    'inicial_money' => 0.0, 'entradas_money' => 0.0,
+                    'salidas_money' => 0.0, 'final_money' => 0.0,
                 ];
             }
 
-            $sumPorCodigo[$codigo]['inicial_cant']   += (int) ($r->saldo_inicial_cant ?? 0);
-            $sumPorCodigo[$codigo]['entradas_cant']  += (int) ($r->entradas_mes_cant  ?? 0);
-            $sumPorCodigo[$codigo]['salidas_cant']   += (int) ($r->salidas_mes_cant   ?? 0);
-            $sumPorCodigo[$codigo]['final_cant']     += (int) ($r->saldo_final_cant   ?? 0);
-            $sumPorCodigo[$codigo]['inicial_money']  += (float) ($r->saldo_inicial_money ?? 0);
-            $sumPorCodigo[$codigo]['entradas_money'] += (float) ($r->entradas_mes_money  ?? 0);
-            $sumPorCodigo[$codigo]['salidas_money']  += (float) ($r->salidas_mes_money   ?? 0);
-            $sumPorCodigo[$codigo]['final_money']    += (float) ($r->saldo_final_money   ?? 0);
+            $sumPorCodigo[$codigo]['inicial_cant'] += (int)($r->saldo_inicial_cant ?? 0);
+            $sumPorCodigo[$codigo]['entradas_cant'] += (int)($r->entradas_mes_cant ?? 0);
+            $sumPorCodigo[$codigo]['salidas_cant'] += (int)($r->salidas_mes_cant ?? 0);
+            $sumPorCodigo[$codigo]['final_cant'] += (int)($r->saldo_final_cant ?? 0);
+            $sumPorCodigo[$codigo]['inicial_money'] += (float)($r->saldo_inicial_money ?? 0);
+            $sumPorCodigo[$codigo]['entradas_money'] += (float)($r->entradas_mes_money ?? 0);
+            $sumPorCodigo[$codigo]['salidas_money'] += (float)($r->salidas_mes_money ?? 0);
+            $sumPorCodigo[$codigo]['final_money'] += (float)($r->saldo_final_money ?? 0);
         }
 
         $fechaHoy = \Carbon\Carbon::now('America/El_Salvador')->format('d-m-Y');
@@ -4743,18 +4917,18 @@ No hay registros para este proyecto en el rango de fechas seleccionado.</p>", 2)
             $html .= "
         <tr>
             <td style='text-align:center'>{$i}</td>
-            <td style='text-align:center'>".e($r->codigo ?? '')."</td>
-            <td style='text-align:center'>".e($r->unidad_medida ?? '')."</td>
-            <td>".e($r->descripcion)."</td>
-            <td style='text-align:right'>$".number_format($r->precio ?? 0, 4)."</td>
-            <td style='text-align:right'>".number_format($r->saldo_inicial_cant ?? 0)."</td>
-            <td style='text-align:right'>$".number_format($r->saldo_inicial_money ?? 0, 2)."</td>
-            <td style='text-align:right'>".number_format($r->entradas_mes_cant ?? 0)."</td>
-            <td style='text-align:right'>$".number_format($r->entradas_mes_money ?? 0, 2)."</td>
-            <td style='text-align:right'>".number_format($r->salidas_mes_cant ?? 0)."</td>
-            <td style='text-align:right'>$".number_format($r->salidas_mes_money ?? 0, 2)."</td>
-            <td style='text-align:right'>".number_format($r->saldo_final_cant ?? 0)."</td>
-            <td style='text-align:right'>$".number_format($r->saldo_final_money ?? 0, 2)."</td>
+            <td style='text-align:center'>" . e($r->codigo ?? '') . "</td>
+            <td style='text-align:center'>" . e($r->unidad_medida ?? '') . "</td>
+            <td>" . e($r->descripcion) . "</td>
+            <td style='text-align:right'>$" . number_format($r->precio ?? 0, 4) . "</td>
+            <td style='text-align:right'>" . number_format($r->saldo_inicial_cant ?? 0) . "</td>
+            <td style='text-align:right'>$" . number_format($r->saldo_inicial_money ?? 0, 2) . "</td>
+            <td style='text-align:right'>" . number_format($r->entradas_mes_cant ?? 0) . "</td>
+            <td style='text-align:right'>$" . number_format($r->entradas_mes_money ?? 0, 2) . "</td>
+            <td style='text-align:right'>" . number_format($r->salidas_mes_cant ?? 0) . "</td>
+            <td style='text-align:right'>$" . number_format($r->salidas_mes_money ?? 0, 2) . "</td>
+            <td style='text-align:right'>" . number_format($r->saldo_final_cant ?? 0) . "</td>
+            <td style='text-align:right'>$" . number_format($r->saldo_final_money ?? 0, 2) . "</td>
         </tr>
         ";
             $i++;
@@ -4769,14 +4943,14 @@ No hay registros para este proyecto en el rango de fechas seleccionado.</p>", 2)
         <tfoot>
             <tr style='font-weight:bold; background:#f9fafb'>
                 <td colspan='5' style='text-align:right'>Totales:</td>
-                <td style='text-align:right'>".number_format($totales['inicial_cant'])."</td>
-                <td style='text-align:right'>$".number_format($totales['inicial_money'], 2)."</td>
-                <td style='text-align:right'>".number_format($totales['entradas_cant'])."</td>
-                <td style='text-align:right'>$".number_format($totales['entradas_money'], 2)."</td>
-                <td style='text-align:right'>".number_format($totales['salidas_cant'])."</td>
-                <td style='text-align:right'>$".number_format($totales['salidas_money'], 2)."</td>
-                <td style='text-align:right'>".number_format($totales['final_cant'])."</td>
-                <td style='text-align:right'>$".number_format($totales['final_money'], 2)."</td>
+                <td style='text-align:right'>" . number_format($totales['inicial_cant']) . "</td>
+                <td style='text-align:right'>$" . number_format($totales['inicial_money'], 2) . "</td>
+                <td style='text-align:right'>" . number_format($totales['entradas_cant']) . "</td>
+                <td style='text-align:right'>$" . number_format($totales['entradas_money'], 2) . "</td>
+                <td style='text-align:right'>" . number_format($totales['salidas_cant']) . "</td>
+                <td style='text-align:right'>$" . number_format($totales['salidas_money'], 2) . "</td>
+                <td style='text-align:right'>" . number_format($totales['final_cant']) . "</td>
+                <td style='text-align:right'>$" . number_format($totales['final_money'], 2) . "</td>
             </tr>
         </tfoot>
     </table>
@@ -4796,23 +4970,23 @@ No hay registros para este proyecto en el rango de fechas seleccionado.</p>", 2)
         </tr>
         <tr>
             <td>Saldo Inicial</td>
-            <td style='text-align:right'>".number_format($totales['inicial_cant'])."</td>
-            <td style='text-align:right'>$".number_format($totales['inicial_money'], 2)."</td>
+            <td style='text-align:right'>" . number_format($totales['inicial_cant']) . "</td>
+            <td style='text-align:right'>$" . number_format($totales['inicial_money'], 2) . "</td>
         </tr>
         <tr>
             <td>Entradas del período</td>
-            <td style='text-align:right'>".number_format($totales['entradas_cant'])."</td>
-            <td style='text-align:right'>$".number_format($totales['entradas_money'], 2)."</td>
+            <td style='text-align:right'>" . number_format($totales['entradas_cant']) . "</td>
+            <td style='text-align:right'>$" . number_format($totales['entradas_money'], 2) . "</td>
         </tr>
         <tr>
             <td>Salidas del período</td>
-            <td style='text-align:right'>".number_format($totales['salidas_cant'])."</td>
-            <td style='text-align:right'>$".number_format($totales['salidas_money'], 2)."</td>
+            <td style='text-align:right'>" . number_format($totales['salidas_cant']) . "</td>
+            <td style='text-align:right'>$" . number_format($totales['salidas_money'], 2) . "</td>
         </tr>
         <tr style='font-weight:bold'>
             <td>Saldo Final</td>
-            <td style='text-align:right'>".number_format($totales['final_cant'])."</td>
-            <td style='text-align:right'>$".number_format($totales['final_money'], 2)."</td>
+            <td style='text-align:right'>" . number_format($totales['final_cant']) . "</td>
+            <td style='text-align:right'>$" . number_format($totales['final_money'], 2) . "</td>
         </tr>
     </table>
     ";
@@ -4846,20 +5020,20 @@ No hay registros para este proyecto en el rango de fechas seleccionado.</p>", 2)
             $j = 1;
             foreach ($sumPorCodigo as $s) {
 
-                $totalSaldoFinalCodigos += (float) $s['final_money'];
+                $totalSaldoFinalCodigos += (float)$s['final_money'];
 
                 $html .= "
             <tr>
                 <td>{$j}</td>
-                <td>".e($s['codigo'])."</td>
-                <td style='text-align:right'>".number_format($s['inicial_cant'])."</td>
-                <td style='text-align:right'>$".number_format($s['inicial_money'], 2)."</td>
-                <td style='text-align:right'>".number_format($s['entradas_cant'])."</td>
-                <td style='text-align:right'>$".number_format($s['entradas_money'], 2)."</td>
-                <td style='text-align:right'>".number_format($s['salidas_cant'])."</td>
-                <td style='text-align:right'>$".number_format($s['salidas_money'], 2)."</td>
-                <td style='text-align:right'>".number_format($s['final_cant'])."</td>
-                <td style='text-align:right'>$".number_format($s['final_money'], 2)."</td>
+                <td>" . e($s['codigo']) . "</td>
+                <td style='text-align:right'>" . number_format($s['inicial_cant']) . "</td>
+                <td style='text-align:right'>$" . number_format($s['inicial_money'], 2) . "</td>
+                <td style='text-align:right'>" . number_format($s['entradas_cant']) . "</td>
+                <td style='text-align:right'>$" . number_format($s['entradas_money'], 2) . "</td>
+                <td style='text-align:right'>" . number_format($s['salidas_cant']) . "</td>
+                <td style='text-align:right'>$" . number_format($s['salidas_money'], 2) . "</td>
+                <td style='text-align:right'>" . number_format($s['final_cant']) . "</td>
+                <td style='text-align:right'>$" . number_format($s['final_money'], 2) . "</td>
             </tr>
             ";
                 $j++;
@@ -4868,7 +5042,7 @@ No hay registros para este proyecto en el rango de fechas seleccionado.</p>", 2)
             $html .= "
             <tr style='font-weight:bold; background:#f9fafb'>
                 <td colspan='9' style='text-align:right'>TOTAL \$ SALDO</td>
-                <td style='text-align:right'>$".number_format($totalSaldoFinalCodigos, 2)."</td>
+                <td style='text-align:right'>$" . number_format($totalSaldoFinalCodigos, 2) . "</td>
             </tr>
             </tbody>
         </table>

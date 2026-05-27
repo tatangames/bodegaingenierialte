@@ -592,7 +592,7 @@ class SalidasController extends Controller
                 $salida->fecha                = Carbon::parse($request->fecha);
                 $salida->descripcion          = $request->descripcion;
                 $salida->id_tipoproyecto      = $proyectoCerrado;
-                $salida->es_transferencia     = 0;
+                $salida->es_transferencia     = 1;
                 $salida->acta_numero          = $actaNumero;
                 $salida->acta_referencia      = $actaReferencia;
                 $salida->acta_id_departamento = $actaIdDepto;
