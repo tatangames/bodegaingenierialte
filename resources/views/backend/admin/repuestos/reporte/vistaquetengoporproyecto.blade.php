@@ -111,6 +111,11 @@
             color: #fff;
             box-shadow: 0 4px 14px rgba(40,167,69,.35);
         }
+        .btn-pdf.cian {
+            background: linear-gradient(135deg, #0a4d68, #088395);
+            color: #fff;
+            box-shadow: 0 4px 14px rgba(8,131,149,.35);
+        }
         .btn-pdf:hover { transform: translateY(-1px); filter: brightness(1.08); color: #fff; }
         .divider {
             border: none;
@@ -281,6 +286,10 @@
                                         <img src="{{ asset('images/logopdf.png') }}" width="22px" height="22px">
                                         Salida General
                                     </button>
+                                    <button type="button" onclick="generarPdfDescriptivo()" class="btn-pdf cian">
+                                        <img src="{{ asset('images/logopdf.png') }}" width="22px" height="22px">
+                                        Descriptivo
+                                    </button>
                                 </div>
 
 
@@ -436,9 +445,31 @@
                 return;
             }
 
-            // Las fechas se envían como parámetros de query string
             var url = "{{ URL::to('admin/reporte/inventario/destino/sobrantes') }}/"
                 + idtrans + "/" + tipo
+                + "?desde=" + desde + "&hasta=" + hasta;
+
+            window.open(url);
+        }
+
+        function generarPdfDescriptivo() {
+            var idtrans = $('#select-proyecto-destino').val();
+            if (!idtrans) { toastr.error('Proyecto es requerido'); return; }
+
+            var desde = $('#destino-fecha-desde').val();
+            var hasta = $('#destino-fecha-hasta').val();
+
+            if (!desde || !hasta) {
+                toastr.error('Debe indicar la fecha desde y hasta');
+                return;
+            }
+            if (desde > hasta) {
+                toastr.error('La fecha "Desde" no puede ser mayor que la fecha "Hasta"');
+                return;
+            }
+
+            var url = "{{ URL::to('admin/reporte/inventario/destino/sobrantesdescriptivo') }}/"
+                + idtrans
                 + "?desde=" + desde + "&hasta=" + hasta;
 
             window.open(url);
@@ -549,11 +580,5 @@
                     toastr.error('Error al actualizar');
                 });
         }
-
-
-
-
-
-
     </script>
 @endsection
