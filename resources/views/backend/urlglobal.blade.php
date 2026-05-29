@@ -1,6 +1,6 @@
-<!-- URL GLOBAL PETICIONES POST          /alcaelectrica.com       -->
+<!-- URL GLOBAL PETICIONES POST          /electricos.com       -->
 <script type="text/javascript">
-    var urlAdmin = "/alcaelectrica.com";
+    var urlAdmin = "/electricos.com";
 </script>
 
 <!-- ICONO GLOBAL DE LAS PESTAÑAS -->
