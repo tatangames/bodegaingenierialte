@@ -1,6 +1,6 @@
-<!-- URL GLOBAL PETICIONES POST          /obradebanco.com       -->
+<!-- URL GLOBAL PETICIONES POST          /alcaelectrica.com       -->
 <script type="text/javascript">
-    var urlAdmin = "/obradebanco.com";
+    var urlAdmin = "/alcaelectrica.com";
 </script>
 
 <!-- ICONO GLOBAL DE LAS PESTAÑAS -->
