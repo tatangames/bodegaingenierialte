@@ -117,7 +117,7 @@
 
 
                         <!-- TÍTULO  -->
-                        <h4 class="login-title">BODEGA DE REPUESTOS ELÉCTRICOS</h4>
+                        <h4 class="login-title">INGENIERIA</h4>
                         <form class="login-form">
                             <div>
                                 <label class="font-500">Usuario</label>
