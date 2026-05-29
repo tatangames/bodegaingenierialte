@@ -107,7 +107,7 @@
 <div class="container">
     <div class="demo-container" style="margin-top: 10px">
         <div class="container">
-            <div class="row">
+            <div class="row"  style="margin-top:10%">
                 <div class="col-lg-6 col-12 mx-auto">
 
                     <div class="bg-white shadow-lg text-center login-card">
@@ -117,7 +117,7 @@
 
 
                         <!-- TÍTULO  -->
-                        <h4 class="login-title">INGENIERIA</h4>
+                        <h4 class="login-title">INGENIERIA Y ARQUITECTURA</h4>
                         <form class="login-form">
                             <div>
                                 <label class="font-500">Usuario</label>
