@@ -1,6 +1,6 @@
-<!-- URL GLOBAL PETICIONES POST          /electricos.com       -->
+<!-- URL GLOBAL PETICIONES POST          /ingenieria.com       -->
 <script type="text/javascript">
-    var urlAdmin = "/electricos.com";
+    var urlAdmin = "/ingenieria.com";
 </script>
 
 <!-- ICONO GLOBAL DE LAS PESTAÑAS -->
