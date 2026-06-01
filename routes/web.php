@@ -14,7 +14,7 @@ use App\Http\Controllers\Sistema\SalidasController;
 use App\Http\Controllers\Sistema\HistorialController;
 use App\Http\Controllers\Sistema\ReportesController;
 use App\Http\Controllers\Sistema\ReservasController;
-use App\Http\Controllers\Sistema\BitacoraController;
+
 
 
 Route::get('/', [LoginController::class,'vistaLoginForm'])->name('login.admin');
@@ -269,34 +269,6 @@ Route::middleware('auth:admin')->group(function () {
 
 
 
-
-    // ******************* BITACORAS **************************
-
-
-    // --- EMPLEADO ---
-    Route::get('/admin/empleados/index', [ConfiguracionController::class,'indexEmpleado'])->name('admin.bitacoras.empleado.index');
-    Route::get('/admin/empleados/tabla/index', [ConfiguracionController::class,'tablaEmpleado']);
-    Route::post('/admin/empleados/nuevo', [ConfiguracionController::class, 'nuevoEmpleado']);
-    Route::post('/admin/empleados/informacion', [ConfiguracionController::class, 'informacionEmpleado']);
-    Route::post('/admin/empleados/editar', [ConfiguracionController::class, 'editarEmpleado']);
-
-    // --- REGISTRO DE BITACORAS ---
-    Route::get('/admin/bitacoras/registro/index', [BitacoraController::class, 'vistaRegistroBitacora'])->name('admin.bitacoras.registro.index');
-    Route::post('/admin/bitacoras/registro', [BitacoraController::class, 'registrarBitacora']);
-
-    // --- HISTORIAL DE BITACORAS ---
-    Route::get('/admin/bitacoras/historial/index', [BitacoraController::class, 'vistaHistorialBitacoras'])->name('admin.bitacoras.historial.index');
-    Route::get('/admin/bitacoras/historial/tabla', [BitacoraController::class, 'tablaHistorialBitacoras']);
-    Route::get('/admin/bitacoras/historial/informacion', [BitacoraController::class, 'historialBitacoraInformacion']);
-    Route::post('/admin/bitacoras/historial/editar', [BitacoraController::class, 'historialBitacoraEditar']);
-    Route::get('/admin/bitacoras/historial/detalle', [BitacoraController::class, 'historialBitacoraDetalle']);
-    Route::get('/admin/bitacoras/historial/eliminar', [BitacoraController::class, 'historialBitacoraEliminar']);
-    Route::get('/admin/bitacoras/historial/eliminar-foto', [BitacoraController::class, 'historialBitacoraEliminarFoto']);
-    Route::post('/admin/bitacoras/historial/agregar-fotos', [BitacoraController::class, 'historialBitacoraAgregarFotos']);
-
-    // --- REPORTE ---
-    Route::get('/admin/bitacoras/reportes/index', [BitacoraController::class, 'vistaReporteIndex'])->name('admin.bitacoras.reportes.index');
-    Route::get('/admin/bitacoras/reportes/pdf/{desde}/{hasta}/{empleado}/{conFotos}', [BitacoraController::class, 'pdfReporteBitacoras']);
 
 
 

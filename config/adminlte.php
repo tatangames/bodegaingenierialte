@@ -480,35 +480,7 @@ return [
             ],
         ],
 
-        [
-            'text'    => 'Bitacoras',
-            'icon'    => 'fas fa-pen-alt',
-            'can'     => 'sidebar.inventario',
-            'submenu' => [
-                [
-                    'text' => 'Registro',
-                    'icon' => 'far fa-circle',
-                    'route' => 'admin.bitacoras.registro.index',
-                ],
-                [
-                    'text' => 'Historial',
-                    'icon' => 'far fa-circle',
-                    'route' => 'admin.bitacoras.historial.index',
-                ],
-                [
-                    'text' => 'Registrar Empleado',
-                    'icon' => 'far fa-circle',
-                    'route' => 'admin.bitacoras.empleado.index',
-                ],
-                [
-                    'text' => 'Reporte',
-                    'icon' => 'far fa-circle',
-                    'route' => 'admin.bitacoras.reportes.index',
-                ],
 
-
-            ],
-        ],
 
 
 

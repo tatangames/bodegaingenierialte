@@ -2,15 +2,7 @@
 
 namespace App\Http\Controllers\Sistema;
 
-use App\Http\Controllers\Controller;
-use App\Models\Cuenta;
-use App\Models\Departamentos;
-use App\Models\Empleado;
-use App\Models\ObjetoEspecifico;
-use App\Models\Rubro;
-use App\Models\UnidadMedida;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
+use App\Http\Controllers\Controller;use App\Models\Cuenta;use App\Models\Departamentos;use App\Models\Empleado;use App\Models\ObjetoEspecifico;use App\Models\Rubro;use App\Models\UnidadMedida;use Illuminate\Http\Request;use Illuminate\Support\Facades\Validator;
 
 class ConfiguracionController extends Controller
 {
