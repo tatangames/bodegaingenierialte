@@ -12,6 +12,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Intervention\Image\ImageManager;
+use Intervention\Image\Drivers\Gd\Driver;
+
 class BitacoraController extends Controller
 {
     public function vistaRegistroBitacora()
@@ -87,15 +90,20 @@ class BitacoraController extends Controller
 
             // 3) Guardar las fotos en el disco 'archivos' (tabla bitacoras_fotos)
             if ($request->hasFile('fotos')) {
+
+                $manager = ImageManager::usingDriver(Driver::class);
+
                 foreach ($request->file('fotos') as $foto) {
 
-                    $extension     = $foto->getClientOriginalExtension();
-                    $nombreArchivo = time() . '_' . Str::random(15) . '.' . $extension;
+                    $nombreArchivo = time() . '_' . Str::random(15) . '.jpg';
+                    $rutaDisco     = Storage::disk('archivos')->path('');
+                    $rutaFinal     = $rutaDisco . $nombreArchivo;
 
-                    // Guardar directamente en la raíz del disco 'archivos'
-                    $foto->storeAs('', $nombreArchivo, 'archivos');
+                    $manager->decodePath($foto->getRealPath())
+                        ->scale(width: 1280)
+                        ->encodeUsingFormat(\Intervention\Image\Format::JPEG, quality: 75)
+                        ->save($rutaFinal);
 
-                    // En BD solo se guarda el nombre del archivo
                     $registroFoto = new BitacoraFoto();
                     $registroFoto->id_bitacora = $bitacora->id;
                     $registroFoto->imagen      = $nombreArchivo;
@@ -406,13 +414,18 @@ class BitacoraController extends Controller
             }
 
             $fotosSubidas = 0;
+            $manager = ImageManager::usingDriver(Driver::class);
 
             foreach ($request->file('fotos') as $foto) {
-                $extension     = $foto->getClientOriginalExtension();
-                $nombreArchivo = time() . '_' . Str::random(10) . '.' . $extension;
 
-                // Guardar en la raíz del disco 'archivos'
-                $foto->storeAs('', $nombreArchivo, 'archivos');
+                $nombreArchivo = time() . '_' . Str::random(10) . '.jpg';
+                $rutaDisco     = Storage::disk('archivos')->path('');
+                $rutaFinal     = $rutaDisco . $nombreArchivo;
+
+                $manager->decodePath($foto->getRealPath())
+                    ->scale(width: 1280)
+                    ->encodeUsingFormat(\Intervention\Image\Format::JPEG, quality: 75)
+                    ->save($rutaFinal);
 
                 $registroFoto = new BitacoraFoto();
                 $registroFoto->id_bitacora = $bitacora->id;

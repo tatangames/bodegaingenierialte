@@ -42,7 +42,6 @@
 @section('content')
 
     <style>
-        /* ── Estilo para previews de fotos ────────────────────── */
         #preview-fotos {
             display: flex;
             flex-wrap: wrap;
@@ -113,10 +112,63 @@
             font-size: 48px;
             color: #6c757d;
         }
+
+        /* ── Loading overlay ── */
+        #loading-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: rgba(0, 0, 0, 0.55);
+            align-items: center;
+            justify-content: center;
+        }
+        #loading-overlay.activo {
+            display: flex;
+        }
+        #loading-box {
+            background: #fff;
+            border-radius: 12px;
+            padding: 2rem 3rem;
+            text-align: center;
+            min-width: 260px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+        }
+        #loading-box .spinner {
+            width: 52px;
+            height: 52px;
+            border: 4px solid #e0e0e0;
+            border-top-color: #007bff;
+            border-radius: 50%;
+            margin: 0 auto 1rem;
+            animation: girar 0.75s linear infinite;
+        }
+        #loading-box p.titulo {
+            font-size: 16px;
+            font-weight: 600;
+            margin: 0 0 4px;
+            color: #212529;
+        }
+        #loading-box p.subtitulo {
+            font-size: 13px;
+            color: #6c757d;
+            margin: 0;
+        }
+        @keyframes girar {
+            to { transform: rotate(360deg); }
+        }
     </style>
 
-    <div id="divcontenedor">
+    {{-- ══ Loading overlay bloqueante ══════════════════════════════ --}}
+    <div id="loading-overlay">
+        <div id="loading-box">
+            <div class="spinner"></div>
+            <p class="titulo">Guardando bitácora...</p>
+            <p class="subtitulo">Por favor espera,<br>no cierres esta página</p>
+        </div>
+    </div>
 
+    <div id="divcontenedor">
         <section class="content">
             <div class="container-fluid">
                 <form id="formulario-bitacora" enctype="multipart/form-data">
@@ -129,7 +181,6 @@
                             </h3>
                         </div>
                         <div class="card-body">
-
                             <div class="row">
                                 <div class="col-md-4">
                                     <div class="form-group">
@@ -166,7 +217,6 @@
                                        maxlength="100" id="tiempo_utilizado"
                                        placeholder="Ej: 2 horas 30 minutos">
                             </div>
-
                         </div>
                     </div>
 
@@ -178,7 +228,6 @@
                             </h3>
                         </div>
                         <div class="card-body">
-
                             <div class="form-group">
                                 <label>Ubicación: <span style="color: red">*</span></label>
                                 <textarea class="form-control" id="ubicacion" rows="2"
@@ -207,7 +256,6 @@
                                     </div>
                                 </div>
                             </div>
-
                         </div>
                     </div>
 
@@ -219,7 +267,6 @@
                             </h3>
                         </div>
                         <div class="card-body">
-
                             <div class="form-group">
                                 <label>Empleados: <span style="color: red">*</span></label>
                                 <select class="form-control" id="select-empleados" multiple="multiple"
@@ -228,11 +275,8 @@
                                         <option value="{{ $emp->id }}">{{ $emp->nombre }}</option>
                                     @endforeach
                                 </select>
-                                <small class="text-muted">
-                                    Puede seleccionar uno o varios empleados
-                                </small>
+                                <small class="text-muted">Puede seleccionar uno o varios empleados</small>
                             </div>
-
                         </div>
                     </div>
 
@@ -244,7 +288,6 @@
                             </h3>
                         </div>
                         <div class="card-body">
-
                             <div class="form-group">
                                 <label>Subir Fotos: <small class="text-muted">(JPG, PNG - Máx. 5MB por foto)</small></label>
 
@@ -266,15 +309,13 @@
                                     Fotos seleccionadas: <span id="contador-fotos">0</span>
                                 </small>
                             </div>
-
                         </div>
                     </div>
 
                     {{-- ══ Botones ══════════════════════════════════════════ --}}
                     <div class="card">
                         <div class="card-body text-right">
-
-                            <button type="button" class="btn btn-primary" onclick="registrar()">
+                            <button type="button" class="btn btn-primary" id="btn-guardar" onclick="registrar()">
                                 <i class="fas fa-save"></i> Guardar Bitácora
                             </button>
                         </div>
@@ -283,7 +324,6 @@
                 </form>
             </div>
         </section>
-
     </div>
 
 @stop
@@ -297,85 +337,68 @@
 
     <script>
 
-        // ── Array de fotos seleccionadas ──────────────────────────────
         var fotosSeleccionadas = [];
+        var enviando = false; // ← bandera anti-doble envío
 
-        // ── Inicializar Select2 ───────────────────────────────────────
-        function initSelect2() {
+        // ── Loading overlay ───────────────────────────────────────────
+        function mostrarLoading() {
+            document.getElementById('loading-overlay').classList.add('activo');
+            document.getElementById('btn-guardar').disabled = true;
+        }
+
+        function ocultarLoading() {
+            document.getElementById('loading-overlay').classList.remove('activo');
+            document.getElementById('btn-guardar').disabled = false;
+        }
+
+        // ── Inicializar ───────────────────────────────────────────────
+        $(function () {
             $('#select-empleados').select2({
                 theme: "bootstrap-5",
                 placeholder: "Seleccione uno o varios empleados...",
                 language: { noResults: function () { return "No encontrado"; } }
             });
-        }
-
-        // ── Carga inicial ─────────────────────────────────────────────
-        $(function () {
-            initSelect2();
             initDragDrop();
         });
 
-        // ── Drag & Drop de fotos ──────────────────────────────────────
+        // ── Drag & Drop ───────────────────────────────────────────────
         function initDragDrop() {
             var zona = document.getElementById('zona-drop');
-
             ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(function (e) {
-                zona.addEventListener(e, function (ev) {
-                    ev.preventDefault();
-                    ev.stopPropagation();
-                }, false);
+                zona.addEventListener(e, function (ev) { ev.preventDefault(); ev.stopPropagation(); }, false);
             });
-
             ['dragenter', 'dragover'].forEach(function (e) {
-                zona.addEventListener(e, function () {
-                    zona.classList.add('dragover');
-                }, false);
+                zona.addEventListener(e, function () { zona.classList.add('dragover'); }, false);
             });
-
             ['dragleave', 'drop'].forEach(function (e) {
-                zona.addEventListener(e, function () {
-                    zona.classList.remove('dragover');
-                }, false);
+                zona.addEventListener(e, function () { zona.classList.remove('dragover'); }, false);
             });
-
             zona.addEventListener('drop', function (e) {
                 manejarFotos(e.dataTransfer.files);
             }, false);
         }
 
-        // ── Manejar fotos seleccionadas ───────────────────────────────
+        // ── Fotos ─────────────────────────────────────────────────────
         function manejarFotos(files) {
-            var maxSize = 5 * 1024 * 1024; // 5 MB
-
+            var maxSize = 5 * 1024 * 1024;
             for (var i = 0; i < files.length; i++) {
                 var file = files[i];
-
-                // Validar tipo
                 if (!file.type.match(/image\/(jpeg|jpg|png)/)) {
-                    toastr.warning('El archivo ' + file.name + ' no es una imagen válida');
+                    toastr.warning('El archivo "' + file.name + '" no es una imagen válida');
                     continue;
                 }
-
-                // Validar tamaño
                 if (file.size > maxSize) {
-                    toastr.warning('La imagen ' + file.name + ' excede los 5MB');
+                    toastr.warning('La imagen "' + file.name + '" excede los 5MB');
                     continue;
                 }
-
-                // Agregar al array
                 var idFoto = Date.now() + '_' + i;
                 fotosSeleccionadas.push({ id: idFoto, file: file });
-
-                // Generar preview
                 generarPreview(idFoto, file);
             }
-
-            // Limpiar input para permitir re-seleccionar el mismo archivo
             document.getElementById('input-fotos').value = '';
             actualizarContador();
         }
 
-        // ── Generar preview de foto ───────────────────────────────────
         function generarPreview(idFoto, file) {
             var reader = new FileReader();
             reader.onload = function (e) {
@@ -393,41 +416,20 @@
             reader.readAsDataURL(file);
         }
 
-        // ── Eliminar foto del preview ─────────────────────────────────
         function eliminarFoto(idFoto) {
-            fotosSeleccionadas = fotosSeleccionadas.filter(function (f) {
-                return f.id !== idFoto;
-            });
+            fotosSeleccionadas = fotosSeleccionadas.filter(function (f) { return f.id !== idFoto; });
             var el = document.getElementById('foto-' + idFoto);
             if (el) el.remove();
             actualizarContador();
         }
 
-        // ── Actualizar contador de fotos ──────────────────────────────
         function actualizarContador() {
             document.getElementById('contador-fotos').innerText = fotosSeleccionadas.length;
         }
 
-        // ── Funciones de loading ──────────────────────────────────────
-        function openLoading() {
-            Swal.fire({
-                title: 'Procesando...',
-                html: 'Por favor espera',
-                allowOutsideClick: false,
-                allowEscapeKey: false,
-                didOpen: (toast) => {
-                    Swal.showLoading();
-                }
-            });
-        }
-
-        function closeLoading() {
-            Swal.close();
-        }
-
-        // ── Registrar bitácora ────────────────────────────────────────
+        // ── Registrar ─────────────────────────────────────────────────
         function registrar() {
-            console.log('=== INICIANDO VALIDACIÓN ===');
+            if (enviando) return; // bloquear doble clic
 
             var fecha            = $('#fecha').val();
             var nombre           = $('#nombre').val().trim();
@@ -438,28 +440,16 @@
             var tiempo_utilizado = $('#tiempo_utilizado').val().trim();
             var empleados        = $('#select-empleados').val();
 
-            console.log('Datos capturados:', {fecha, nombre, descripcion, ubicacion, tiempo_utilizado, empleados, fotosSeleccionadas: fotosSeleccionadas.length});
+            if (!fecha)                                  { toastr.error('La fecha es requerida'); return; }
+            if (!nombre)                                 { toastr.error('El nombre es requerido'); return; }
+            if (!descripcion)                            { toastr.error('La descripción es requerida'); return; }
+            if (!ubicacion)                              { toastr.error('La ubicación es requerida'); return; }
+            if (!tiempo_utilizado)                       { toastr.error('El tiempo utilizado es requerido'); return; }
+            if (!empleados || empleados.length === 0)    { toastr.error('Debe asignar al menos un empleado'); return; }
 
-            // ── Validaciones ──
-            if (!fecha)            { toastr.error('La fecha es requerida'); console.warn('Falta fecha'); return; }
-            if (!nombre)           { toastr.error('El nombre es requerido'); console.warn('Falta nombre'); return; }
-            if (!descripcion)      { toastr.error('La descripción es requerida'); console.warn('Falta descripción'); return; }
-            if (!ubicacion)        { toastr.error('La ubicación es requerida'); console.warn('Falta ubicación'); return; }
-            if (!tiempo_utilizado) { toastr.error('El tiempo utilizado es requerido'); console.warn('Falta tiempo'); return; }
-            if (!empleados || empleados.length === 0) {
-                toastr.error('Debe asignar al menos un empleado');
-                console.warn('No hay empleados seleccionados');
-                return;
-            }
-
-            console.log('✓ Todas las validaciones pasaron');
-            console.log('Mostrando confirmación de SweetAlert...');
-
-            // ── Confirmación ──
             Swal.fire({
                 title: '¿Registrar bitácora?',
-                text: 'Se guardará la bitácora con ' + empleados.length +
-                    ' empleado(s) y ' + fotosSeleccionadas.length + ' foto(s)',
+                text: 'Se guardará con ' + empleados.length + ' empleado(s) y ' + fotosSeleccionadas.length + ' foto(s)',
                 type: 'question',
                 showCancelButton: true,
                 confirmButtonText: 'Sí, registrar',
@@ -467,22 +457,16 @@
                 confirmButtonColor: '#007bff',
                 cancelButtonColor: '#6c757d'
             }).then(function (result) {
-                console.log('Resultado SweetAlert:', result);
-                if (result.value === true){
-                    console.log('Usuario confirmó, enviando formulario...');
+                if (result.value === true) {
                     enviarFormulario();
-                } else {
-                    console.log('Usuario canceló la operación');
                 }
-            }).catch(function(err) {
-                console.error('Error en SweetAlert:', err);
             });
         }
 
-        // ── Enviar formulario al servidor ─────────────────────────────
         function enviarFormulario() {
-            console.log('=== ENVIANDO FORMULARIO ===');
-            openLoading();
+            if (enviando) return; // doble protección
+            enviando = true;
+            mostrarLoading();
 
             var formData = new FormData();
             formData.append('fecha',            $('#fecha').val());
@@ -493,35 +477,21 @@
             formData.append('longitud',         $('#longitud').val().trim());
             formData.append('tiempo_utilizado', $('#tiempo_utilizado').val().trim());
 
-            // ── Empleados ──
-            var empleados = $('#select-empleados').val();
-            empleados.forEach(function (idEmp) {
+            $('#select-empleados').val().forEach(function (idEmp) {
                 formData.append('empleados[]', idEmp);
             });
 
-            // ── Fotos ──
             fotosSeleccionadas.forEach(function (item) {
                 formData.append('fotos[]', item.file);
             });
-
-            console.log('FormData preparado con', empleados.length, 'empleados y', fotosSeleccionadas.length, 'fotos');
-
-            // Verificar que urlAdmin está disponible
-            if (typeof urlAdmin === 'undefined') {
-                console.error('ERROR: urlAdmin no está definida');
-                closeLoading();
-                toastr.error('Error: variable urlAdmin no está definida');
-                return;
-            }
-
-            console.log('URL de envío:', urlAdmin + '/admin/bitacoras/registro');
 
             axios.post(urlAdmin + '/admin/bitacoras/registro', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             })
                 .then(function (response) {
-                    console.log('Respuesta del servidor:', response.data);
-                    closeLoading();
+                    ocultarLoading();
+                    enviando = false;
+
                     if (response.data.success === 1) {
                         toastr.success('Bitácora registrada correctamente');
                         setTimeout(function () {
@@ -532,37 +502,34 @@
                     }
                 })
                 .catch(function (error) {
-                    console.error('Error en la petición:', error);
-                    closeLoading();
+                    ocultarLoading();
+                    enviando = false;
+
                     if (error.response && error.response.data && error.response.data.message) {
-                        console.error('Mensaje del servidor:', error.response.data.message);
                         toastr.error(error.response.data.message);
                     } else {
-                        console.error('Error desconocido:', error.message);
-                        toastr.error('Error al registrar la bitácora: ' + error.message);
+                        toastr.error('Error al registrar la bitácora');
                     }
                 });
         }
 
-        // ── Contadores de caracteres ──────────────────────────────────
+        // ── Contadores ────────────────────────────────────────────────
         function contarcaracteresNombre() {
             setTimeout(function () {
-                var cantidad = document.getElementById('nombre').value.length;
-                document.getElementById('res-caracter-nombre').innerHTML = cantidad + '/300';
+                document.getElementById('res-caracter-nombre').innerHTML =
+                    document.getElementById('nombre').value.length + '/300';
             }, 10);
         }
-
         function contarcaracteresDescripcion() {
             setTimeout(function () {
-                var cantidad = document.getElementById('descripcion').value.length;
-                document.getElementById('res-caracter-descripcion').innerHTML = cantidad + '/2000';
+                document.getElementById('res-caracter-descripcion').innerHTML =
+                    document.getElementById('descripcion').value.length + '/2000';
             }, 10);
         }
-
         function contarcaracteresUbicacion() {
             setTimeout(function () {
-                var cantidad = document.getElementById('ubicacion').value.length;
-                document.getElementById('res-caracter-ubicacion').innerHTML = cantidad + '/800';
+                document.getElementById('res-caracter-ubicacion').innerHTML =
+                    document.getElementById('ubicacion').value.length + '/800';
             }, 10);
         }
 
