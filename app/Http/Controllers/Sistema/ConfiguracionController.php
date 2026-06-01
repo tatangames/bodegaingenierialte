@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Sistema;
 use App\Http\Controllers\Controller;
 use App\Models\Cuenta;
 use App\Models\Departamentos;
+use App\Models\Empleado;
 use App\Models\ObjetoEspecifico;
 use App\Models\Rubro;
 use App\Models\UnidadMedida;
@@ -369,7 +370,77 @@ class ConfiguracionController extends Controller
     }
 
 
+    // *************************** BITACORAS *************************************************************
 
+
+    public function indexEmpleado(){
+        return view('backend.bitacoras.empleados.vistaempleado');
+    }
+
+    public function tablaEmpleado(){
+
+        $lista = Empleado::orderBy('nombre', 'ASC')->get();
+        return view('backend.bitacoras.empleados.tablaempleado', compact('lista'));
+    }
+
+    public function nuevoEmpleado(Request $request){
+        $regla = array(
+            'nombre' => 'required',
+        );
+
+        $validar = Validator::make($request->all(), $regla);
+
+        if ($validar->fails()){ return ['success' => 0];}
+
+        $dato = new Empleado();
+        $dato->nombre = $request->nombre;
+
+        if($dato->save()){
+            return ['success' => 1];
+        }else{
+            return ['success' => 2];
+        }
+    }
+
+    public function informacionEmpleado(Request $request){
+        $regla = array(
+            'id' => 'required',
+        );
+
+        $validar = Validator::make($request->all(), $regla);
+
+        if ($validar->fails()){ return ['success' => 0];}
+
+        if($lista = Empleado::where('id', $request->id)->first()){
+
+            return ['success' => 1, 'info' => $lista];
+        }else{
+            return ['success' => 2];
+        }
+    }
+
+    public function editarEmpleado(Request $request){
+
+        $regla = array(
+            'id' => 'required',
+            'nombre' => 'required'
+        );
+
+        $validar = Validator::make($request->all(), $regla);
+
+        if ($validar->fails()){ return ['success' => 0];}
+
+        if(Empleado::where('id', $request->id)->first()){
+
+            Empleado::where('id', $request->id)->update([
+                'nombre' => $request->nombre
+            ]);
+
+            return ['success' => 1];
+        }else{
+            return ['success' => 2];
+        }
+    }
 
 
 
