@@ -80,11 +80,11 @@
         }
 
         /* ── Selects fila ── */
-        .destino-select { font-size: 12px; padding: 4px 6px; border-radius: 6px; border: 1px solid #dee2e6; }
+        .destino-select  { font-size: 12px; padding: 4px 6px; border-radius: 6px; border: 1px solid #dee2e6; }
         .proyecto-select { display: none; margin-top: 4px; font-size: 12px; padding: 4px 6px; border-radius: 6px; border: 1px solid #dee2e6; width: 100%; }
 
         /* ── Fila liberar ── */
-        tr.fila-liberar { background: #fff4f4 !important; }
+        tr.fila-liberar    { background: #fff4f4 !important; }
         tr.fila-liberar td { color: #b32d2d; }
 
         /* ── Cabecera de grupo ── */
@@ -128,7 +128,7 @@
 
     <div id="divcontenedor" style="display:none">
 
-        {{-- Cabecera fecha + descripción --}}
+        {{-- ══ Cabecera: fecha + descripción ══ --}}
         <section class="content" style="margin-bottom:0">
             <div class="container-fluid">
                 <div class="card card-info">
@@ -138,7 +138,9 @@
                     <div class="card-body">
                         <div class="row">
                             <div class="col-md-3">
-                                <label class="field-label"><i class="fas fa-calendar-alt mr-1"></i>Fecha de Despacho</label>
+                                <label class="field-label">
+                                    <i class="fas fa-calendar-alt mr-1"></i>Fecha de Despacho
+                                </label>
                                 <input type="date" class="form-control" id="fecha-despacho">
                             </div>
                             <div class="col-md-9">
@@ -155,15 +157,14 @@
             </div>
         </section>
 
-        {{-- Tabla reservas --}}
+        {{-- ══ Tabla de reservas ══ --}}
         <section class="content">
             <div class="container-fluid">
                 <div class="card card-info">
                     <div class="seccion-header"
                          style="display:flex; justify-content:space-between; align-items:center">
                         <h3 style="margin:0;">
-                            <i class="fas fa-lock mr-2"></i>
-                            Reservas Pendientes de Despacho
+                            <i class="fas fa-lock mr-2"></i>Reservas Pendientes de Despacho
                         </h3>
                         <span id="contador-reservas"
                               style="background:rgba(255,255,255,.2); color:#fff; border-radius:20px;
@@ -205,7 +206,142 @@
             </div>
         </section>
 
-    </div>
+        {{-- ══ MODAL: Datos del Acta — GEAD-002-ACTA ══ --}}
+        <div class="modal fade" id="modalActa" data-backdrop="static" data-keyboard="false">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header"
+                         style="background:linear-gradient(135deg, #1a3a6b, #2156af)">
+                        <h4 class="modal-title" style="color:#fff">
+                            <i class="fas fa-file-alt mr-2"></i>Datos del Acta — GEAD-002-ACTA
+                        </h4>
+                        <button type="button" class="close" data-dismiss="modal" style="color:#fff">
+                            <span>&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-info" style="font-size:12px;">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Complete los datos del acta. La <strong>Unidad Solicitante</strong> es requerida.
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="field-label">
+                                        <i class="fas fa-hashtag mr-1"></i>No. de Acta de Recepción
+                                    </label>
+                                    <input type="text" class="form-control" id="acta-numero"
+                                           placeholder="Ej: 001-2025">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="field-label">
+                                        <i class="fas fa-file-invoice mr-1"></i>Referencia de la Solicitud
+                                    </label>
+                                    <input type="text" class="form-control" id="acta-referencia"
+                                           placeholder="Ej: GEAD-002-FORM No. 001">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="field-label">
+                                        <i class="fas fa-building mr-1"></i>Unidad Solicitante
+                                        <span style="color:red">*</span>
+                                    </label>
+                                    <select class="form-control" id="acta-departamento">
+                                        <option value="">— Seleccionar —</option>
+                                        @foreach($departamentos as $d)
+                                            <option value="{{ $d->id }}"
+                                                    data-nombre="{{ $d->nombre }}">{{ $d->nombre }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="field-label">
+                                        <i class="fas fa-user mr-1"></i>Nombre del Solicitante
+                                    </label>
+                                    <input type="text" class="form-control" id="acta-nombre-solicitante"
+                                           placeholder="Nombre completo">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="field-label">
+                                        <i class="fas fa-id-badge mr-1"></i>Cargo del Solicitante
+                                    </label>
+                                    <input type="text" class="form-control" id="acta-cargo-solicitante"
+                                           placeholder="Cargo o puesto">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="field-label">
+                                        <i class="fas fa-tag mr-1"></i>Tipo de Destino / Uso
+                                        <small style="text-transform:none; font-weight:400; color:#888;">
+                                            (puede editarlo)
+                                        </small>
+                                    </label>
+                                    <input type="text" class="form-control" id="acta-tipo-destino"
+                                           placeholder="Ej: Transferencia a proyecto activo…">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="field-label">
+                                <i class="fas fa-sticky-note mr-1"></i>Observaciones
+                            </label>
+                            <textarea class="form-control" id="acta-observaciones" rows="2"
+                                      placeholder="Observaciones adicionales (opcional)"></textarea>
+                        </div>
+
+                        <hr>
+
+                        <div class="form-group">
+                            <label class="field-label">
+                                <i class="fas fa-user mr-1"></i>ENTREGADO POR
+                            </label>
+                            <input type="text" class="form-control" id="nombrefirma-d1"
+                                   value="ENCARGADO DE BODEGA DE PROYECTO O RESPONSABLE ASIGNADO"
+                                   placeholder="Nombre completo">
+                        </div>
+                        <div class="form-group">
+                            <label class="field-label">
+                                <i class="fas fa-user mr-1"></i>RECIBIDO POR
+                            </label>
+                            <input type="text" class="form-control" id="nombrefirma-d2"
+                                   value="RESPONSABLE DEL PROYECTO O SOLICITANTE"
+                                   placeholder="Nombre completo">
+                        </div>
+                    </div>
+                    <div class="modal-footer justify-content-between">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                            <i class="fas fa-times mr-1"></i>Cancelar
+                        </button>
+                        <div>
+                            <button type="button" class="btn btn-info mr-2" onclick="actaGenerarPDF()">
+                                <i class="fas fa-file-pdf mr-1"></i>Generar PDF
+                            </button>
+                            <button type="button" class="btn btn-success" onclick="actaGuardar()">
+                                <i class="fas fa-save mr-1"></i>Guardar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>{{-- fin #divcontenedor --}}
 @stop
 
 @section('js')
@@ -216,18 +352,24 @@
     <script src="{{ asset('js/select2.min.js') }}"></script>
 
     <script>
-        var proyectosActivos = @json($proyectosActivos);
-        var opcionesProyecto = "";
+        var proyectosActivos   = @json($proyectosActivos);
+        var opcionesProyecto   = "";
+        var _payloadDespachos  = null;
 
         $(document).ready(function () {
             document.getElementById("divcontenedor").style.display = "block";
 
-            var hoy = new Date();
-            document.getElementById('fecha-despacho').value = hoy.toJSON().slice(0, 10);
+            document.getElementById('fecha-despacho').value = new Date().toJSON().slice(0, 10);
 
             opcionesProyecto = "<option value='0' disabled selected>Seleccionar proyecto…</option>";
             $.each(proyectosActivos, function (i, p) {
                 opcionesProyecto += "<option value='" + p.id + "'>" + p.nombre + "</option>";
+            });
+
+            $('#acta-departamento').select2({
+                theme: "bootstrap-5",
+                dropdownParent: $('#modalActa'),
+                language: { noResults: function () { return "No encontrado"; } }
             });
 
             cargarReservas();
@@ -238,7 +380,7 @@
         // ─────────────────────────────────────────────────────────────────
         function cargarReservas() {
             axios.post(urlAdmin + '/admin/reservas/listar')
-                .then((response) => {
+                .then(function (response) {
                     if (response.data.success !== 1) {
                         toastr.error('Error al cargar reservas');
                         return;
@@ -248,7 +390,7 @@
                     });
                     renderTabla(lista);
                 })
-                .catch(() => { toastr.error('Error al cargar reservas'); });
+                .catch(function () { toastr.error('Error al cargar reservas'); });
         }
 
         // ─────────────────────────────────────────────────────────────────
@@ -257,7 +399,9 @@
         function renderTabla(lista) {
             $('#tbodyReservas').empty();
             $('#chkTodos').prop('checked', false);
-            $('#contador-reservas').text(lista.length + (lista.length === 1 ? ' reserva' : ' reservas'));
+            $('#contador-reservas').text(
+                lista.length + (lista.length === 1 ? ' reserva' : ' reservas')
+            );
 
             if (lista.length === 0) {
                 $('#tbodyReservas').append(
@@ -268,7 +412,7 @@
                 return;
             }
 
-            // Agrupar por proyecto origen
+            // Agrupar por nombre de proyecto origen
             var grupos = {};
             $.each(lista, function (i, r) {
                 var clave = r.nombre_proyecto_origen ?? 'Sin proyecto';
@@ -290,40 +434,29 @@
                     minimumFractionDigits: 2, maximumFractionDigits: 2
                 });
 
-                // ── Cabecera de grupo ────────────────────────────────────
-                var headerRow =
+                // ── Fila cabecera de grupo ───────────────────────────────
+                $('#tbodyReservas').append(
                     "<tr class='grupo-header' data-grupo='" + gid + "'>" +
                     "<td colspan='8'>" +
                     "<div style='display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px'>" +
 
-                    // Izquierda: toggle + checkbox padre + nombre + contador + total + badge
                     "<div style='display:flex; align-items:center; flex-wrap:wrap; gap:6px'>" +
-                    "<button type='button' class='btn-toggle-grupo' " +
-                    "onclick=\"toggleGrupo('" + gid + "', this)\">" +
+                    "<button type='button' class='btn-toggle-grupo' onclick=\"toggleGrupo('" + gid + "', this)\">" +
                     "<i class='fas fa-chevron-down'></i></button>" +
-
-                    // ── CHECKBOX PADRE: solo se controla manualmente ──────
                     "<input type='checkbox' class='chk-grupo' data-gid='" + gid + "' " +
-                    "onclick=\"toggleSeleccionGrupo('" + gid + "', this)\" " +
-                    "style='margin:0 4px'>" +
-
-                    "<span class='grupo-titulo'><i class='fas fa-folder-open mr-1'></i>" +
-                    nombreProyecto + "</span>" +
+                    "onclick=\"toggleSeleccionGrupo('" + gid + "', this)\" style='margin:0 4px'>" +
+                    "<span class='grupo-titulo'><i class='fas fa-folder-open mr-1'></i>" + nombreProyecto + "</span>" +
                     "<span class='grupo-contador'>" + reservasGrupo.length + "</span>" +
-                    "<span style='margin-left:6px; font-size:12px; color:#6f42c1; font-weight:700'>" +
-                    "Total: $" + totalGrupoFmt + "</span>" +
+                    "<span style='margin-left:6px; font-size:12px; color:#6f42c1; font-weight:700'>Total: $" + totalGrupoFmt + "</span>" +
                     "<span class='badge-grupo' id='badge-" + gid + "' style='display:none'>" +
                     "<i class='fas fa-layer-group mr-1'></i>1 salida agrupada</span>" +
                     "</div>" +
 
-                    // Derecha: selects del grupo
                     "<div class='grupo-acciones'>" +
                     "<label><i class='fas fa-magic mr-1'></i>Aplicar a todo el grupo:</label>" +
-                    "<select class='grupo-destino-select' " +
-                    "onchange=\"aplicarDestinoGrupo('" + gid + "', this)\">" +
+                    "<select class='grupo-destino-select' onchange=\"aplicarDestinoGrupo('" + gid + "', this)\">" +
                     "<option value=''>— Elegir destino —</option>" +
                     "<option value='proyecto'>Transferir a Proyecto</option>" +
-                    "<option value='general'>Salida General</option>" +
                     "<option value='liberar'>Quitar de Reservas (cancelar)</option>" +
                     "</select>" +
                     "<select class='grupo-proyecto-select' id='gproy-" + gid + "' " +
@@ -332,26 +465,31 @@
                     "</select>" +
                     "</div>" +
 
-                    "</div></td></tr>";
+                    "</div></td></tr>"
+                );
 
-                $('#tbodyReservas').append(headerRow);
-
-                // ── Filas de reservas ────────────────────────────────────
+                // ── Filas de reservas del grupo ──────────────────────────
                 $.each(reservasGrupo, function (j, r) {
                     var fechaFmt = r.fecha_reserva
                         ? new Date(r.fecha_reserva).toLocaleDateString('es-SV')
                         : '—';
 
                     var precio   = parseFloat(r.precio ?? 0);
-                    var monto    = precio * parseFloat(r.cantidad ?? 0);
-                    var montoFmt = monto.toLocaleString('es-SV', {
+                    var montoFmt = (precio * parseFloat(r.cantidad ?? 0)).toLocaleString('es-SV', {
                         minimumFractionDigits: 2, maximumFractionDigits: 2
                     });
 
-                    var fila =
-                        "<tr data-id='" + r.id + "' class='fila-reserva' data-grupo='" + gid + "'>" +
+                    var opcionesDestino =
+                        "<option value=''>— Elegir destino —</option>" +
+                        "<option value='proyecto'>Transferir a Proyecto</option>" +
+                        "<option value='liberar'>Quitar de Reservas (cancelar)</option>";
+
+                    // ── CAMBIO CLAVE: data-id-entrada-detalle en el <tr> ──
+                    $('#tbodyReservas').append(
+                        "<tr data-id='" + r.id + "' " +
+                        "data-id-entrada-detalle='" + (r.id_entrada_detalle ?? '') + "' " +
+                        "class='fila-reserva' data-grupo='" + gid + "'>" +
                         "<td style='text-align:center'>" +
-                        // ── CHECKBOX HIJO: NO sincroniza el padre, solo re-evalúa el badge ──
                         "<input type='checkbox' class='chk-reserva' " +
                         "data-grupo='" + gid + "' data-id='" + r.id + "' " +
                         "onchange=\"onCambioFilaCheckbox('" + gid + "')\">" +
@@ -365,19 +503,15 @@
                         "<td>" +
                         "<select class='destino-select select-tipo' style='width:100%' " +
                         "onchange=\"cambiarTipoDestino(this, " + r.id + ", '" + gid + "')\">" +
-                        "<option value=''>— Elegir destino —</option>" +
-                        "<option value='proyecto'>Transferir a Proyecto</option>" +
-                        "<option value='general'>Salida General</option>" +
-                        "<option value='liberar'>Quitar de Reservas (cancelar)</option>" +
+                        opcionesDestino +
                         "</select>" +
                         "<select class='proyecto-select select-proyecto' id='proy-" + r.id + "' " +
                         "onchange=\"actualizarBadgeGrupo('" + gid + "')\">" +
                         opcionesProyecto +
                         "</select>" +
                         "</td>" +
-                        "</tr>";
-
-                    $('#tbodyReservas').append(fila);
+                        "</tr>"
+                    );
                 });
             });
         }
@@ -402,10 +536,8 @@
         // CHECKBOX GLOBAL (thead)
         // ─────────────────────────────────────────────────────────────────
         function toggleTodos(chk) {
-            // Marcar/desmarcar todos los padres e hijos
             $('.chk-grupo').prop('checked', chk.checked);
             $('.chk-reserva').prop('checked', chk.checked);
-            // Re-evaluar badges de todos los grupos
             $('.chk-grupo').each(function () {
                 actualizarBadgeGrupo($(this).data('gid'));
             });
@@ -413,9 +545,6 @@
 
         // ─────────────────────────────────────────────────────────────────
         // CAMBIO EN FILA INDIVIDUAL
-        // FIX: NO toca el checkbox padre (el padre solo se mueve manualmente
-        //      o desde toggleTodos / toggleSeleccionGrupo).
-        //      Solo re-evalúa el badge.
         // ─────────────────────────────────────────────────────────────────
         function onCambioFilaCheckbox(gid) {
             actualizarBadgeGrupo(gid);
@@ -423,30 +552,23 @@
 
         // ─────────────────────────────────────────────────────────────────
         // BADGE "1 salida agrupada"
-        // Condiciones para mostrarlo:
-        //   1. Padre marcado
-        //   2. TODAS las filas del grupo marcadas
-        //   3. Todas tienen el mismo tipoDestino e idDestino
-        //   4. El tipoDestino no está vacío
         // ─────────────────────────────────────────────────────────────────
         function actualizarBadgeGrupo(gid) {
-            var totalHijos  = $(".chk-reserva[data-grupo='" + gid + "']").length;
-            var marcados    = $(".chk-reserva[data-grupo='" + gid + "']:checked").length;
+            var totalHijos   = $(".chk-reserva[data-grupo='" + gid + "']").length;
+            var marcados     = $(".chk-reserva[data-grupo='" + gid + "']:checked").length;
             var padreMarcado = $(".chk-grupo[data-gid='" + gid + "']").prop('checked');
 
-            // Requisito 1 y 2: padre marcado y todos los hijos marcados
             if (!padreMarcado || marcados !== totalHijos || totalHijos === 0) {
                 $('#badge-' + gid).hide();
                 return;
             }
 
-            // Requisito 3 y 4: mismo destino en todas las filas y no vacío
             var destinosUnicos = new Set();
             var tieneVacio     = false;
 
             $(".fila-reserva[data-grupo='" + gid + "']").each(function () {
                 var tipo = $(this).find('.select-tipo').val() || '';
-                if (!tipo) { tieneVacio = true; return false; } // break
+                if (!tipo) { tieneVacio = true; return false; }
                 var proy = (tipo === 'proyecto') ? ($(this).find('.select-proyecto').val() || '') : '';
                 destinosUnicos.add(tipo + '|' + proy);
             });
@@ -460,7 +582,6 @@
 
         // ─────────────────────────────────────────────────────────────────
         // APLICAR DESTINO A TODO EL GRUPO
-        // Aplica tipo Y proyecto a TODAS las filas, luego marca padre e hijos
         // ─────────────────────────────────────────────────────────────────
         function aplicarDestinoGrupo(gid, selectEl) {
             var valor       = $(selectEl).val();
@@ -470,13 +591,10 @@
                 gproySelect.show();
             } else {
                 gproySelect.hide().val('0');
-                // Si no es proyecto, limpiar proyecto en todas las filas
                 $(".fila-reserva[data-grupo='" + gid + "']").each(function () {
-                    var idReserva = $(this).data('id');
                     $(this).find('.select-tipo').val(valor);
-                    cambiarTipoDestino($(this).find('.select-tipo')[0], idReserva, gid, false);
+                    cambiarTipoDestino($(this).find('.select-tipo')[0], $(this).data('id'), gid, true);
                 });
-                // Marcar padre e hijos
                 $(".chk-reserva[data-grupo='" + gid + "']").prop('checked', true);
                 $(".chk-grupo[data-gid='" + gid + "']").prop('checked', true);
                 actualizarBadgeGrupo(gid);
@@ -485,13 +603,10 @@
             if (!valor) return;
 
             if (valor === 'proyecto') {
-                // Solo aplicar tipo por ahora; el proyecto se aplica en aplicarProyectoGrupo
                 $(".fila-reserva[data-grupo='" + gid + "']").each(function () {
-                    var idReserva = $(this).data('id');
                     $(this).find('.select-tipo').val('proyecto');
-                    cambiarTipoDestino($(this).find('.select-tipo')[0], idReserva, gid, false);
+                    cambiarTipoDestino($(this).find('.select-tipo')[0], $(this).data('id'), gid, true);
                 });
-                // Marcar padre e hijos
                 $(".chk-reserva[data-grupo='" + gid + "']").prop('checked', true);
                 $(".chk-grupo[data-gid='" + gid + "']").prop('checked', true);
                 actualizarBadgeGrupo(gid);
@@ -505,26 +620,21 @@
             var idProyecto = $(selectEl).val();
             if (!idProyecto || idProyecto === '0') return;
 
-            // Aplica el proyecto a TODAS las filas con tipo=proyecto
             $(".fila-reserva[data-grupo='" + gid + "']").each(function () {
                 if ($(this).find('.select-tipo').val() === 'proyecto') {
                     $(this).find('.select-proyecto').val(idProyecto).show();
                 }
             });
-
             actualizarBadgeGrupo(gid);
         }
 
         // ─────────────────────────────────────────────────────────────────
         // CAMBIO DE TIPO EN FILA INDIVIDUAL
-        // skipBadge=false por defecto; se pasa true cuando se llama en lote
-        // para evitar N actualizaciones y hacer una sola al final
         // ─────────────────────────────────────────────────────────────────
         function cambiarTipoDestino(selectEl, idReserva, gid, skipBadge) {
             var val        = $(selectEl).val();
             var fila       = $(selectEl).closest('tr');
             var proySelect = $('#proy-' + idReserva);
-            // Obtener gid desde el argumento o desde la fila
             var grupoId    = gid || fila.data('grupo');
 
             if (val === 'proyecto') {
@@ -534,13 +644,11 @@
             }
             fila.toggleClass('fila-liberar', val === 'liberar');
 
-            if (!skipBadge) {
-                actualizarBadgeGrupo(grupoId);
-            }
+            if (!skipBadge) actualizarBadgeGrupo(grupoId);
         }
 
         // ─────────────────────────────────────────────────────────────────
-        // VALIDAR Y CONFIRMAR
+        // VALIDAR Y ABRIR MODAL ACTA
         // ─────────────────────────────────────────────────────────────────
         function preguntaDespachar() {
             var seleccionados = $('.chk-reserva:checked');
@@ -551,7 +659,6 @@
             }
 
             var valido = true;
-
             seleccionados.each(function () {
                 var idReserva = $(this).data('id');
                 var gid       = $(this).data('grupo');
@@ -559,14 +666,11 @@
                 var tipo      = fila.find('.select-tipo').val();
                 var proyDest  = fila.find('.select-proyecto').val();
 
-                // Si el padre está marcado y el tipo viene del grupo, el proyecto
-                // también puede venir del select del grupo
-                var padreMarcado = $(".chk-grupo[data-gid='" + gid + "']").prop('checked');
-                if (padreMarcado && tipo === 'proyecto' && (!proyDest || proyDest === '0')) {
-                    // Intentar tomar el proyecto del selector del grupo
+                if ($(".chk-grupo[data-gid='" + gid + "']").prop('checked')
+                    && tipo === 'proyecto'
+                    && (!proyDest || proyDest === '0')) {
                     var proyGrupo = $('#gproy-' + gid).val();
                     if (proyGrupo && proyGrupo !== '0') {
-                        // Aplicar el proyecto del grupo a esta fila silenciosamente
                         $('#proy-' + idReserva).val(proyGrupo).show();
                         proyDest = proyGrupo;
                     }
@@ -586,64 +690,106 @@
 
             if (!valido) return;
 
-            // ── Contar grupos completos vs individuales para el mensaje ────
-            var gruposCompletos = 0;
-            var individuales    = 0;
-            var hayLiberadas    = false;
+            _payloadDespachos = armarPayload();
 
-            var infoGrupos = {};
+            var soloLiberar = true;
             seleccionados.each(function () {
-                var gid  = $(this).data('grupo');
-                var tipo = $(this).closest('tr').find('.select-tipo').val();
-                if (tipo === 'liberar') hayLiberadas = true;
-                if (!infoGrupos[gid]) infoGrupos[gid] = { marcados: 0 };
-                infoGrupos[gid].marcados++;
-            });
-
-            $.each(infoGrupos, function (gid, info) {
-                var totalEnGrupo = $(".chk-reserva[data-grupo='" + gid + "']").length;
-                var padreMarcado = $(".chk-grupo[data-gid='" + gid + "']").prop('checked');
-                if (padreMarcado && info.marcados === totalEnGrupo) {
-                    gruposCompletos++;
-                } else {
-                    individuales += info.marcados;
+                if ($(this).closest('tr').find('.select-tipo').val() !== 'liberar') {
+                    soloLiberar = false;
+                    return false;
                 }
             });
 
-            var partes = [];
-            if (gruposCompletos > 0)
-                partes.push(gruposCompletos + (gruposCompletos === 1
-                    ? ' grupo registrará <strong>1 salida agrupada</strong>'
-                    : ' grupos registrarán <strong>1 salida agrupada cada uno</strong>'));
-            if (individuales > 0)
-                partes.push(individuales + (individuales === 1
-                    ? ' reserva individual registrará <strong>su propia salida</strong>'
-                    : ' reservas individuales registrarán <strong>su propia salida</strong>'));
-            if (hayLiberadas)
-                partes.push('algunas reservas serán <strong>canceladas</strong> sin generar salida');
-
-            Swal.fire({
-                title: '¿Procesar reservas?',
-                html:  '• ' + partes.join('<br>• '),
-                icon:  'question',
-                showCancelButton:   true,
-                confirmButtonColor: '#6f42c1',
-                cancelButtonColor:  '#d33',
-                cancelButtonText:   'Cancelar',
-                confirmButtonText:  'Sí, procesar'
-            }).then((result) => { if (result.isConfirmed) ejecutarDespacho(); });
+            if (soloLiberar) {
+                Swal.fire({
+                    title: '¿Cancelar reservas?',
+                    html: 'Las reservas seleccionadas serán <strong>canceladas</strong> sin generar salida.',
+                    icon: 'question',
+                    showCancelButton:   true,
+                    confirmButtonColor: '#6f42c1',
+                    cancelButtonColor:  '#d33',
+                    cancelButtonText:   'Cancelar',
+                    confirmButtonText:  'Sí, cancelar reservas'
+                }).then(function (result) {
+                    if (result.isConfirmed) ejecutarDespacho(null);
+                });
+            } else {
+                $('#modalActa').modal('show');
+            }
         }
 
         // ─────────────────────────────────────────────────────────────────
-        // EJECUTAR DESPACHO
+        // ACTA — GENERAR PDF (sin guardar)
         // ─────────────────────────────────────────────────────────────────
-        function ejecutarDespacho() {
-            var fecha       = document.getElementById('fecha-despacho').value;
-            var descripcion = document.getElementById('descripcion-despacho').value;
+        function actaGenerarPDF() {
+            if (!$('#acta-departamento').val()) {
+                toastr.error('La Unidad Solicitante es requerida');
+                return;
+            }
 
-            if (!fecha) { toastr.error('Fecha es requerida'); return; }
+            // ── CAMBIO CLAVE: leer id_entrada_detalle desde el data attribute ──
+            var materiales = [];
+            $('.chk-reserva:checked').each(function () {
+                var fila = $(this).closest('tr');
+                if (fila.find('.select-tipo').val() === 'proyecto') {
+                    materiales.push({
+                        nombre:             fila.find('td:eq(1)').text().trim(),
+                        cantidad:           fila.find('td:eq(3)').text().trim(),
+                        id_entrada_detalle: fila.data('id-entrada-detalle') || null
+                    });
+                }
+            });
 
-            // Agrupar checkboxes marcados por gid
+            var form = $('<form>', {
+                method: 'POST',
+                action: "{{ URL::to('admin/reporte/acta/preview/reserva') }}",
+                target: '_blank'
+            });
+            form.append($('<input>', { type:'hidden', name:'_token',        value:"{{ csrf_token() }}" }));
+            form.append($('<input>', { type:'hidden', name:'nombre_origen', value:'DESPACHO DE RESERVAS' }));
+            form.append($('<input>', { type:'hidden', name:'fecha',         value:document.getElementById('fecha-despacho').value }));
+            form.append($('<input>', { type:'hidden', name:'numero',        value:$('#acta-numero').val().trim() }));
+            form.append($('<input>', { type:'hidden', name:'referencia',    value:$('#acta-referencia').val().trim() }));
+            form.append($('<input>', { type:'hidden', name:'depto',         value:$('#acta-departamento option:selected').text() }));
+            form.append($('<input>', { type:'hidden', name:'nombre',        value:$('#acta-nombre-solicitante').val().trim() }));
+            form.append($('<input>', { type:'hidden', name:'cargo',         value:$('#acta-cargo-solicitante').val().trim() }));
+            form.append($('<input>', { type:'hidden', name:'observaciones', value:$('#acta-observaciones').val().trim() }));
+            form.append($('<input>', { type:'hidden', name:'tipodestino',   value:$('#acta-tipo-destino').val().trim() }));
+            form.append($('<input>', { type:'hidden', name:'nombrefirma1',  value:$('#nombrefirma-d1').val().trim() }));
+            form.append($('<input>', { type:'hidden', name:'nombrefirma2',  value:$('#nombrefirma-d2').val().trim() }));
+            form.append($('<input>', { type:'hidden', name:'materiales',    value:JSON.stringify(materiales) }));
+            $('body').append(form);
+            form.submit();
+            form.remove();
+        }
+
+        // ─────────────────────────────────────────────────────────────────
+        // ACTA — GUARDAR
+        // ─────────────────────────────────────────────────────────────────
+        function actaGuardar() {
+            var actaIdDepto = $('#acta-departamento').val();
+            if (!actaIdDepto) {
+                toastr.error('La Unidad Solicitante es requerida');
+                return;
+            }
+            $('#modalActa').modal('hide');
+            ejecutarDespacho({
+                acta_numero:          $('#acta-numero').val().trim(),
+                acta_referencia:      $('#acta-referencia').val().trim(),
+                acta_id_departamento: actaIdDepto,
+                acta_nombre_solic:    $('#acta-nombre-solicitante').val().trim(),
+                acta_cargo_solic:     $('#acta-cargo-solicitante').val().trim(),
+                acta_observaciones:   $('#acta-observaciones').val().trim(),
+                acta_tipo_destino:    $('#acta-tipo-destino').val().trim(),
+                firma_1:              $('#nombrefirma-d1').val().trim(),
+                firma_2:              $('#nombrefirma-d2').val().trim(),
+            });
+        }
+
+        // ─────────────────────────────────────────────────────────────────
+        // ARMAR PAYLOAD DE DESPACHOS
+        // ─────────────────────────────────────────────────────────────────
+        function armarPayload() {
             var mapaGrupos = {};
 
             $('.chk-reserva:checked').each(function () {
@@ -653,7 +799,6 @@
                 var tipo      = fila.find('.select-tipo').val();
                 var proyDest  = fila.find('.select-proyecto').val();
 
-                // Si el proyecto de la fila está vacío pero el padre tiene proyecto, usarlo
                 if (tipo === 'proyecto' && (!proyDest || proyDest === '0')) {
                     var proyGrupo = $('#gproy-' + gid).val();
                     if (proyGrupo && proyGrupo !== '0') proyDest = proyGrupo;
@@ -667,39 +812,53 @@
                 });
             });
 
-            // Armar payload: { esGrupo, gid, items }
             var despachos = [];
-
             $.each(mapaGrupos, function (gid, filas) {
                 var totalEnGrupo = $(".chk-reserva[data-grupo='" + gid + "']").length;
                 var padreMarcado = $(".chk-grupo[data-gid='" + gid + "']").prop('checked');
 
-                // Verificar destino uniforme
                 var destinosUnicos = new Set();
                 filas.forEach(function (f) {
                     var proy = (f.tipoDestino === 'proyecto') ? (f.idDestino || '') : '';
                     destinosUnicos.add(f.tipoDestino + '|' + proy);
                 });
 
-                var esGrupoCompleto = padreMarcado
-                    && (filas.length === totalEnGrupo)
-                    && (destinosUnicos.size === 1);
-
                 despachos.push({
-                    esGrupo: esGrupoCompleto,
+                    esGrupo: padreMarcado && (filas.length === totalEnGrupo) && (destinosUnicos.size === 1),
                     gid:     gid,
                     items:   filas,
                 });
             });
 
+            return despachos;
+        }
+
+        // ─────────────────────────────────────────────────────────────────
+        // EJECUTAR DESPACHO
+        // ─────────────────────────────────────────────────────────────────
+        function ejecutarDespacho(actaDatos) {
+            var fecha       = document.getElementById('fecha-despacho').value;
+            var descripcion = document.getElementById('descripcion-despacho').value;
+
+            if (!fecha) { toastr.error('Fecha es requerida'); return; }
+
+            var despachos = _payloadDespachos || armarPayload();
+
             openLoading();
+
             var formData = new FormData();
             formData.append('fecha',       fecha);
             formData.append('descripcion', descripcion);
             formData.append('despachos',   JSON.stringify(despachos));
 
+            if (actaDatos) {
+                $.each(actaDatos, function (key, val) {
+                    formData.append(key, val);
+                });
+            }
+
             axios.post(urlAdmin + '/admin/reservas/despachar', formData)
-                .then((response) => {
+                .then(function (response) {
                     closeLoading();
                     if (response.data.success === 10) {
                         Swal.fire({
@@ -709,16 +868,19 @@
                             allowOutsideClick:  false,
                             confirmButtonColor: '#6f42c1',
                             confirmButtonText:  'Aceptar'
-                        }).then((r) => { if (r.isConfirmed) location.reload(); });
+                        }).then(function (r) { if (r.isConfirmed) location.reload(); });
+
                     } else if (response.data.success === 2) {
                         toastr.error(response.data.msg ?? 'Error en reserva');
+
                     } else if (response.data.success === 4) {
                         toastr.error(response.data.msg ?? 'Proyecto destino cerrado');
+
                     } else {
                         toastr.error('Error al despachar');
                     }
                 })
-                .catch(() => { toastr.error('Error al despachar'); closeLoading(); });
+                .catch(function () { toastr.error('Error al despachar'); closeLoading(); });
         }
     </script>
 @endsection

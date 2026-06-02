@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Sistema;
 
 use App\Http\Controllers\Controller;
+use App\Models\Departamentos;
 use App\Models\Entradas;
 use App\Models\EntradasDetalle;
 use App\Models\Materiales;
@@ -26,8 +27,11 @@ class ReservasController extends Controller
             ->orderBy('nombre')
             ->get();
 
+        $departamentos = Departamentos::orderBy('nombre', 'ASC')->get();
+
         return view('backend.admin.repuestos.transferenciacerrados.vistareservaspendientes', [
             'proyectosActivos' => $proyectosActivos,
+            'departamentos' => $departamentos
         ]);
     }
 

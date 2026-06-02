@@ -2050,10 +2050,10 @@ Este proyecto no tiene registro de cierre generado.</p>", 2);
             : 'Todas las fechas';
 
         $tituloTipo = $tipo === 'proyecto'
-            ? "REPORTE DE MATERIALES SOBRANTES<br>TRANSFERIDOS A PROYECTO DE INVERSIÓN PÚBLICA"
+            ? "REPORTE DE SALIDAS DE MATERIALES SOBRANTES<br>TRANSFERIDOS A PROYECTO DE INVERSIÓN PÚBLICA"
             : "REPORTE DE SALIDAS DE MATERIALES SOBRANTES<br>PARA MANTENIMIENTO DE INSTALACIONES MUNICIPALES";
 
-        $codigoPDF = 'GEAD-001-REPO';
+        $codigoPDF = 'GEAD-002-REPO';
 
         $colorTipo = '#000000';
         $textoTipo = $tipo === 'proyecto'
@@ -6386,6 +6386,362 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
         }
     }
 
+    public function actaRecepcionPreviewReserva(Request $request)
+    {
+        // ── Nombre del proyecto origen ────────────────────────────────────────
+        $nombreProyecto = '—';
+        if ($request->filled('idproy')) {
+            $proyecto = Tipoproyecto::find($request->idproy);
+            if ($proyecto) $nombreProyecto = $proyecto->nombre;
+        }
+        if ($nombreProyecto === '—' && $request->filled('nombre_origen')) {
+            $nombreProyecto = $request->nombre_origen;
+        }
+
+        $logoalcaldia       = 'images/logo.png';
+        $fechaFormat        = Carbon::parse($request->fecha)->format('d/m/Y');
+        $informacionGeneral = InformacionGeneral::where('id', 1)->first();
+
+        $numero        = $request->numero        ?? '';
+        $referencia    = $request->referencia    ?? '';
+        $depto         = $request->depto         ?? '';
+        $nombre        = $request->nombre        ?? '';
+        $cargo         = $request->cargo         ?? '';
+        $observaciones = $request->observaciones ?? '';
+        $tipodestino   = $request->tipodestino   ?? '';
+        $nombreFirma1  = $request->nombrefirma1  ?? '';
+        $nombreFirma2  = $request->nombrefirma2  ?? '';
+
+        $materiales = json_decode($request->materiales, true) ?? [];
+
+        // ── Armar filas de materiales ─────────────────────────────────────────
+        $rows = [];
+        foreach ($materiales as $mat) {
+            $idEntDet = $mat['id_entrada_detalle'] ?? null;
+            $codigo   = '—';
+            $medida   = '—';
+            $precio   = 0;
+
+            if ($idEntDet) {
+                // Query directo con JOINs — más robusto que eager loading encadenado
+                $entDet = DB::table('entradas_detalle as ed')
+                    ->leftJoin('materiales as m',          'm.id',           '=', 'ed.id_material')
+                    ->leftJoin('objeto_especifico as oe',  'oe.id',          '=', 'm.id_objespecifico')
+                    ->leftJoin('unidadmedida as um',       'um.id',          '=', 'm.id_medida')
+                    ->where('ed.id', $idEntDet)
+                    ->selectRaw('
+                    ed.id,
+                    ed.precio,
+                    ed.codigo        as ed_codigo,
+                    oe.codigo        as codigo_presup,
+                    um.nombre        as unidad_medida
+                ')
+                    ->first();
+
+                if ($entDet) {
+                    $codigo = $entDet->codigo_presup
+                        ?? ($entDet->ed_codigo ?: null)
+                        ?? '—';
+                    $medida = $entDet->unidad_medida ?? '—';
+                    $precio = $entDet->precio        ?? 0;
+                }
+            }
+
+            $cantidad = (int)($mat['cantidad'] ?? 0);
+            $rows[] = [
+                'codigo'   => $codigo,
+                'nombre'   => $mat['nombre'] ?? '—',
+                'medida'   => $medida,
+                'cantidad' => $cantidad,
+                'precio'   => $precio,
+                'subtotal' => $cantidad * $precio,
+            ];
+        }
+
+        usort($rows, fn($a, $b) => strcmp($a['codigo'], $b['codigo']));
+        $granTotal = array_sum(array_column($rows, 'subtotal'));
+
+        // ── Estilos ───────────────────────────────────────────────────────────
+        $thStyle  = "font-weight:bold; font-size:10px; border:0.8px solid #000; padding:4px; background:#d9e1f2; text-align:center;";
+        $tdStyle  = "font-size:10px; border:0.8px solid #000; padding:4px;";
+        $tdC      = $tdStyle . " text-align:center;";
+        $tdR      = $tdStyle . " text-align:right;";
+        $subStyle = "font-weight:bold; font-size:10px; text-align:right; border:0.8px solid #000; padding:4px; background:#f2f4f8;";
+        $subLabel = "font-weight:bold; font-size:10px; text-align:center; border:0.8px solid #000; padding:4px; background:#f2f4f8;";
+
+        // ═════════════════════════════════════════════════════════════════════
+        // BUILD HTML
+        // ═════════════════════════════════════════════════════════════════════
+
+        // ── Encabezado ────────────────────────────────────────────────────────
+        $html = "
+<table width='100%' style='border-collapse:collapse; font-family:Arial,sans-serif;'>
+    <tr>
+        <td style='width:25%; border:0.8px solid #000; padding:6px 8px;'>
+            <table width='100%'>
+                <tr>
+                    <td style='width:35%; text-align:left;'>
+                        <img src='{$logoalcaldia}' style='height:38px'>
+                    </td>
+                    <td style='width:65%; text-align:left; color:#104e8c;
+                                font-size:12px; font-weight:bold; line-height:1.3;'>
+                        SANTA ANA NORTE<br>EL SALVADOR
+                    </td>
+                </tr>
+            </table>
+        </td>
+        <td style='width:50%; border-top:0.8px solid #000; border-bottom:0.8px solid #000;
+                   padding:6px 8px; text-align:center; font-size:15px; font-weight:bold;'>
+            ACTA DE RECEPCIÓN DE<br>MATERIALES SOBRANTES
+        </td>
+        <td style='width:25%; border:0.8px solid #000; padding:0; vertical-align:top;'>
+            <table width='100%' style='font-size:10px;'>
+                <tr>
+                    <td width='40%' style='border-right:0.8px solid #000; border-bottom:0.8px solid #000; padding:4px 6px;'>
+                        <strong>Código:</strong>
+                    </td>
+                    <td width='60%' style='border-bottom:0.8px solid #000; padding:4px 6px; text-align:center;'>
+                        GEAD-002-ACTA
+                    </td>
+                </tr>
+                <tr>
+                    <td style='border-right:0.8px solid #000; border-bottom:0.8px solid #000; padding:4px 6px;'>
+                        <strong>Versión:</strong>
+                    </td>
+                    <td style='border-bottom:0.8px solid #000; padding:4px 6px; text-align:center;'>000</td>
+                </tr>
+                <tr>
+                    <td style='border-right:0.8px solid #000; padding:4px 6px;'>
+                        <strong>Fecha de vigencia:</strong>
+                    </td>
+                    <td style='padding:4px 6px; text-align:center;'>22/05/2026</td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table><br>";
+
+        // ── No. Acta y Fecha ──────────────────────────────────────────────────
+        $html .= "
+<table width='100%' style='border-collapse:collapse; margin-bottom:4px; margin-top:6px;'>
+    <tr>
+        <td style='width:20%; border:0.8px solid #ccc; padding:5px 8px;
+                   font-size:11px; font-weight:bold; background:#f5f5f5;'>
+            NO. DE ACTA DE RECEPCIÓN:
+        </td>
+        <td style='width:44%; border:0.8px solid #ccc; padding:5px 8px; font-size:11px;'>
+            " . e($numero) . "
+        </td>
+        <td style='width:5%; border:none;'></td>
+        <td style='width:13%; border:0.8px solid #000; padding:5px 8px;
+                   font-size:11px; font-weight:bold; text-align:center; background:#f5f5f5;'>
+            FECHA:
+        </td>
+        <td style='width:18%; border:0.8px solid #000; padding:5px 8px;
+                   font-size:11px; text-align:center;'>
+            {$fechaFormat}
+        </td>
+    </tr>
+</table>";
+
+        // ── Campos del acta ───────────────────────────────────────────────────
+        $campos = [
+            'PROYECTO DE ORIGEN DE LOS MATERIALES' => $nombreProyecto,
+            'REFERENCIA DE LA SOLICITUD'           => $referencia,
+            'TIPO DE DESTINO / USO'                => $tipodestino,
+            'UNIDAD SOLICITANTE'                   => $depto,
+            'NOMBRE DE SOLICITANTE'                => $nombre,
+            'CARGO DE SOLICITANTE'                 => $cargo,
+        ];
+
+        $html .= "<table width='100%' style='border-collapse:collapse; margin-bottom:4px;'>";
+        foreach ($campos as $label => $valor) {
+            $html .= "
+    <tr>
+        <td style='width:25%; border:0.8px solid #ccc; padding:5px 8px;
+                   font-size:11px; font-weight:bold; background:#f5f5f5;'>
+            {$label}:
+        </td>
+        <td style='border:0.8px solid #ccc; padding:5px 8px; font-size:11px;'>
+            " . e($valor) . "
+        </td>
+    </tr>";
+        }
+        $html .= "</table>";
+
+        // ── Texto de declaración ──────────────────────────────────────────────
+        $html .= "
+<table width='100%' style='border-collapse:collapse; margin-bottom:8px; margin-top:4px;'>
+    <tr>
+        <td style='border:0.8px solid #000; padding:8px 10px; font-size:10px;
+                   text-align:justify; line-height:1.6;'>
+            POR MEDIO DEL PRESENTE, EL RESPONSABLE DE LA BODEGA DE PROYECTOS O RESPONSABLE ASIGNADO
+            HACE ENTREGA FORMAL DE LOS MATERIALES DETALLADOS EN EL FORMULARIO DE SOLICITUD. POR SU PARTE,
+            EL RESPONSABLE QUE RECIBE DECLARA LA RECEPCIÓN CONFORME DE LOS MISMOS, ASUMIENDO LA CUSTODIA
+            Y RESPONSABILIDAD PARA SU USO EXCLUSIVO EN EL DESTINO ESPECIFICADO Y SE COMPROMETE A REALIZAR
+            LOS REGISTROS DE CONSUMO CORRESPONDIENTES.
+        </td>
+    </tr>
+</table>";
+
+        // ── Tabla de materiales ───────────────────────────────────────────────
+        $html .= "
+<table width='100%' style='border-collapse:collapse;'>
+    <thead>
+        <tr>
+            <th style='{$thStyle} width:5%;'>No.</th>
+            <th style='{$thStyle} width:10%;'>COD PRESUP.</th>
+            <th style='{$thStyle} width:35%;'>DESCRIPCIÓN</th>
+            <th style='{$thStyle} width:12%;'>U. DE MEDIDA</th>
+            <th style='{$thStyle} width:10%;'>CANTIDAD</th>
+            <th style='{$thStyle} width:13%;'>PRECIO UNITARIO</th>
+            <th style='{$thStyle} width:15%;'>SUBTOTAL</th>
+        </tr>
+    </thead>
+    <tbody>";
+
+        $i             = 1;
+        $codigoActual  = null;
+        $subtotalGrupo = 0;
+
+        foreach ($rows as $r) {
+            if ($codigoActual !== null && $r['codigo'] !== $codigoActual) {
+                $html .= "
+        <tr>
+            <td colspan='6' style='{$subLabel}'>SUBTOTAL [" . e($codigoActual) . "]</td>
+            <td style='{$subStyle}'>$ " . number_format($subtotalGrupo, 4) . "</td>
+        </tr>";
+                $subtotalGrupo = 0;
+            }
+
+            $codigoActual   = $r['codigo'];
+            $subtotalGrupo += $r['subtotal'];
+
+            $html .= "
+        <tr>
+            <td style='{$tdC}'>{$i}</td>
+            <td style='{$tdC}'>" . e($r['codigo']) . "</td>
+            <td style='{$tdStyle}'>" . e($r['nombre']) . "</td>
+            <td style='{$tdC}'>" . e($r['medida']) . "</td>
+            <td style='{$tdC} font-weight:bold;'>" . number_format($r['cantidad']) . "</td>
+            <td style='{$tdR}'>$ " . number_format($r['precio'], 4) . "</td>
+            <td style='{$tdR}'>$ " . number_format($r['subtotal'], 4) . "</td>
+        </tr>";
+            $i++;
+        }
+
+        if ($codigoActual !== null) {
+            $html .= "
+        <tr>
+            <td colspan='6' style='{$subLabel}'>SUBTOTAL [" . e($codigoActual) . "]</td>
+            <td style='{$subStyle}'>$ " . number_format($subtotalGrupo, 4) . "</td>
+        </tr>";
+        }
+
+        $html .= "
+        <tr>
+            <td colspan='6' style='font-weight:bold; font-size:11px; text-align:center;
+                                    border:0.8px solid #000; padding:5px; background:#d9e1f2;'>
+                TOTAL GENERAL
+            </td>
+            <td style='font-weight:bold; font-size:11px; text-align:right;
+                        border:0.8px solid #000; padding:5px; background:#d9e1f2;'>
+                $ " . number_format($granTotal, 4) . "
+            </td>
+        </tr>
+    </tbody>
+</table>";
+
+        // ── Observaciones ─────────────────────────────────────────────────────
+        $html .= "
+<br>
+<table width='100%' border='1' cellspacing='0' cellpadding='6'
+       style='border-collapse:collapse; font-size:11px;'>
+    <tr style='background:#f2f4f8;'>
+        <td style='font-weight:bold;'>OBSERVACIONES:</td>
+    </tr>
+    <tr>
+        <td style='min-height:40px; vertical-align:top;'>" . e($observaciones) . "</td>
+    </tr>
+</table>";
+
+        // ── Espaciador antes de firmas ────────────────────────────────────────
+        $px = $informacionGeneral->px_firmas ?? 40;
+        $html .= "<div style='margin-top:{$px}px;'></div>";
+
+        // ── Firmas ────────────────────────────────────────────────────────────
+        $html .= "
+<table width='100%' style='border-collapse:collapse; font-family:Arial,sans-serif; font-size:35px; line-height:1.5;'>
+    <tr>
+        <td style='width:50%; padding-right:40px; vertical-align:top;'>
+            <strong style='font-size:40px;'>ENTREGADO POR:</strong>
+            <br><br><br><br><br><br><br><br>
+            <table width='100%' style='border-collapse:collapse;'>
+                <tr>
+                    <td style='width:18%; font-size:40px; padding-bottom:12px;'>FIRMA:</td>
+                    <td style='border-bottom:1.5px solid #000; width:82%;'>&nbsp;</td>
+                </tr>
+                <tr><td colspan='2'><br><br><br><br></td></tr>
+                <tr>
+                    <td style='font-size:40px; padding-bottom:12px;'>NOMBRE:</td>
+                    <td style='border-bottom:1.5px solid #000;'>&nbsp;</td>
+                </tr>
+                <tr><td colspan='2'><br><br><br><br></td></tr>
+                <tr>
+                    <td style='font-size:40px; padding-bottom:12px;'>CARGO:</td>
+                    <td style='border-bottom:1.5px solid #000;'>&nbsp;</td>
+                </tr>
+                <tr><td colspan='2'><br><br><br><br></td></tr>
+                <tr>
+                    <td colspan='2' style='text-align:center; font-size:40px; line-height:1.5;'>
+                        {$nombreFirma1}
+                    </td>
+                </tr>
+            </table>
+        </td>
+        <td style='width:50%; padding-left:40px; vertical-align:top;'>
+            <strong style='font-size:40px;'>RECIBIDO POR:</strong>
+            <br><br><br><br><br><br><br><br>
+            <table width='100%' style='border-collapse:collapse;'>
+                <tr>
+                    <td style='width:18%; font-size:40px; padding-bottom:12px;'>FIRMA:</td>
+                    <td style='border-bottom:1.5px solid #000; width:82%;'>&nbsp;</td>
+                </tr>
+                <tr><td colspan='2'><br><br><br><br></td></tr>
+                <tr>
+                    <td style='font-size:40px; padding-bottom:12px;'>NOMBRE:</td>
+                    <td style='border-bottom:1.5px solid #000;'>&nbsp;</td>
+                </tr>
+                <tr><td colspan='2'><br><br><br><br></td></tr>
+                <tr>
+                    <td style='font-size:40px; padding-bottom:12px;'>CARGO:</td>
+                    <td style='border-bottom:1.5px solid #000;'>&nbsp;</td>
+                </tr>
+                <tr><td colspan='2'><br><br><br><br></td></tr>
+                <tr>
+                    <td colspan='2' style='text-align:center; font-size:40px; line-height:1.5;'>
+                        {$nombreFirma2}
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>";
+
+        // ═════════════════════════════════════════════════════════════════════
+        // GENERAR PDF
+        // ═════════════════════════════════════════════════════════════════════
+        $mpdf = new \Mpdf\Mpdf([
+            'tempDir'     => sys_get_temp_dir(),
+            'format'      => 'LETTER',
+            'orientation' => 'P',
+        ]);
+        $mpdf->SetTitle('GEAD-002-ACTA Preview');
+        $mpdf->showImageErrors = false;
+        $mpdf->setFooter("Página {PAGENO} de {nb}");
+        $mpdf->WriteHTML($html, \Mpdf\HTMLParserMode::HTML_BODY);
+        $mpdf->Output();
+    }
 
 
 
