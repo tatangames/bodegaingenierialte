@@ -33,6 +33,10 @@ return new class extends Migration
             $table->string('firma_1', 200)->nullable();
             $table->string('firma_2', 200)->nullable();
 
+            // FICHA DE SALIDA
+            $table->string('ficha_nombre', 100)->nullable();
+            $table->string('ficha_talonario', 100)->nullable();
+
             $table->foreign('id_tipoproyecto')->references('id')->on('tipoproyecto');
             $table->foreign('id_tipoproyecto_transferencia')->references('id')->on('tipoproyecto');
         });

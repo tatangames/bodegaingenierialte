@@ -142,12 +142,30 @@
 
                     <div class="card-body">
 
-                        {{-- Fila 1: Fecha --}}
+                        {{-- Fila 1: Fecha + N. Talonario + Nombre --}}
                         <div class="row">
                             <div class="col-md-3">
                                 <div class="form-group">
                                     <label class="field-label"><i class="fas fa-calendar-alt mr-1"></i>Fecha</label>
                                     <input type="date" class="form-control" id="fecha">
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="form-group">
+                                    <label class="field-label">
+                                        <i class="fas fa-hashtag mr-1"></i>N. Talonario
+                                        <small style="text-transform:none; font-weight:400">(Opc.)</small>
+                                    </label>
+                                    <input type="text" class="form-control" autocomplete="off" maxlength="50" id="n_talonario" placeholder="Ej: 001">
+                                </div>
+                            </div>
+                            <div class="col-md-7">
+                                <div class="form-group">
+                                    <label class="field-label">
+                                        <i class="fas fa-user mr-1"></i>Nombre
+                                        <small style="text-transform:none; font-weight:400">(Opc.)</small>
+                                    </label>
+                                    <input type="text" class="form-control" autocomplete="off" maxlength="100" id="nombre_recibe" placeholder="Nombre de quien recibe…">
                                 </div>
                             </div>
                         </div>
@@ -223,11 +241,19 @@
                         </div>
                     </div>
 
-                    <div class="card-footer d-flex justify-content-between align-items-center"
-                         style="border-top:2px solid #e8eef8; background:#f8faff; border-radius:0 0 10px 10px">
-                        <small class="text-muted">Agregue materiales usando el buscador</small>
-                        <button type="button" class="btn-guardar-salida" onclick="preguntaGuardar()">
-                            <i class="fas fa-save mr-1"></i>Guardar Salida
+                    <div class="d-flex justify-content-center gap-2 mt-3" style="margin: 10px; padding-bottom: 15px">
+                        <button type="button"
+                                class="btn btn-warning"
+                                style="border-radius:6px; padding:6px 14px; font-weight:400; font-size:12px; color:#333;"
+                                onclick="generarPdfTalonario()">
+                            <i class="fas fa-file-pdf mr-1"></i>Generar PDF
+                        </button>
+
+                        <button type="button"
+                                class="btn-guardar-salida"
+                                style="border-radius:6px; padding:6px 14px; font-size:12px; margin-left: 15px"
+                                onclick="preguntaGuardar()">
+                            <i class="fas fa-save mr-1"></i>Guardar
                         </button>
                     </div>
 
@@ -459,7 +485,7 @@
                         $.each(response.data.arrayIngreso, function (key, val) {
                             var markup = "<tr>" +
                                 "<td><input disabled value='" + val.fechaIngreso + "' class='form-control form-control-sm' type='text'></td>" +
-                                "<td><input disabled value='" + val.codigo + "' class='form-control form-control-sm' type='text'></td>" +
+                                "<td><input disabled value='" + (val.codigo ?? '') + "' class='form-control form-control-sm' type='text'></td>" +
                                 "<td><input disabled value='" + val.precioFormat + "' class='form-control form-control-sm' type='text'></td>" +
                                 "<td>" +
                                 "<input name='arrayCantidadActual[]' disabled " +
@@ -566,6 +592,8 @@
             var fecha       = document.getElementById('fecha').value;
             var proyecto    = document.getElementById('select-proyecto').value;
             var descripcion = document.getElementById('descripcion').value;
+            var nTalonario  = document.getElementById('n_talonario').value;
+            var nombre      = document.getElementById('nombre_recibe').value;
 
             if (!fecha)                        { toastr.error('Fecha es requerida');     return; }
             if (!proyecto || proyecto === '0') { toastr.error('Seleccione un Proyecto'); return; }
@@ -601,6 +629,8 @@
             formData.append('proyecto',        proyecto);
             formData.append('descripcion',     descripcion);
             formData.append('contenedorArray', JSON.stringify(contenedorArray));
+            formData.append('fichaNombre',     nombre);
+            formData.append('fichaTalonario',     nTalonario);
 
             axios.post(urlAdmin + '/admin/salida/guardar', formData)
                 .then((response) => {
@@ -692,6 +722,76 @@
             input.value = input.value.replace(/[^0-9]/g, '');
             if (Number(input.value) > maxCantidad) input.value = maxCantidad;
         }
+
+
+
+        function generarPdfTalonario() {
+            colorBlancoTabla();
+
+            var fecha       = document.getElementById('fecha').value;
+            var proyecto    = document.getElementById('select-proyecto').value;
+            var descripcion = document.getElementById('descripcion').value;
+            var nTalonario  = document.getElementById('n_talonario').value;
+            var nombre      = document.getElementById('nombre_recibe').value;
+
+            if (!fecha)                        { toastr.error('Fecha es requerida');     return; }
+            if (!proyecto || proyecto === '0') { toastr.error('Seleccione un Proyecto'); return; }
+
+            if ($('#matriz > tbody > tr').length <= 0) {
+                toastr.error('Debe agregar al menos un ítem para generar el PDF');
+                return;
+            }
+
+            var idEntradaDetalle = $("input[name='idmaterialArray[]']").map(function () {
+                return $(this).attr("data-idmaterialArray");
+            }).get();
+
+            var salidaCantidad = $("input[name='salidaArray[]']").map(function () {
+                return $(this).attr("data-cantidadSalida");
+            }).get();
+
+            var nombreMaterial = $("input[name='idmaterialArray[]']").map(function () {
+                return $(this).closest('tr').find('input[disabled]').eq(0).val();
+            }).get();
+
+            var contenedorArray = [];
+            for (var p = 0; p < salidaCantidad.length; p++) {
+                contenedorArray.push({
+                    infoIdEntradaDeta: idEntradaDetalle[p],
+                    infoCantidad:      salidaCantidad[p],
+                    nombreMaterial:    nombreMaterial[p],
+                });
+            }
+
+            // Crear form oculto para POST y abrir en nueva pestaña
+            var form = document.createElement('form');
+            form.method = 'POST';
+            form.action = urlAdmin + '/admin/reporte/talonario/salida';
+            form.target = '_blank';
+
+            var fields = {
+                '_token':          document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'fecha':           fecha,
+                'proyecto':        proyecto,
+                'descripcion':     descripcion,
+                'n_talonario':     nTalonario,
+                'nombre_recibe':   nombre,
+                'contenedorArray': JSON.stringify(contenedorArray),
+            };
+
+            Object.keys(fields).forEach(function(key) {
+                var input = document.createElement('input');
+                input.type  = 'hidden';
+                input.name  = key;
+                input.value = fields[key];
+                form.appendChild(input);
+            });
+
+            document.body.appendChild(form);
+            form.submit();
+            document.body.removeChild(form);
+        }
+
 
     </script>
 
