@@ -1,6 +1,6 @@
 <!-- URL GLOBAL PETICIONES POST          /ingenieria.com       -->
 <script type="text/javascript">
-    const urlAdmin = "{{ config('app.url') }}"
+    const urlAdmin = "{{ url('/')  }}"
 </script>
 
 <!-- ICONO GLOBAL DE LAS PESTAÑAS -->
