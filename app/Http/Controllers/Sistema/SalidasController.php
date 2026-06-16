@@ -169,15 +169,6 @@ class SalidasController extends Controller
 
 
 
-
-
-
-
-
-
-
-
-
     public function guardarSalida(Request $request)
     {
         $rules = [
@@ -281,7 +272,12 @@ class SalidasController extends Controller
             $salida->descripcion     = $request->descripcion;
             $salida->id_tipoproyecto = $request->proyecto;
             $salida->es_transferencia= 0;
-            $salida->id_tipoproyecto_transferencia = null;
+            $salida->id_tipoproyecto_transferencia = null;+
+            $salida->ficha_nombre = $request->fichaNombre;
+            $salida->ficha_talonario = $request->fichaTalonario;
+            $salida->ficha_no_equipo = $request->fichaNoEquipo;
+            $salida->ficha_motorista = $request->fichaMotorista;
+            $salida->ficha_codigo = $request->fichaCodigo;
             $salida->save();
 
             // ✅ Guardar detalle con cantidades agrupadas

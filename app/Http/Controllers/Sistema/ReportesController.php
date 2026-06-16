@@ -6752,10 +6752,14 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
         $descripcion    = $request->input('descripcion', '');
         $nTalonario     = $request->input('n_talonario', '');
         $nombreRecibe   = $request->input('nombre_recibe', '');
+        $noEquipo       = $request->input('no_equipo', '');
+        $motorista      = $request->input('motorista', '');
+        $codigo         = $request->input('codigo', '');
         $contenedorJson = $request->input('contenedorArray', '[]');
         $contenedor     = json_decode($contenedorJson, true) ?? [];
 
         $infoProyecto = \App\Models\Tipoproyecto::find($idProyecto);
+        $nombreProyecto = $infoProyecto ? htmlspecialchars($infoProyecto->nombre) : '';
         $fechaFmt     = $fecha ? date('d/m/Y', strtotime($fecha)) : '';
         $logoalcaldia = 'images/logo.png';
 
@@ -6782,15 +6786,15 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
             <table width='100%' style='font-size:10px;'>
                 <tr>
                     <td width='40%' style='border-right:0.8px solid #000; border-bottom:0.8px solid #000; padding:4px 6px;'><strong>Código:</strong></td>
-                    <td width='60%' style='border-bottom:0.8px solid #000; padding:4px 6px; text-align:center;'>ESTM-001-FORM</td>
+                    <td width='60%' style='border-bottom:0.8px solid #000; padding:4px 6px; text-align:center;'>INAR-003-FORM</td>
                 </tr>
                 <tr>
                     <td style='border-right:0.8px solid #000; border-bottom:0.8px solid #000; padding:4px 6px;'><strong>Versión:</strong></td>
-                    <td style='border-bottom:0.8px solid #000; padding:4px 6px; text-align:center;'>001</td>
+                    <td style='border-bottom:0.8px solid #000; padding:4px 6px; text-align:center;'>000</td>
                 </tr>
                 <tr>
                     <td style='border-right:0.8px solid #000; padding:4px 6px;'><strong>Fecha de vigencia:</strong></td>
-                    <td style='padding:4px 6px; text-align:center;'>08/04/2026</td>
+                    <td style='padding:4px 6px; text-align:center;'>18/03/2026</td>
                 </tr>
             </table>
         </td>
@@ -6800,15 +6804,41 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
 <br>
 
 <table width='100%' style='font-family:Arial, sans-serif; font-size:12px; border-collapse:collapse;'>
+
+    {{-- Fila 1: Fecha + No. Equipo --}}
     <tr>
-        <td width='50%'><strong>FECHA:</strong> &nbsp; {$fechaFmt}</td>
-        <td width='50%' style='text-align:center;'><strong>N.</strong> &nbsp; " . e($nTalonario) . "</td>
-    </tr>
-    <tr>
-        <td colspan='2' style='padding-top:6px;'>
-            <strong>NOMBRE:</strong> &nbsp; " . e($nombreRecibe) . "
+        <td width='50%' style='padding:4px 0;'>
+            <strong>FECHA:</strong> &nbsp; {$fechaFmt}
+        </td>
+        <td width='50%' style='padding:4px 0;'>
+            <strong>NO. EQUIPO:</strong> &nbsp; " . e($noEquipo) . "
         </td>
     </tr>
+
+    {{-- Fila 2: Proyecto --}}
+    <tr>
+        <td colspan='2' style='padding:4px 0;'>
+            <strong>PROYECTO:</strong> &nbsp; {$nombreProyecto}
+        </td>
+    </tr>
+
+    {{-- Fila 3: Motorista + Código --}}
+    <tr>
+        <td width='50%' style='padding:4px 0;'>
+            <strong>MOTORISTA:</strong> &nbsp; " . e($motorista) . "
+        </td>
+        <td width='50%' style='padding:4px 0;'>
+            <strong>CÓDIGO:</strong> &nbsp; " . e($codigo) . "
+        </td>
+    </tr>
+
+    {{-- Fila 4: Maestro de Obra --}}
+    <tr>
+        <td colspan='2' style='padding:4px 0;'>
+            <strong>MAESTRO DE OBRA:</strong> &nbsp; " . e($nombreRecibe) . "
+        </td>
+    </tr>
+
 </table>
 
 <br>
@@ -6835,55 +6865,43 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
             }
 
             $html .= "
-        <tr>
-            <td style='border:0.8px solid #000; padding:5px 8px; text-align:center;'>{$cantidad}</td>
-            <td style='border:0.8px solid #000; padding:5px 8px;'>{$nombreMat}</td>
-        </tr>";
+    <tr>
+        <td style='border:0.8px solid #000; padding:5px 8px; text-align:center;'>{$cantidad}</td>
+        <td style='border:0.8px solid #000; padding:5px 8px;'>{$nombreMat}</td>
+    </tr>";
         }
 
         $html .= "
     </tbody>
 </table>
 
-    <br><br><br><br>
+<br><br><br><br>
 
-    <table width='100%' style='font-family:Arial, sans-serif; font-size:11px; border-collapse:collapse;'>
-        <tr>
-            <td width='40%' style='text-align:center; padding-bottom:4px;'>
-                ________________________________
-            </td>
-            <td width='20%'></td>
-            <td width='40%' style='text-align:center; padding-bottom:4px;'>
-                ________________________________
-            </td>
-        </tr>
-        <tr>
-            <td width='40%' style='text-align:center;'>
-                <strong>RECIBE</strong>
-            </td>
-            <td width='20%'></td>
-            <td width='40%' style='text-align:center;'>
-                <strong>ENTREGA</strong>
-            </td>
-        </tr>
-    </table>
+<table width='100%' style='font-family:Arial, sans-serif; font-size:11px; border-collapse:collapse;'>
+    <tr>
+        <td width='40%' style='text-align:center; padding-bottom:4px;'>________________________________</td>
+        <td width='20%'></td>
+        <td width='40%' style='text-align:center; padding-bottom:4px;'>________________________________</td>
+    </tr>
+    <tr>
+        <td width='40%' style='text-align:center;'><strong>RECIBE</strong></td>
+        <td width='20%'></td>
+        <td width='40%' style='text-align:center;'><strong>ENTREGA</strong></td>
+    </tr>
+</table>
 
-    <br><br><br>
+<br><br><br>
 
-    <table width='100%' style='font-family:Arial, sans-serif; font-size:11px; border-collapse:collapse;'>
-        <tr>
-            <td width='40%' style='text-align:center; padding-bottom:4px;'>
-                ________________________________
-            </td>
-            <td width='60%'></td>
-        </tr>
-        <tr>
-            <td width='40%' style='text-align:center;'>
-                <strong>JEFE UNIDAD INGENIERIA Y ARQUITECTURA</strong>
-            </td>
-            <td width='60%'></td>
-        </tr>
-    </table>";
+<table width='100%' style='font-family:Arial, sans-serif; font-size:11px; border-collapse:collapse;'>
+    <tr>
+        <td width='40%' style='text-align:center; padding-bottom:4px;'>________________________________</td>
+        <td width='60%'></td>
+    </tr>
+    <tr>
+        <td width='40%' style='text-align:center;'><strong>JEFE UNIDAD INGENIERIA Y ARQUITECTURA</strong></td>
+        <td width='60%'></td>
+    </tr>
+</table>";
 
         $mpdf = new \Mpdf\Mpdf([
             'tempDir'       => sys_get_temp_dir(),
@@ -6902,8 +6920,6 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
         $mpdf->WriteHTML($html, 2);
         $mpdf->Output('salida_bodega_' . date('Ymd_His') . '.pdf', 'I');
     }
-
-
 
 
 }

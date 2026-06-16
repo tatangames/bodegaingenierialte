@@ -36,6 +36,9 @@ return new class extends Migration
             // FICHA DE SALIDA
             $table->string('ficha_nombre', 100)->nullable();
             $table->string('ficha_talonario', 100)->nullable();
+            $table->string('ficha_no_equipo', 100)->nullable();
+            $table->string('ficha_motorista', 100)->nullable();
+            $table->string('ficha_codigo', 100)->nullable();
 
             $table->foreign('id_tipoproyecto')->references('id')->on('tipoproyecto');
             $table->foreign('id_tipoproyecto_transferencia')->references('id')->on('tipoproyecto');
