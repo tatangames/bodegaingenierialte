@@ -38,6 +38,11 @@
         table { table-layout: fixed; }
         .cursor-pointer:hover { cursor: pointer; color: #401fd2; font-weight: bold; }
         *:focus { outline: none; }
+        #fila-total td {
+            font-weight: bold;
+            background-color: #f4f6f9;
+            font-size: 1.05rem;
+        }
     </style>
 
     <div id="divcontenedor">
@@ -135,10 +140,22 @@
                                 <div class="form-group">
                                     <label>Precio <span style="color:red">*</span></label>
                                     <div class="col-md-3">
-                                    <input type="number" min="0" max="1000000" autocomplete="off"
-                                           class="form-control" id="precio-producto" placeholder="0.00">
+                                        <input type="number" min="0" max="1000000" autocomplete="off"
+                                               class="form-control" id="precio-producto" placeholder="0.00">
                                     </div>
                                 </div>
+
+                                {{-- PREVIEW SUBTOTAL EN MODAL --}}
+                                <div class="form-group col-md-4 mt-2">
+                                    <label class="control-label text-success" style="font-weight: bold;">
+                                        <i class="fas fa-calculator"></i> Subtotal:
+                                    </label>
+                                    <div>
+                                        <input type="text" id="preview-subtotal" class="form-control font-weight-bold text-success"
+                                               readonly placeholder="$0.00" style="background:#f4f9f4; font-size: 1.1rem;">
+                                    </div>
+                                </div>
+
                             </div>
                         </form>
                     </div>
@@ -169,14 +186,22 @@
                         <thead>
                         <tr>
                             <th style="width:3%">#</th>
-                            <th style="width:35%">Material</th>
+                            <th style="width:32%">Material</th>
                             <th style="width:10%">Cantidad</th>
                             <th style="width:12%">Marca</th>
-                            <th style="width:10%">Precio</th>
+                            <th style="width:10%">Precio Unit.</th>
+                            <th style="width:12%">Subtotal</th>
                             <th style="width:8%">Opciones</th>
                         </tr>
                         </thead>
                         <tbody></tbody>
+                        <tfoot>
+                        <tr id="fila-total">
+                            <td colspan="5" class="text-right">TOTAL GENERAL:</td>
+                            <td id="total-general" class="text-success">$0.00</td>
+                            <td></td>
+                        </tr>
+                        </tfoot>
                     </table>
                 </div>
             </div>
@@ -204,7 +229,26 @@
 
         $(document).ready(function () {
             $(document).click(function () { $(".droplista").hide(); });
+
+            // Calcular subtotal en tiempo real dentro del modal
+            $('#cantidad, #precio-producto').on('input', function () {
+                calcularPreviewSubtotal();
+            });
         });
+
+        function calcularPreviewSubtotal() {
+            var cantidad = parseFloat(document.getElementById('cantidad').value) || 0;
+            var precio   = parseFloat(document.getElementById('precio-producto').value) || 0;
+            document.getElementById('preview-subtotal').value = '$' + (cantidad * precio).toFixed(4);
+        }
+
+        function recalcularTotal() {
+            var total = 0;
+            $("input[name='arraySubtotal[]']").each(function () {
+                total += parseFloat($(this).attr('data-subtotal')) || 0;
+            });
+            document.getElementById('total-general').textContent = '$' + total.toFixed(4);
+        }
 
         document.getElementById('cantidad').addEventListener('keypress', function (e) {
             if (e.key < '0' || e.key > '9') e.preventDefault();
@@ -213,18 +257,19 @@
         function abrirModal() {
             document.getElementById("formulario-repuesto").reset();
             $('#repuesto').attr('data-info', '0');
+            document.getElementById('preview-subtotal').value = '';
             $('#modalRepuesto').modal({ backdrop: 'static', keyboard: false });
         }
 
         function agregarFila() {
-            var repuesto      = document.querySelector('#repuesto');
-            var nomRepuesto   = repuesto.value;
-            var cantidad      = document.getElementById('cantidad').value;
-            var codigo        = document.getElementById('codigo').value;
-            var precio        = document.getElementById('precio-producto').value;
+            var repuesto    = document.querySelector('#repuesto');
+            var nomRepuesto = repuesto.value;
+            var cantidad    = document.getElementById('cantidad').value;
+            var codigo      = document.getElementById('codigo').value;
+            var precio      = document.getElementById('precio-producto').value;
 
-            var reglaEntero   = /^[0-9]\d*$/;
-            var reglaDecimal  = /^([0-9]+\.?[0-9]{0,10})$/;
+            var reglaEntero  = /^[0-9]\d*$/;
+            var reglaDecimal = /^([0-9]+\.?[0-9]{0,10})$/;
 
             if (repuesto.dataset.info == 0) { toastr.error('Material es requerido'); return; }
             if (cantidad === '')            { toastr.error('Cantidad es requerida'); return; }
@@ -234,7 +279,8 @@
             if (!precio.match(reglaDecimal)){ toastr.error('Precio inválido'); return; }
             if (precio < 0)                 { toastr.error('Precio no puede ser negativo'); return; }
 
-            var nFilas = $('#matriz > tbody > tr').length + 1;
+            var subtotal = (parseFloat(cantidad) * parseFloat(precio)).toFixed(4);
+            var nFilas   = $('#matriz > tbody > tr').length + 1;
 
             var markup = `<tr>
                 <td><p id="fila${nFilas}" class="form-control" style="max-width:65px">${nFilas}</p></td>
@@ -242,11 +288,15 @@
                 <td><input name="cantidadArray[]" disabled value="${cantidad}" class="form-control" type="number"></td>
                 <td><input name="codigoArray[]" disabled value="${codigo}" class="form-control" type="text"></td>
                 <td><input name="arrayPrecio[]" data-precio="${precio}" disabled value="$${precio}" class="form-control" type="text"></td>
+                <td><input name="arraySubtotal[]" data-subtotal="${subtotal}" disabled value="$${subtotal}" class="form-control font-weight-bold text-success" type="text"></td>
                 <td><button type="button" class="btn btn-danger btn-block" onclick="borrarFila(this)">Borrar</button></td>
             </tr>`;
 
             $("#matriz tbody").append(markup);
+            recalcularTotal();
+
             document.getElementById("formulario-repuesto").reset();
+            document.getElementById('preview-subtotal').value = '';
             $('#repuesto').attr('data-info', '0');
             $('#modalRepuesto').modal('hide');
             toastr.success('Material agregado');
@@ -255,6 +305,7 @@
         function borrarFila(el) {
             el.closest('tr').remove();
             setearFila();
+            recalcularTotal();
         }
 
         function setearFila() {
@@ -262,8 +313,7 @@
             var conteo = 0;
             for (var r = 1; r < table.rows.length; r++) {
                 conteo++;
-                var el = table.rows[r].cells[0].children[0];
-                el.innerHTML = conteo;
+                table.rows[r].cells[0].children[0].innerHTML = conteo;
             }
         }
 
@@ -291,8 +341,7 @@
         }
 
         function preguntaGuardar() {
-            var nFilas = $('#matriz > tbody > tr').length;
-            if (nFilas === 0) {
+            if ($('#matriz > tbody > tr').length === 0) {
                 toastr.error('Agrega al menos un material');
                 return;
             }
@@ -339,10 +388,10 @@
                     closeLoading();
                     if (response.data.success === 1) {
                         toastr.success(response.data.mensaje);
-                    }
-                    else if (response.data.success === 2) {
+                    } else if (response.data.success === 2) {
                         toastr.success('Materiales agregados correctamente');
                         $("#matriz tbody tr").remove();
+                        recalcularTotal();
                     } else {
                         toastr.error('Error al guardar');
                     }

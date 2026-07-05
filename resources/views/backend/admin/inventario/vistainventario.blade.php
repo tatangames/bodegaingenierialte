@@ -41,6 +41,63 @@
     </li>
 @endsection
 
+@section('css')
+    <style>
+        /* ══ Fix Select2 + modal (z-index, tamaño y búsqueda) ══════════════════ */
+        .select2-container--open,
+        .select2-dropdown,
+        .select2-dropdown--below,
+        .select2-dropdown--above { z-index: 99999 !important; }
+        .select2-dropdown { box-sizing: border-box !important; }
+
+        /* Selection (campo cerrado) alineado con .form-control de Bootstrap */
+        .modal .select2-container--bootstrap-5 .select2-selection { min-height: 38px !important; }
+        .modal .select2-container--bootstrap-5 .select2-selection--single {
+            height: 38px !important;
+            padding: 0.375rem 2.25rem 0.375rem 0.75rem !important;
+            display: flex !important;
+            align-items: center !important;
+        }
+        .modal .select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered {
+            padding: 0 !important; line-height: 1.5 !important; color: #212529 !important;
+        }
+        .modal .select2-container--bootstrap-5 .select2-selection--single .select2-selection__placeholder {
+            color: #6c757d !important;
+        }
+        .modal .select2-container--bootstrap-5 .select2-selection--single .select2-selection__arrow {
+            height: 36px !important; top: 1px !important; right: 6px !important;
+        }
+
+        /* Campo de búsqueda del dropdown */
+        .select2-search--dropdown { padding: 8px !important; }
+        .select2-search--dropdown .select2-search__field {
+            width: 100% !important;
+            padding: 6px 10px !important;
+            border: 1px solid #ced4da !important;
+            border-radius: 4px !important;
+            font-size: 13px !important;
+            box-sizing: border-box !important;
+            pointer-events: auto !important;
+            user-select: text !important;
+            -webkit-user-select: text !important;
+            cursor: text !important;
+        }
+        .select2-search--dropdown .select2-search__field:focus {
+            border-color: #3b82f6 !important;
+            box-shadow: 0 0 0 3px rgba(59,130,246,.15) !important;
+            outline: none !important;
+        }
+
+        /* Opciones del dropdown */
+        .select2-container--bootstrap-5 .select2-results__option {
+            font-size: 13px !important; padding: 6px 12px !important;
+        }
+        .select2-container--bootstrap-5 .select2-results__option--highlighted {
+            background-color: #3b82f6 !important; color: #fff !important;
+        }
+    </style>
+@stop
+
 @section('content')
 
     <div id="divcontenedor">
@@ -272,6 +329,20 @@
         var filtroActual = 'todos';
         var rutaTabla    = "{{ url('/admin/inventario/tabla/index') }}";
 
+        // ══════════════════════════════════════════════════════════════════════
+        // FIX DEFINITIVO: el modal de Bootstrap captura el foco con _enforceFocus
+        // y se lo roba al campo de búsqueda de Select2 (que vive en el <body>).
+        // Esto causaba que no se pudiera escribir, sobre todo con zoom > 100%.
+        // Lo desactivamos una sola vez. Cubre Bootstrap 4 (_enforceFocus),
+        // Bootstrap 3 (enforceFocus) y Bootstrap 5 (_focustrap) por si acaso.
+        // ══════════════════════════════════════════════════════════════════════
+        if (typeof $ !== 'undefined' && $.fn.modal && $.fn.modal.Constructor && $.fn.modal.Constructor.prototype) {
+            var __modalProto = $.fn.modal.Constructor.prototype;
+            if (__modalProto._enforceFocus) { __modalProto._enforceFocus = function () {}; } // BS4 / AdminLTE 3
+            if (__modalProto.enforceFocus)  { __modalProto.enforceFocus  = function () {}; } // BS3
+            if (__modalProto._focustrap)    { __modalProto._focustrap = { activate: function(){}, deactivate: function(){} }; } // BS5
+        }
+
         // ── DataTable ─────────────────────────────────────────────────
         function initDataTable() {
             if ($.fn.DataTable.isDataTable('#tabla')) {
@@ -316,33 +387,29 @@
             $('#tabla_filter input').addClass('form-control form-control-sm').css('display', 'inline-block');
         }
 
-        // ── Inicializar Select2 ───────────────────────────────────────
-        function initSelect2() {
-            $('#select-unidad-nuevo').select2({
+        // ── Inicializar Select2 (body como padre: resuelve corte por overflow y zoom) ──
+        function initSelect2(id) {
+            $('#' + id).select2({
                 theme: "bootstrap-5",
-                dropdownParent: $('#modalAgregar'),
-                language: { noResults: function () { return "No encontrado"; } }
-            });
-            $('#select-objeto-nuevo').select2({
-                theme: "bootstrap-5",
-                dropdownParent: $('#modalAgregar'),
-                language: { noResults: function () { return "No encontrado"; } }
-            });
-            $('#select-unidad-editar').select2({
-                theme: "bootstrap-5",
-                dropdownParent: $('#modalEditar'),
-                language: { noResults: function () { return "No encontrado"; } }
-            });
-            $('#select-objeto-editar').select2({
-                theme: "bootstrap-5",
-                dropdownParent: $('#modalEditar'),
-                language: { noResults: function () { return "No encontrado"; } }
+                dropdownParent: $('body'),
+                language: { noResults: function () { return "No encontrado"; } },
+                width: '100%'
             });
         }
 
         // ── Carga inicial ─────────────────────────────────────────────
         $(function () {
-            initSelect2();
+            // Con _enforceFocus desactivado solo hace falta enfocar el search una vez
+            $(document).on('select2:open', function () {
+                var field = document.querySelector('.select2-container--open .select2-search__field');
+                if (field) field.focus();
+            });
+
+            [
+                'select-unidad-nuevo', 'select-objeto-nuevo',
+                'select-unidad-editar', 'select-objeto-editar'
+            ].forEach(initSelect2);
+
             cargarTabla('todos');
         });
 

@@ -314,7 +314,6 @@ class SalidasController extends Controller
         // Y QUE NO HAYAN SIDO TRANSFERIDOS
 
         $tipoproyecto = TipoProyecto::orderBy('nombre')
-            ->where('id', '!=', 1)
             ->where('transferido', '!=', 1)
             ->get();
 

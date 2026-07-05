@@ -65,6 +65,12 @@
         *:focus {
             outline: none;
         }
+
+        #fila-total td {
+            font-weight: bold;
+            background-color: #f4f6f9;
+            font-size: 1.05rem;
+        }
     </style>
 
     <div id="divcontenedor">
@@ -177,13 +183,22 @@
                                     </div>
                                 </div>
 
+                                {{-- PREVIEW SUBTOTAL EN MODAL --}}
+                                <div class="form-group col-md-4 mt-2">
+                                    <label class="control-label text-success" style="font-weight: bold;">
+                                        <i class="fas fa-calculator"></i> Subtotal:
+                                    </label>
+                                    <div>
+                                        <input type="text" id="preview-subtotal" class="form-control font-weight-bold text-success" readonly placeholder="$0.00" style="background:#f4f9f4; font-size: 1.1rem;">
+                                    </div>
+                                </div>
+
                                 <div class="form-group">
                                     <label class="control-label">Detalle (Opcional)</label>
                                     <div class="col-md-6">
                                         <input type="text" id="codigo" maxlength="100" class='form-control' autocomplete="off" placeholder="">
                                     </div>
                                 </div>
-
 
                             </div>
                         </form>
@@ -218,15 +233,23 @@
                                 <thead>
                                 <tr>
                                     <th style="width: 9%">#</th>
-                                    <th style="width: 40%">Descripción</th>
-                                    <th style="width: 12%">Cantidad</th>
-                                    <th style="width: 14%">Detalle</th>
-                                    <th style="width: 14%">Precio</th>
-                                    <th style="width: 16%">Opciones</th>
+                                    <th style="width: 35%">Descripción</th>
+                                    <th style="width: 10%">Cantidad</th>
+                                    <th style="width: 12%">Detalle</th>
+                                    <th style="width: 12%">Precio Unit.</th>
+                                    <th style="width: 12%">Subtotal</th>
+                                    <th style="width: 10%">Opciones</th>
                                 </tr>
                                 </thead>
                                 <tbody>
                                 </tbody>
+                                <tfoot>
+                                <tr id="fila-total">
+                                    <td colspan="5" class="text-right">TOTAL GENERAL:</td>
+                                    <td id="total-general" class="text-success">$0.00</td>
+                                    <td></td>
+                                </tr>
+                                </tfoot>
                             </table>
                         </div>
                     </div>
@@ -282,10 +305,32 @@
                 },
             });
 
+            // Calcular subtotal en tiempo real dentro del modal
+            $('#cantidad, #precio-producto').on('input', function(){
+                calcularPreviewSubtotal();
+            });
+
         });
     </script>
 
     <script>
+
+        // ── Preview subtotal en el modal ──────────────────────────
+        function calcularPreviewSubtotal() {
+            var cantidad = parseFloat(document.getElementById('cantidad').value) || 0;
+            var precio   = parseFloat(document.getElementById('precio-producto').value) || 0;
+            var subtotal = cantidad * precio;
+            document.getElementById('preview-subtotal').value = '$' + subtotal.toFixed(4);
+        }
+
+        // ── Recalcular total general de la tabla ──────────────────
+        function recalcularTotal() {
+            var total = 0;
+            $("input[name='arraySubtotal[]']").each(function(){
+                total += parseFloat($(this).attr('data-subtotal')) || 0;
+            });
+            document.getElementById('total-general').textContent = '$' + total.toFixed(4);
+        }
 
         document.getElementById('cantidad').addEventListener('keypress', function (event) {
             if (event.key < '0' || event.key > '9') {
@@ -295,15 +340,16 @@
 
         function abrirModal(){
             document.getElementById("formulario-repuesto").reset();
+            document.getElementById('preview-subtotal').value = '';
             $('#modalRepuesto').css('overflow-y', 'auto');
             $('#modalRepuesto').modal({backdrop: 'static', keyboard: false});
         }
 
         function agregarFila(){
-            var repuesto = document.querySelector('#repuesto');
-            var nomRepuesto = document.getElementById('repuesto').value;
-            var cantidad = document.getElementById('cantidad').value;
-            var codigo = document.getElementById('codigo').value;
+            var repuesto       = document.querySelector('#repuesto');
+            var nomRepuesto    = document.getElementById('repuesto').value;
+            var cantidad       = document.getElementById('cantidad').value;
+            var codigo         = document.getElementById('codigo').value;
             var precioProducto = document.getElementById('precio-producto').value;
 
             if(repuesto.dataset.info == 0){
@@ -311,48 +357,44 @@
                 return;
             }
 
-            var reglaNumeroEntero = /^[0-9]\d*$/;
+            var reglaNumeroEntero      = /^[0-9]\d*$/;
             var reglaNumeroDiesDecimal = /^([0-9]+\.?[0-9]{0,10})$/;
 
             if(cantidad === ''){
                 toastr.error('Cantidad es requerida');
                 return;
             }
-
             if(!cantidad.match(reglaNumeroEntero)) {
                 toastr.error('Cantidad debe ser número entero y no Negativo');
                 return;
             }
-
             if(cantidad <= 0){
                 toastr.error('Cantidad no debe ser negativo o cero');
                 return;
             }
-
             if(cantidad > 1000000){
                 toastr.error('Cantidad máximo 1 millón');
                 return;
             }
-
             if(precioProducto === ''){
                 toastr.error('Precio Producto es requerido');
                 return;
             }
-
             if(!precioProducto.match(reglaNumeroDiesDecimal)) {
                 toastr.error('Precio Producto debe ser número Decimal (10 decimales)');
                 return;
             }
-
             if(precioProducto < 0){
                 toastr.error('Precio Producto no debe ser negativo');
                 return;
             }
-
             if(precioProducto > 9000000){
                 toastr.error('Precio Producto debe ser máximo 9 millones');
                 return;
             }
+
+            // Calcular subtotal de esta fila
+            var subtotal = (parseFloat(cantidad) * parseFloat(precioProducto)).toFixed(4);
 
             var nFilas = $('#matriz >tbody >tr').length;
             nFilas += 1;
@@ -380,6 +422,10 @@
                 "</td>" +
 
                 "<td>" +
+                "<input name='arraySubtotal[]' data-subtotal='" + subtotal + "' disabled value='$" + subtotal + "' class='form-control font-weight-bold text-success' type='text'>" +
+                "</td>" +
+
+                "<td>" +
                 "<button type='button' class='btn btn-block btn-danger btn-sm' onclick='borrarFila(this)'>Borrar</button>" +
                 "</td>" +
 
@@ -387,17 +433,20 @@
 
             $("#matriz tbody").append(markup);
 
+            recalcularTotal();
+
             toastr.success("Agregado");
 
             $(txtContenedorGlobal).attr('data-info', '0');
             document.getElementById("formulario-repuesto").reset();
-            document.getElementById('precio-producto').value = '0';
+            document.getElementById('preview-subtotal').value = '';
         }
 
         function borrarFila(elemento){
             var tabla = elemento.parentNode.parentNode;
             tabla.parentNode.removeChild(tabla);
             setearFila();
+            recalcularTotal();
         }
 
         function setearFila(){
@@ -466,9 +515,9 @@
 
         function guardarEntrada(){
 
-            var fecha = document.getElementById('fecha').value;
+            var fecha    = document.getElementById('fecha').value;
             var descripc = document.getElementById('descripcion').value;
-            var lote = document.getElementById('lote').value;
+            var lote     = document.getElementById('lote').value;
             var proyecto = document.getElementById('select-proyecto').value;
 
             if(fecha === ''){
@@ -490,16 +539,16 @@
             }
 
             var descripcionAtributo = $("input[name='descripcionArray[]']").map(function(){return $(this).attr("data-info");}).get();
-            var cantidad = $("input[name='cantidadArray[]']").map(function(){return $(this).val();}).get();
-            var codigo = $("input[name='codigoArray[]']").map(function(){return $(this).val();}).get();
-            var arrayPrecio = $("input[name='arrayPrecio[]']").map(function(){return $(this).attr("data-precio");}).get();
+            var cantidad            = $("input[name='cantidadArray[]']").map(function(){return $(this).val();}).get();
+            var codigo              = $("input[name='codigoArray[]']").map(function(){return $(this).val();}).get();
+            var arrayPrecio         = $("input[name='arrayPrecio[]']").map(function(){return $(this).attr("data-precio");}).get();
 
             var reglaNumeroDiesDecimal = /^([0-9]+\.?[0-9]{0,10})$/;
 
             for(var a = 0; a < cantidad.length; a++){
 
-                let detalle = descripcionAtributo[a];
-                let datoCantidad = cantidad[a];
+                let detalle        = descripcionAtributo[a];
+                let datoCantidad   = cantidad[a];
                 let precioProducto = arrayPrecio[a];
 
                 if(detalle == 0){
@@ -507,49 +556,41 @@
                     alertaMensaje('info', 'No encontrado', 'En la Fila #' + (a+1) + " El material no se encuentra. Por favor buscar de nuevo el Material");
                     return;
                 }
-
                 if (datoCantidad === '') {
                     colorRojoTabla(a);
                     toastr.error('Fila #' + (a + 1) + ' Cantidad es requerida');
                     return;
                 }
-
                 if (!datoCantidad.match(reglaNumeroEntero)) {
                     colorRojoTabla(a);
                     toastr.error('Fila #' + (a + 1) + ' Cantidad debe ser Entero y no negativo');
                     return;
                 }
-
                 if (datoCantidad <= 0) {
                     colorRojoTabla(a);
                     toastr.error('Fila #' + (a + 1) + ' Cantidad no debe ser negativo');
                     return;
                 }
-
                 if (datoCantidad > 1000000) {
                     colorRojoTabla(a);
                     toastr.error('Fila #' + (a + 1) + ' Cantidad máximo 1 millón');
                     return;
                 }
-
                 if (precioProducto === '') {
                     colorRojoTabla(a);
                     toastr.error('Fila #' + (a + 1) + ' Precio de producto es requerida.');
                     return;
                 }
-
                 if (!precioProducto.match(reglaNumeroDiesDecimal)) {
                     colorRojoTabla(a);
                     toastr.error('Fila #' + (a + 1) + ' Precio debe ser decimal (10 decimales) y no negativo.');
                     return;
                 }
-
                 if (precioProducto < 0) {
                     colorRojoTabla(a);
                     toastr.error('Fila #' + (a + 1) + ' Precio no debe ser negativo.');
                     return;
                 }
-
                 if (precioProducto > 9000000) {
                     colorRojoTabla(a);
                     toastr.error('Fila #' + (a + 1) + ' Precio máximo 9 millones.');
@@ -561,19 +602,19 @@
             const contenedorArray = [];
 
             for(var p = 0; p < cantidad.length; p++){
-                let idMaterial = descripcionAtributo[p];
+                let idMaterial   = descripcionAtributo[p];
                 let infoCantidad = cantidad[p];
-                let infoCodigo = codigo[p];
-                let infoPrecio = arrayPrecio[p];
+                let infoCodigo   = codigo[p];
+                let infoPrecio   = arrayPrecio[p];
                 contenedorArray.push({ idMaterial, infoCantidad, infoCodigo, infoPrecio });
             }
 
             openLoading();
 
-            formData.append('fecha', fecha);
-            formData.append('descripcion', descripc);
-            formData.append('lote', lote);
-            formData.append('tipoproyecto', proyecto);
+            formData.append('fecha',           fecha);
+            formData.append('descripcion',     descripc);
+            formData.append('lote',            lote);
+            formData.append('tipoproyecto',    proyecto);
             formData.append('contenedorArray', JSON.stringify(contenedorArray));
 
             axios.post(urlAdmin+'/admin/entradas/guardar', formData, {})
@@ -606,8 +647,9 @@
 
         function limpiar(){
             document.getElementById('descripcion').value = '';
-            document.getElementById('precio-producto').value = '0';
+            document.getElementById('preview-subtotal').value = '';
             $("#matriz tbody tr").remove();
+            recalcularTotal();
         }
 
     </script>
