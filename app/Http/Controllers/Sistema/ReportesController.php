@@ -5723,7 +5723,7 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
         // ===================================================================
         $havingExtra = $mostrarCero
             ? ''
-            : 'AND SUM(b.saldo_final_cant) <> 0';
+            : 'AND NOT (SUM(b.saldo_final_cant) = 0 AND SUM(b.entradas_mes_cant) = 0 AND SUM(b.salidas_mes_cant) = 0)';
 
         // ===================================================================
         //  CONSULTA
