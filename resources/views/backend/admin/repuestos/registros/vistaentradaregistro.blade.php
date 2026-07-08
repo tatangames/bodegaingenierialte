@@ -156,7 +156,7 @@
 
                                 <div class="form-group">
                                     <label class="control-label">Repuesto <span style="color: red">*</span></label>
-                                    <p>La busqueda regresa: Material - Medida - Marca - Normativa - Color - Talla</p>
+                                    <p>La busqueda regresa: Material - Medida</p>
                                     <table class="table" id="matriz-busqueda" data-toggle="table">
                                         <tbody>
                                         <tr>

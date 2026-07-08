@@ -6758,7 +6758,7 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
         $contenedorJson = $request->input('contenedorArray', '[]');
         $contenedor     = json_decode($contenedorJson, true) ?? [];
 
-        $infoProyecto = \App\Models\Tipoproyecto::find($idProyecto);
+        $infoProyecto = TipoProyecto::find($idProyecto);
         $nombreProyecto = $infoProyecto ? htmlspecialchars($infoProyecto->nombre) : '';
         $fechaFmt     = $fecha ? date('d/m/Y', strtotime($fecha)) : '';
         $logoalcaldia = 'images/logo.png';
