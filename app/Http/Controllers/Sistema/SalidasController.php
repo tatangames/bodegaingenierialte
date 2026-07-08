@@ -272,7 +272,7 @@ class SalidasController extends Controller
             $salida->descripcion     = $request->descripcion;
             $salida->id_tipoproyecto = $request->proyecto;
             $salida->es_transferencia= 0;
-            $salida->id_tipoproyecto_transferencia = null;+
+            $salida->id_tipoproyecto_transferencia = null;
             $salida->ficha_nombre = $request->fichaNombre;
             $salida->ficha_talonario = $request->fichaTalonario;
             $salida->ficha_no_equipo = $request->fichaNoEquipo;
