@@ -6884,24 +6884,14 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
         <td width='40%' style='text-align:center; padding-bottom:4px;'>________________________________</td>
     </tr>
     <tr>
-        <td width='40%' style='text-align:center;'><strong>RECIBE</strong></td>
+        <td width='40%' style='text-align:center;'><strong>ENCARGADO DE BODEGA<br>ENTREGA</strong></td>
         <td width='20%'></td>
-        <td width='40%' style='text-align:center;'><strong>ENTREGA</strong></td>
+        <td width='40%' style='text-align:center;'><strong>MAESTRO DE OBRA<br>RECIBE</strong></td>
     </tr>
 </table>
 
-<br><br><br>
+<br><br><br>";
 
-<table width='100%' style='font-family:Arial, sans-serif; font-size:11px; border-collapse:collapse;'>
-    <tr>
-        <td width='40%' style='text-align:center; padding-bottom:4px;'>________________________________</td>
-        <td width='60%'></td>
-    </tr>
-    <tr>
-        <td width='40%' style='text-align:center;'><strong>JEFE UNIDAD INGENIERIA Y ARQUITECTURA</strong></td>
-        <td width='60%'></td>
-    </tr>
-</table>";
 
         $mpdf = new \Mpdf\Mpdf([
             'tempDir'       => sys_get_temp_dir(),
