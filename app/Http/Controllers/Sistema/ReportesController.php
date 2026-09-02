@@ -8186,6 +8186,471 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
 
 
 
+    public function reporteTotalizadoCerradosPorLote()
+    {
+        $fechaFormat  = date("d-m-Y");
+        $logoalcaldia = 'images/logo.png';
+
+        $proyectosCerrados = TipoProyecto::where('transferido', 1)
+            ->orderBy('nombre', 'ASC')
+            ->get();
+
+        $idProyectos = $proyectosCerrados->pluck('id')->toArray();
+
+        // Sin consolidar: cada fila = un lote (ed.id) con su propio precio
+        $filas = DB::table('entradas_detalle as ed')
+            ->join('entradas as e', 'e.id', '=', 'ed.id_entradas')
+            ->join('tipoproyecto as tp', 'tp.id', '=', 'e.id_tipoproyecto')
+            ->join('materiales as m', 'm.id', '=', 'ed.id_material')
+            ->leftJoin('unidadmedida as um', 'um.id', '=', 'm.id_medida')
+            ->leftJoin('objeto_especifico as obj', 'obj.id', '=', 'm.id_objespecifico')
+            ->leftJoin(DB::raw('(
+            SELECT id_entrada_detalle, SUM(cantidad_salida) as total_salido
+            FROM salidas_detalle GROUP BY id_entrada_detalle
+        ) as sd'), 'sd.id_entrada_detalle', '=', 'ed.id')
+            ->whereIn('e.id_tipoproyecto', $idProyectos)
+            ->selectRaw('
+            ed.id as id_lote,
+            tp.nombre as proyecto,
+            m.id as id_material,
+            m.nombre,
+            COALESCE(um.nombre, "—") as medida,
+            COALESCE(obj.codigo, "SIN-CODIGO") as codigo,
+            ed.precio,
+            (ed.cantidad_inicial - COALESCE(sd.total_salido, 0)) as disponible
+        ')
+            ->havingRaw('disponible > 0')
+            ->orderBy('obj.codigo')
+            ->orderBy('m.nombre')
+            ->orderBy('tp.nombre')
+            ->get();
+
+        // Agrupar por código objeto específico → lotes individuales
+        $porCodigo = [];
+
+        foreach ($filas as $fila) {
+            $codigo = $fila->codigo;
+
+            if (!isset($porCodigo[$codigo])) {
+                $porCodigo[$codigo] = [
+                    'codigo' => $codigo,
+                    'lotes'  => [],
+                ];
+            }
+
+            $porCodigo[$codigo]['lotes'][] = [
+                'proyecto'  => $fila->proyecto,
+                'nombre'    => $fila->nombre,
+                'medida'    => $fila->medida,
+                'precio'    => $fila->precio,
+                'stock'     => $fila->disponible,
+                'total'     => $fila->precio * $fila->disponible,
+            ];
+        }
+
+        ksort($porCodigo);
+
+        // ── mPDF ─────────────────────────────────────────────────────────────────
+        $mpdf = new \Mpdf\Mpdf([
+            'tempDir'     => sys_get_temp_dir(),
+            'format'      => 'LETTER',
+            'orientation' => 'L',
+        ]);
+        $mpdf->SetTitle('Inventario Totalizado Por Lote - Proyectos Cerrados');
+        $mpdf->showImageErrors = false;
+
+        $totalProyectos = $proyectosCerrados->count();
+
+        // ── Encabezado ────────────────────────────────────────────────────────────
+        $tabla = "
+<table width='100%' style='border-collapse:collapse; font-family:Arial, sans-serif;'>
+    <tr>
+        <td style='width:20%; border:0.8px solid #000; padding:6px 8px;'>
+            <table width='100%'>
+                <tr>
+                    <td style='width:30%; text-align:left;'>
+                        <img src='{$logoalcaldia}' style='height:38px'>
+                    </td>
+                    <td style='width:70%; text-align:left; color:#104e8c;
+                                font-size:13px; font-weight:bold; line-height:1.3;'>
+                        SANTA ANA NORTE<br>EL SALVADOR
+                    </td>
+                </tr>
+            </table>
+        </td>
+        <td style='width:55%; border-top:0.8px solid #000; border-bottom:0.8px solid #000;
+                   padding:6px 8px; text-align:center; font-size:15px; font-weight:bold;'>
+            REPORTE INVENTARIO TOTALIZADO — POR LOTE<br>
+            <span style='font-size:11px; font-weight:normal;'>
+                Proyectos cerrados — stock actual con precio unitario
+            </span>
+        </td>
+        <td style='width:25%; border:0.8px solid #000; padding:0; vertical-align:top;'>
+            <table width='100%' style='font-size:10px;'>
+                <tr>
+                    <td width='40%' style='border-right:0.8px solid #000;
+                                           border-bottom:0.8px solid #000; padding:4px 6px;'>
+                        <strong>Código:</strong>
+                    </td>
+                    <td width='60%' style='border-bottom:0.8px solid #000;
+                                           padding:4px 6px; text-align:center;'></td>
+                </tr>
+                <tr>
+                    <td style='border-right:0.8px solid #000;
+                               border-bottom:0.8px solid #000; padding:4px 6px;'>
+                        <strong>Versión:</strong>
+                    </td>
+                    <td style='border-bottom:0.8px solid #000;
+                               padding:4px 6px; text-align:center;'>000</td>
+                </tr>
+                <tr>
+                    <td style='border-right:0.8px solid #000; padding:4px 6px;'>
+                        <strong>Fecha de vigencia:</strong>
+                    </td>
+                    <td style='padding:4px 6px; text-align:center;'></td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+<br>";
+
+        $tabla .= "
+<table width='100%' style='margin-bottom:4px; border-collapse:collapse;'>
+    <tr>
+        <td style='font-size:13px; padding:4px 0;'>
+            <span style='font-weight:bold;'>Reporte:</span>
+                Inventario por lote de todos los proyectos cerrados<br>
+            <span style='font-weight:bold;'>Total de proyectos cerrados incluidos:</span>
+                {$totalProyectos}<br>
+            <span style='font-weight:bold;'>Fecha de generación:</span> {$fechaFormat} &nbsp;|&nbsp;
+            <span style='font-weight:bold;'>Responsable conteo:</span>
+                _____________________________________ &nbsp;|&nbsp;
+            <span style='font-weight:bold;'>Fecha conteo:</span> _________________
+        </td>
+    </tr>
+</table>";
+
+        $thStyle  = "font-weight:bold; font-size:10px; border:0.8px solid #000;
+                 padding:5px 4px; background:#d9e1f2; text-align:center;";
+        $thBlanco = "font-weight:bold; font-size:10px; border:0.8px solid #000;
+                 padding:5px 4px; background:#d9e1f2; text-align:center;";
+        $tdStyle  = "font-size:10px; border:0.8px solid #000; padding:8px 4px;";
+        $tdC      = $tdStyle . " text-align:center;";
+        $tdBlanco = "font-size:10px; border:0.8px solid #000; padding:8px 4px; text-align:center;";
+
+        $tabla .= "
+<table width='100%' style='border-collapse:collapse;'>
+    <thead>
+        <tr>
+            <th style='{$thStyle} width:9%;'>Obj. Espec.</th>
+            <th style='{$thStyle} width:22%;'>Proyecto</th>
+            <th style='{$thStyle} width:30%;'>Material</th>
+            <th style='{$thStyle} width:7%;'>Medida</th>
+            <th style='{$thStyle} width:8%;'>Stock Sistema</th>
+            <th style='{$thStyle} width:8%;'>Precio Unit.</th>
+            <th style='{$thStyle} width:8%;'>Total</th>
+            <th style='{$thBlanco} width:8%;'>Stock Real</th>
+            <th style='{$thBlanco} width:8%;'>Diferencia</th>
+        </tr>
+    </thead>
+    <tbody>";
+
+        if (empty($porCodigo)) {
+            $tabla .= "
+        <tr>
+            <td colspan='9' style='text-align:center; font-size:12px;
+                                    border:0.8px solid #000; padding:12px; color:#888;'>
+                No se encontraron sobrantes disponibles en proyectos cerrados.
+            </td>
+        </tr>";
+        } else {
+            foreach ($porCodigo as $grupo) {
+                $tabla .= "
+        <tr>
+            <td colspan='9' style='font-weight:bold; font-size:10px;
+                                    border:0.8px solid #000; padding:5px 8px;
+                                    background:#e8eef8;'>
+                Objeto Específico: " . e($grupo['codigo']) . "
+            </td>
+        </tr>";
+
+                foreach ($grupo['lotes'] as $lote) {
+                    $precio = number_format($lote['precio'], 2);
+                    $total  = number_format($lote['total'], 2);
+
+                    $tabla .= "
+        <tr>
+            <td style='{$tdC}'>" . e($grupo['codigo']) . "</td>
+            <td style='{$tdStyle}'>" . e($lote['proyecto']) . "</td>
+            <td style='{$tdStyle}'>" . e($lote['nombre']) . "</td>
+            <td style='{$tdC}'>" . e($lote['medida']) . "</td>
+            <td style='{$tdC} font-weight:bold; color:#1a5c3a;'>{$lote['stock']}</td>
+            <td style='{$tdC}'>$ {$precio}</td>
+            <td style='{$tdC} font-weight:bold;'>$ {$total}</td>
+            <td style='{$tdBlanco}'>&nbsp;</td>
+            <td style='{$tdBlanco}'>&nbsp;</td>
+        </tr>";
+                }
+            }
+        }
+
+        $tabla .= "
+    </tbody>
+</table>
+<br>";
+
+        $stylesheet = file_get_contents('css/cssregistro.css');
+        $mpdf->WriteHTML($stylesheet, 1);
+        $mpdf->setFooter("Página: " . '{PAGENO}' . "/" . '{nb}');
+        $mpdf->WriteHTML($tabla, 2);
+        $mpdf->Output();
+    }
+
+
+
+
+    public function reporteLoteCerrado($id)
+    {
+        $proyecto     = TipoProyecto::findOrFail($id);
+        $fechaFormat  = date("d-m-Y");
+        $logoalcaldia = 'images/logo.png';
+
+        $filas = DB::table('entradas_detalle as ed')
+            ->join('entradas as e', 'e.id', '=', 'ed.id_entradas')
+            ->join('materiales as m', 'm.id', '=', 'ed.id_material')
+            ->leftJoin('unidadmedida as um', 'um.id', '=', 'm.id_medida')
+            ->leftJoin('objeto_especifico as obj', 'obj.id', '=', 'm.id_objespecifico')
+            ->leftJoin(DB::raw('(
+            SELECT id_entrada_detalle, SUM(cantidad_salida) as total_salido
+            FROM salidas_detalle GROUP BY id_entrada_detalle
+        ) as sd'), 'sd.id_entrada_detalle', '=', 'ed.id')
+            ->where('e.id_tipoproyecto', $id)
+            ->selectRaw('
+            m.id as id_material,
+            m.nombre,
+            COALESCE(um.nombre, "—") as medida,
+            COALESCE(obj.codigo, "SIN-CODIGO") as codigo,
+            ed.precio,
+            (ed.cantidad_inicial - COALESCE(sd.total_salido, 0)) as disponible
+        ')
+            ->havingRaw('disponible > 0')
+            ->get();
+
+        // Agrupar por código objeto específico → material + precio (lote)
+        $porCodigo = [];
+
+        foreach ($filas as $fila) {
+            $codigo     = $fila->codigo;
+            $claveUnica = $fila->id_material . '_' . $fila->precio;
+
+            if (!isset($porCodigo[$codigo])) {
+                $porCodigo[$codigo] = [
+                    'codigo'     => $codigo,
+                    'materiales' => [],
+                ];
+            }
+
+            if (!isset($porCodigo[$codigo]['materiales'][$claveUnica])) {
+                $porCodigo[$codigo]['materiales'][$claveUnica] = [
+                    'nombre'  => $fila->nombre,
+                    'medida'  => $fila->medida,
+                    'precio'  => (float) $fila->precio,
+                    'stock'   => 0,
+                ];
+            }
+
+            $porCodigo[$codigo]['materiales'][$claveUnica]['stock'] += $fila->disponible;
+        }
+
+        foreach ($porCodigo as &$grupo) {
+            uasort($grupo['materiales'], fn($a, $b) => strcmp($a['nombre'], $b['nombre']));
+        }
+        unset($grupo);
+
+        ksort($porCodigo);
+
+        // ── mPDF ─────────────────────────────────────────────────────────────────
+        $mpdf = new \Mpdf\Mpdf([
+            'tempDir'     => sys_get_temp_dir(),
+            'format'      => 'LETTER',
+            'orientation' => 'L',
+        ]);
+        $mpdf->SetTitle('Existencia por Lote — ' . $proyecto->nombre);
+        $mpdf->showImageErrors = false;
+
+        // ── Encabezado (idéntico al conteo físico) ────────────────────────────────
+        $tabla = "
+<table width='100%' style='border-collapse:collapse; font-family:Arial, sans-serif;'>
+    <tr>
+        <td style='width:20%; border:0.8px solid #000; padding:6px 8px;'>
+            <table width='100%'>
+                <tr>
+                    <td style='width:30%; text-align:left;'>
+                        <img src='{$logoalcaldia}' style='height:38px'>
+                    </td>
+                    <td style='width:70%; text-align:left; color:#104e8c;
+                                font-size:13px; font-weight:bold; line-height:1.3;'>
+                        SANTA ANA NORTE<br>EL SALVADOR
+                    </td>
+                </tr>
+            </table>
+        </td>
+        <td style='width:55%; border-top:0.8px solid #000; border-bottom:0.8px solid #000;
+                   padding:6px 8px; text-align:center; font-size:15px; font-weight:bold;'>
+            REPORTE PARA LEVANTAMIENTO FÍSICO<br>
+        </td>
+        <td style='width:25%; border:0.8px solid #000; padding:0; vertical-align:top;'>
+            <table width='100%' style='font-size:10px;'>
+                <tr>
+                    <td width='40%' style='border-right:0.8px solid #000;
+                                           border-bottom:0.8px solid #000; padding:4px 6px;'>
+                        <strong>Código:</strong>
+                    </td>
+                    <td width='60%' style='border-bottom:0.8px solid #000;
+                                           padding:4px 6px; text-align:center;'></td>
+                </tr>
+                <tr>
+                    <td style='border-right:0.8px solid #000;
+                               border-bottom:0.8px solid #000; padding:4px 6px;'>
+                        <strong>Versión:</strong>
+                    </td>
+                    <td style='border-bottom:0.8px solid #000;
+                               padding:4px 6px; text-align:center;'>000</td>
+                </tr>
+                <tr>
+                    <td style='border-right:0.8px solid #000; padding:4px 6px;'>
+                        <strong>Fecha de vigencia:</strong>
+                    </td>
+                    <td style='padding:4px 6px; text-align:center;'></td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+<br>";
+
+        $tabla .= "
+<table width='100%' style='margin-bottom:4px; border-collapse:collapse;'>
+    <tr>
+        <td style='font-size:13px; padding:4px 0;'>
+            <span style='font-weight:bold;'>Proyecto:</span> " . e($proyecto->nombre) . "<br>
+            <span style='font-weight:bold;'>Fecha de generación:</span> {$fechaFormat} &nbsp;|&nbsp;
+        </td>
+    </tr>
+</table>";
+
+        $thStyle  = "font-weight:bold; font-size:11px; border:0.8px solid #000;
+                 padding:5px 4px; background:#d9e1f2; text-align:center;";
+        $thBlanco = "font-weight:bold; font-size:11px; border:0.8px solid #000;
+                 padding:5px 4px; background:#d9e1f2; text-align:center;";
+        $tdStyle  = "font-size:11px; border:0.8px solid #000; padding:8px 4px;";
+        $tdC      = $tdStyle . " text-align:center;";
+        $tdR      = $tdStyle . " text-align:right;";
+        $tdBlanco = "font-size:11px; border:0.8px solid #000; padding:8px 4px; text-align:center;";
+
+        $tabla .= "
+<table width='100%' style='border-collapse:collapse;'>
+    <thead>
+        <tr>
+            <th style='{$thStyle} width:10%;'>Obj. Espec.</th>
+            <th style='{$thStyle} width:28%;'>Material</th>
+            <th style='{$thStyle} width:8%;'>Medida</th>
+            <th style='{$thStyle} width:8%;'>Stock Sistema</th>
+            <th style='{$thStyle} width:10%;'>Precio Unitario</th>
+            <th style='{$thStyle} width:10%;'>Total</th>
+            <th style='{$thBlanco} width:13%;'>Stock Actual</th>
+            <th style='{$thBlanco} width:13%;'>Diferencia</th>
+        </tr>
+    </thead>
+    <tbody>";
+
+        if (empty($porCodigo)) {
+            $tabla .= "
+        <tr>
+            <td colspan='8' style='text-align:center; font-size:12px;
+                                    border:0.8px solid #000; padding:12px; color:#888;'>
+                No se encontraron materiales con existencia disponible.
+            </td>
+        </tr>";
+        } else {
+            $granTotal = 0;
+
+            foreach ($porCodigo as $grupo) {
+                $subtotal = 0;
+
+                $tabla .= "
+        <tr>
+            <td colspan='8' style='font-weight:bold; font-size:11px;
+                                    border:0.8px solid #000; padding:5px 8px;
+                                    background:#e8eef8;'>
+                Objeto Específico: " . e($grupo['codigo']) . "
+            </td>
+        </tr>";
+
+                foreach ($grupo['materiales'] as $mat) {
+                    $total     = $mat['stock'] * $mat['precio'];
+                    $subtotal += $total;
+
+                    $tabla .= "
+        <tr>
+            <td style='{$tdC}'>" . e($grupo['codigo']) . "</td>
+            <td style='{$tdStyle}'>" . e($mat['nombre']) . "</td>
+            <td style='{$tdC}'>" . e($mat['medida']) . "</td>
+            <td style='{$tdC} font-weight:bold; color:#1a5c3a;'>" . number_format($mat['stock'], 2) . "</td>
+            <td style='{$tdR}'>$ " . number_format($mat['precio'], 4) . "</td>
+            <td style='{$tdR} font-weight:bold;'>$ " . number_format($total, 2) . "</td>
+            <td style='{$tdBlanco}'>&nbsp;</td>
+            <td style='{$tdBlanco}'>&nbsp;</td>
+        </tr>";
+                }
+
+                $granTotal += $subtotal;
+
+                // Subtotal por objeto específico
+                $tabla .= "
+        <tr>
+            <td colspan='5' style='text-align:right; font-weight:bold; font-size:11px;
+                                    border:0.8px solid #000; padding:5px 8px;
+                                    background:#f5f5f5;'>
+                Subtotal " . e($grupo['codigo']) . ":
+            </td>
+            <td style='text-align:right; font-weight:bold; font-size:11px;
+                        border:0.8px solid #000; padding:5px 8px; background:#f5f5f5;'>
+                $ " . number_format($subtotal, 2) . "
+            </td>
+            <td colspan='2' style='border:0.8px solid #000; background:#f5f5f5;'>&nbsp;</td>
+        </tr>";
+            }
+
+            // Gran total
+            $tabla .= "
+        <tr>
+            <td colspan='5' style='text-align:right; font-weight:bold; font-size:12px;
+                                    border:0.8px solid #000; padding:6px 8px;
+                                    background:#d9e1f2;'>
+                GRAN TOTAL:
+            </td>
+            <td style='text-align:right; font-weight:bold; font-size:12px;
+                        border:0.8px solid #000; padding:6px 8px; background:#d9e1f2;'>
+                $ " . number_format($granTotal, 2) . "
+            </td>
+            <td colspan='2' style='border:0.8px solid #000; background:#d9e1f2;'>&nbsp;</td>
+        </tr>";
+        }
+
+        $tabla .= "
+    </tbody>
+</table>
+<br>";
+
+        $stylesheet = file_get_contents('css/cssregistro.css');
+        $mpdf->WriteHTML($stylesheet, 1);
+        $mpdf->setFooter("Página: " . '{PAGENO}' . "/" . '{nb}');
+        $mpdf->WriteHTML($tabla, 2);
+        $mpdf->Output();
+    }
+
 
 
 }
