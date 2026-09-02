@@ -27,7 +27,7 @@ class ReportesController extends Controller
 
     public function pdfQueHaSalidoProyectos($idproy, $desde, $hasta, $tipo)
     {
-        $infoProyecto = Tipoproyecto::find($idproy);
+        $infoProyecto = TipoProyecto::find($idproy);
         $fechaHoy = Carbon::now('America/El_Salvador')->format('d-m-Y');
 
         $sinFecha = ($desde === 'null' || $desde === '' || $hasta === 'null' || $hasta === '');
@@ -319,7 +319,7 @@ class ReportesController extends Controller
                     $idDestino   = $r->id_tipoproyecto_destino ?? null;
 
                     if ($tipoDestino === 'proyecto' && $idDestino) {
-                        $proyDestino = Tipoproyecto::find($idDestino);
+                        $proyDestino = TipoProyecto::find($idDestino);
                         $nombreDest  = $proyDestino ? $proyDestino->nombre : 'Proyecto #' . $idDestino;
                         $reservaInfo = "RESERVA DESPACHADA &#8594; $nombreDest";
                     } elseif ($tipoDestino === 'general') {
@@ -507,8 +507,8 @@ class ReportesController extends Controller
 
     public function vistaQueTengoPorProyecto()
     {
-        $proyectos = Tipoproyecto::where('transferido', 0)->orderBy('nombre', 'ASC')->get();
-        $transferido = Tipoproyecto::where('transferido', 1)->orderBy('nombre', 'ASC')->get();
+        $proyectos = TipoProyecto::where('transferido', 0)->orderBy('nombre', 'ASC')->get();
+        $transferido = TipoProyecto::where('transferido', 1)->orderBy('nombre', 'ASC')->get();
         $infoGeneral = InformacionGeneral::where('id', 1)->first();
         $arrayCatalogoMateriales = Materiales::orderBy('nombre', 'ASC')->get();
 
@@ -563,7 +563,7 @@ class ReportesController extends Controller
 
     public function reporteQueTengoPorProyecto($idproy)
     {
-        $infoProyecto = Tipoproyecto::find($idproy);
+        $infoProyecto = TipoProyecto::find($idproy);
         $fechaFormat  = date("d-m-Y");
         $logoalcaldia = 'images/logo.png';
 
@@ -798,14 +798,14 @@ class ReportesController extends Controller
         $fechaFormat  = date("d-m-Y");
         $logoalcaldia = 'images/logo.png';
 
-        $proyectosActivos = \App\Models\Tipoproyecto::where('transferido', 0)
+        $proyectosActivos = TipoProyecto::where('transferido', 0)
             ->orderBy('nombre', 'ASC')
             ->get();
 
         $porCodigo = [];
 
         foreach ($proyectosActivos as $proyecto) {
-            $detalles = \App\Models\EntradasDetalle::with('material.unidadMedida', 'material.objetoEspecifico')
+            $detalles = EntradasDetalle::with('material.unidadMedida', 'material.objetoEspecifico')
                 ->whereHas('entrada', fn($q) => $q->where('id_tipoproyecto', $proyecto->id))
                 ->get();
 
@@ -836,7 +836,7 @@ class ReportesController extends Controller
 
                 $porCodigo[$codigo]['materiales'][$idMaterial]['entradas'] += $det->cantidad_inicial;
 
-                $salidas = \App\Models\SalidasDetalle::where('id_entrada_detalle', $det->id)
+                $salidas = SalidasDetalle::where('id_entrada_detalle', $det->id)
                     ->sum('cantidad_salida');
 
                 $porCodigo[$codigo]['materiales'][$idMaterial]['salidas'] += $salidas;
@@ -1004,7 +1004,7 @@ class ReportesController extends Controller
         $fechaFormat  = date("d-m-Y");
         $logoalcaldia = 'images/logo.png';
 
-        $proyectosActivos = \App\Models\Tipoproyecto::where('transferido', 0)
+        $proyectosActivos = TipoProyecto::where('transferido', 0)
             ->orderBy('nombre', 'ASC')
             ->get();
 
@@ -1231,7 +1231,7 @@ class ReportesController extends Controller
 
     public function reporteProyectoTerminado($idtrans)
     {
-        $infoProyecto = Tipoproyecto::find($idtrans);
+        $infoProyecto = TipoProyecto::find($idtrans);
         $fechaGenerado = date("d-m-Y");
         $logoalcaldia = 'images/logo.png';
 
@@ -1559,7 +1559,7 @@ class ReportesController extends Controller
 
     public function pdfQueHaEntradoProyectos($idproy, $desde, $hasta, $tipo)
     {
-        $infoProyecto = Tipoproyecto::find($idproy);
+        $infoProyecto = TipoProyecto::find($idproy);
 
         $sinFecha = ($desde === 'null' || $desde === '' || $hasta === 'null' || $hasta === '');
 
@@ -1857,7 +1857,7 @@ class ReportesController extends Controller
 
                     $proyectoOrigen = null;
                     if ($entrada->id_tipoproyecto_transferencia) {
-                        $proyectoOrigen = Tipoproyecto::find($entrada->id_tipoproyecto_transferencia);
+                        $proyectoOrigen = TipoProyecto::find($entrada->id_tipoproyecto_transferencia);
                     }
                     $nombreOrigen = $proyectoOrigen
                         ? $proyectoOrigen->nombre
@@ -2451,7 +2451,7 @@ class ReportesController extends Controller
     {
         $tipo = strtolower(trim($tipo));
 
-        $infoProyecto  = Tipoproyecto::find($idtrans);
+        $infoProyecto  = TipoProyecto::find($idtrans);
         $fechaGenerado = date("d-m-Y");
         $logoalcaldia  = 'images/logo.png';
 
@@ -2573,7 +2573,7 @@ No hay registros para este proyecto en el rango de fechas seleccionado.</p>", 2)
             if (!isset($porDestino[$idDestino])) {
                 if ($tipo === 'proyecto') {
                     $proyectoDestNombre = $idDestino
-                        ? (Tipoproyecto::find($idDestino)?->nombre ?? '—')
+                        ? (TipoProyecto::find($idDestino)?->nombre ?? '—')
                         : '—';
                 } else {
                     $proyectoDestNombre = 'MANTENIMIENTO DE INSTALACIONES MUNICIPALES';
@@ -2999,7 +2999,7 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
     public function reporteDestinoSobrantesDescriptivo($idtrans, Request $request)
     {
 
-        $infoProyecto  = Tipoproyecto::find($idtrans);
+        $infoProyecto  = TipoProyecto::find($idtrans);
         $fechaGenerado = date("d-m-Y");
         $logoalcaldia  = 'images/logo.png';
 
@@ -3637,7 +3637,7 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
                     $fechaDesp = $r['fecha_despacho'] ? date('d-m-Y', strtotime($r['fecha_despacho'])) : '';
 
                     if ($tipoDest === 'proyecto') {
-                        $nombreDest = Tipoproyecto::find($r['id_tipoproy_dst'])?->nombre ?? '—';
+                        $nombreDest = TipoProyecto::find($r['id_tipoproy_dst'])?->nombre ?? '—';
                         $estado     = "DESPACHADA → " . $nombreDest;
                         $estadoBg   = '#d4edda';
                         $estadoFg   = '#155724';
@@ -3890,7 +3890,7 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
 
     public function vistaReporteSobranteProyectoCerrado()
     {
-        $proyectosCerrados = Tipoproyecto::whereHas('transferencia')->orderBy('nombre')->get();
+        $proyectosCerrados = TipoProyecto::whereHas('transferencia')->orderBy('nombre')->get();
         $departamentos = Departamentos::orderBy('nombre')->get();
         $infoGeneral = InformacionGeneral::where('id', 1)->first();
 
@@ -3931,7 +3931,7 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
         $justificacion = $request->input('justificacion', '');
         $observaciones = $request->input('observaciones', '');
 
-        $proyecto         = Tipoproyecto::find($idproy);
+        $proyecto         = TipoProyecto::find($idproy);
         $departamento     = Departamentos::find($iddepto);
         $logoalcaldia     = 'images/logo.png';
         $fechaHoy         = date('d/m/Y');
@@ -5115,7 +5115,7 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
 
     public function actaRecepcionPreview(Request $request)
     {
-        $proyecto           = Tipoproyecto::find($request->idproy);
+        $proyecto           = TipoProyecto::find($request->idproy);
         $logoalcaldia       = 'images/logo.png';
         $fechaFormat        = Carbon::parse($request->fecha)->format('d/m/Y');
         $informacionGeneral = InformacionGeneral::where('id', 1)->first();
@@ -6085,7 +6085,7 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
 
     public function vistaReportePorPeriodos()
     {
-        $proyectos = Tipoproyecto::orderBy('nombre')->get();
+        $proyectos = TipoProyecto::orderBy('nombre')->get();
         $infoGeneral = InformacionGeneral::where('id', 1)->first();
 
         return view('backend.reportes.vistareporteporperiodos', compact('proyectos',
@@ -6833,7 +6833,7 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
         // ── Nombre del proyecto origen ────────────────────────────────────────
         $nombreProyecto = '—';
         if ($request->filled('idproy')) {
-            $proyecto = Tipoproyecto::find($request->idproy);
+            $proyecto = TipoProyecto::find($request->idproy);
             if ($proyecto) $nombreProyecto = $proyecto->nombre;
         }
         if ($nombreProyecto === '—' && $request->filled('nombre_origen')) {
