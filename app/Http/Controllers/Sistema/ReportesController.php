@@ -510,8 +510,12 @@ class ReportesController extends Controller
         $proyectos = Tipoproyecto::where('transferido', 0)->orderBy('nombre', 'ASC')->get();
         $transferido = Tipoproyecto::where('transferido', 1)->orderBy('nombre', 'ASC')->get();
         $infoGeneral = InformacionGeneral::where('id', 1)->first();
+        $arrayCatalogoMateriales = Materiales::orderBy('nombre', 'ASC')->get();
 
-        return view('backend.admin.repuestos.reporte.vistaquetengoporproyecto', compact('proyectos', 'transferido', 'infoGeneral'));
+        return view('backend.admin.repuestos.reporte.vistaquetengoporproyecto', compact('proyectos',
+            'transferido',
+            'infoGeneral',
+            'arrayCatalogoMateriales'));
     }
 
     public function actualizarFirmasSobrantes(Request $request)
@@ -786,6 +790,444 @@ class ReportesController extends Controller
         $mpdf->WriteHTML($tabla, 2);
         $mpdf->Output();
     }
+
+
+
+    public function reporteTotalizadoTodosProyectos()
+    {
+        $fechaFormat  = date("d-m-Y");
+        $logoalcaldia = 'images/logo.png';
+
+        $proyectosActivos = \App\Models\Tipoproyecto::where('transferido', 0)
+            ->orderBy('nombre', 'ASC')
+            ->get();
+
+        $porCodigo = [];
+
+        foreach ($proyectosActivos as $proyecto) {
+            $detalles = \App\Models\EntradasDetalle::with('material.unidadMedida', 'material.objetoEspecifico')
+                ->whereHas('entrada', fn($q) => $q->where('id_tipoproyecto', $proyecto->id))
+                ->get();
+
+            foreach ($detalles as $det) {
+                if (!$det->material) continue;
+
+                $codigo     = $det->material->objetoEspecifico->codigo ?? 'SIN-CODIGO';
+                $idMaterial = $det->id_material;
+                $nombre     = $det->material->nombre ?? '';
+                $medida     = $det->material->unidadMedida->nombre ?? '';
+
+                if (!isset($porCodigo[$codigo])) {
+                    $porCodigo[$codigo] = [
+                        'codigo'     => $codigo,
+                        'materiales' => [],
+                    ];
+                }
+
+                // ✅ Clave solo por id_material — agrupa sin importar precio ni proyecto
+                if (!isset($porCodigo[$codigo]['materiales'][$idMaterial])) {
+                    $porCodigo[$codigo]['materiales'][$idMaterial] = [
+                        'nombre'   => $nombre,
+                        'medida'   => $medida,
+                        'entradas' => 0,
+                        'salidas'  => 0,
+                    ];
+                }
+
+                $porCodigo[$codigo]['materiales'][$idMaterial]['entradas'] += $det->cantidad_inicial;
+
+                $salidas = \App\Models\SalidasDetalle::where('id_entrada_detalle', $det->id)
+                    ->sum('cantidad_salida');
+
+                $porCodigo[$codigo]['materiales'][$idMaterial]['salidas'] += $salidas;
+            }
+        }
+
+        // Calcular stock final
+        foreach ($porCodigo as $codigo => &$grupo) {
+            foreach ($grupo['materiales'] as $id => &$mat) {
+                $mat['stock'] = $mat['entradas'] - $mat['salidas'];
+            }
+            unset($mat);
+
+            // Solo materiales con stock > 0
+            $grupo['materiales'] = array_filter(
+                $grupo['materiales'],
+                fn($m) => $m['stock'] > 0
+            );
+
+            uasort($grupo['materiales'], fn($a, $b) => strcmp($a['nombre'], $b['nombre']));
+        }
+        unset($grupo);
+
+        // Eliminar grupos vacíos y ordenar por código
+        $porCodigo = array_filter($porCodigo, fn($g) => count($g['materiales']) > 0);
+        ksort($porCodigo);
+
+        // ── mPDF ─────────────────────────────────────────────────────────────
+        $mpdf = new \Mpdf\Mpdf([
+            'tempDir'     => sys_get_temp_dir(),
+            'format'      => 'LETTER',
+            'orientation' => 'P',
+        ]);
+        $mpdf->SetTitle('Inventario Totalizado - Todos los Proyectos');
+        $mpdf->showImageErrors = false;
+
+        // ── Encabezado ────────────────────────────────────────────────────────
+        $tabla = "
+<table width='100%' style='border-collapse:collapse; font-family:Arial, sans-serif;'>
+    <tr>
+        <td style='width:25%; border:0.8px solid #000; padding:6px 8px;'>
+            <table width='100%'>
+                <tr>
+                    <td style='width:30%; text-align:left;'>
+                        <img src='{$logoalcaldia}' style='height:38px'>
+                    </td>
+                    <td style='width:70%; text-align:left; color:#104e8c;
+                                font-size:13px; font-weight:bold; line-height:1.3;'>
+                        SANTA ANA NORTE<br>EL SALVADOR
+                    </td>
+                </tr>
+            </table>
+        </td>
+        <td style='width:50%; border-top:0.8px solid #000; border-bottom:0.8px solid #000;
+                   padding:6px 8px; text-align:center; font-size:15px; font-weight:bold;'>
+            REPORTE INVENTARIO TOTALIZADO<br>
+            <span style='font-size:11px; font-weight:normal;'>Todos los proyectos en ejecución</span>
+        </td>
+        <td style='width:25%; border:0.8px solid #000; padding:0; vertical-align:top;'>
+            <table width='100%' style='font-size:10px;'>
+                <tr>
+                    <td width='40%' style='border-right:0.8px solid #000;
+                                           border-bottom:0.8px solid #000; padding:4px 6px;'>
+                        <strong>Código:</strong>
+                    </td>
+                    <td width='60%' style='border-bottom:0.8px solid #000;
+                                           padding:4px 6px; text-align:center;'></td>
+                </tr>
+                <tr>
+                    <td style='border-right:0.8px solid #000;
+                               border-bottom:0.8px solid #000; padding:4px 6px;'>
+                        <strong>Versión:</strong>
+                    </td>
+                    <td style='border-bottom:0.8px solid #000;
+                               padding:4px 6px; text-align:center;'>000</td>
+                </tr>
+                <tr>
+                    <td style='border-right:0.8px solid #000; padding:4px 6px;'>
+                        <strong>Fecha de vigencia:</strong>
+                    </td>
+                    <td style='padding:4px 6px; text-align:center;'></td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+<br>";
+
+        // ── Info general ──────────────────────────────────────────────────────
+        $totalProyectos = $proyectosActivos->count();
+        $tabla .= "
+<table width='100%' style='margin-bottom:4px; border-collapse:collapse;'>
+    <tr>
+        <td style='font-size:13px; padding:4px 0;'>
+            <span style='font-weight:bold;'>Reporte:</span> Inventario consolidado de todos los proyectos en ejecución<br>
+            <span style='font-weight:bold;'>Total de proyectos incluidos:</span> {$totalProyectos}<br>
+            <span style='font-weight:bold;'>Fecha de generación:</span> {$fechaFormat}
+        </td>
+    </tr>
+</table>";
+
+        // ── Estilos inline ────────────────────────────────────────────────────
+        $thStyle = "font-weight:bold; font-size:11px; border:0.8px solid #000;
+        padding:5px 4px; background:#d9e1f2; text-align:center;";
+        $tdStyle = "font-size:11px; border:0.8px solid #000; padding:4px;";
+        $tdC     = $tdStyle . " text-align:center;";
+
+        // ── Tabla ─────────────────────────────────────────────────────────────
+        $tabla .= "
+<table width='100%' style='border-collapse:collapse;'>
+    <thead>
+        <tr>
+            <th style='{$thStyle} width:15%;'>Obj. Espec.</th>
+            <th style='{$thStyle} width:60%;'>Material</th>
+            <th style='{$thStyle} width:15%;'>Medida</th>
+            <th style='{$thStyle} width:10%;'>Stock Total</th>
+        </tr>
+    </thead>
+    <tbody>";
+
+        foreach ($porCodigo as $grupo) {
+            // Fila de encabezado por código objeto específico
+            $tabla .= "
+        <tr>
+            <td colspan='4' style='font-weight:bold; font-size:11px;
+                                    border:0.8px solid #000; padding:5px 8px;
+                                    background:#e8eef8;'>
+                Objeto Específico: " . e($grupo['codigo']) . "
+            </td>
+        </tr>";
+
+            foreach ($grupo['materiales'] as $mat) {
+                $tabla .= "
+        <tr>
+            <td style='{$tdC}'>" . e($grupo['codigo']) . "</td>
+            <td style='{$tdStyle}'>" . e($mat['nombre']) . "</td>
+            <td style='{$tdC}'>" . e($mat['medida']) . "</td>
+            <td style='{$tdC} font-weight:bold;'>{$mat['stock']}</td>
+        </tr>";
+            }
+        }
+
+        $tabla .= "
+    </tbody>
+</table>";
+
+        $stylesheet = file_get_contents('css/cssregistro.css');
+        $mpdf->WriteHTML($stylesheet, 1);
+        $mpdf->setFooter("Página: " . '{PAGENO}' . "/" . '{nb}');
+        $mpdf->WriteHTML($tabla, 2);
+        $mpdf->Output();
+    }
+
+
+
+
+    public function reporteConsolidadoMateriales(Request $request)
+    {
+        $ids = $request->input('ids', []);
+
+        if (empty($ids)) {
+            abort(400, 'Debe seleccionar al menos un material.');
+        }
+
+        $fechaFormat  = date("d-m-Y");
+        $logoalcaldia = 'images/logo.png';
+
+        $proyectosActivos = \App\Models\Tipoproyecto::where('transferido', 0)
+            ->orderBy('nombre', 'ASC')
+            ->get();
+
+        $materiales = [];
+
+        foreach ($proyectosActivos as $proyecto) {
+            $detalles = \App\Models\EntradasDetalle::with('material.unidadMedida', 'material.objetoEspecifico')
+                ->whereHas('entrada', fn($q) => $q->where('id_tipoproyecto', $proyecto->id))
+                ->whereIn('id_material', $ids)
+                ->get();
+
+            foreach ($detalles as $det) {
+                if (!$det->material) continue;
+
+                $idMaterial = $det->id_material;
+                $nombre     = $det->material->nombre ?? '';
+                $medida     = $det->material->unidadMedida->nombre ?? '';
+                $codigo     = $det->material->objetoEspecifico->codigo ?? 'SIN-CODIGO';
+
+                if (!isset($materiales[$idMaterial])) {
+                    $materiales[$idMaterial] = [
+                        'nombre'   => $nombre,
+                        'medida'   => $medida,
+                        'codigo'   => $codigo,
+                        'entradas' => 0,
+                        'salidas'  => 0,
+                    ];
+                }
+
+                $materiales[$idMaterial]['entradas'] += $det->cantidad_inicial;
+
+                $salidas = \App\Models\SalidasDetalle::where('id_entrada_detalle', $det->id)
+                    ->sum('cantidad_salida');
+
+                $materiales[$idMaterial]['salidas'] += $salidas;
+            }
+        }
+
+        // Calcular stock — ✅ sin filtrar, siempre se muestran todos
+        foreach ($materiales as $id => &$mat) {
+            $mat['stock'] = $mat['entradas'] - $mat['salidas'];
+        }
+        unset($mat);
+
+        // ✅ Incluir también materiales seleccionados que no tienen ninguna entrada
+        // para que aparezcan en el reporte aunque nunca hayan tenido movimiento
+        $idsMostrados = array_keys($materiales);
+        $sinMovimiento = \App\Models\Materiales::whereIn('id', $ids)
+            ->whereNotIn('id', $idsMostrados)
+            ->with('unidadMedida', 'objetoEspecifico')
+            ->get();
+
+        foreach ($sinMovimiento as $mat) {
+            $materiales[$mat->id] = [
+                'nombre'   => $mat->nombre ?? '',
+                'medida'   => $mat->unidadMedida->nombre ?? '',
+                'codigo'   => $mat->objetoEspecifico->codigo ?? 'SIN-CODIGO',
+                'entradas' => 0,
+                'salidas'  => 0,
+                'stock'    => 0,
+            ];
+        }
+
+        // Ordenar alfabéticamente por nombre
+        uasort($materiales, fn($a, $b) => strcmp($a['nombre'], $b['nombre']));
+
+        // Contadores para el encabezado
+        $totalSeleccionados = count($ids);
+        $totalConStock      = count(array_filter($materiales, fn($m) => $m['stock'] > 0));
+        $totalSinStock      = count(array_filter($materiales, fn($m) => $m['stock'] <= 0));
+
+        // ── mPDF ─────────────────────────────────────────────────────────────
+        $mpdf = new \Mpdf\Mpdf([
+            'tempDir'     => sys_get_temp_dir(),
+            'format'      => 'LETTER',
+            'orientation' => 'P',
+        ]);
+        $mpdf->SetTitle('Consolidado por Materiales');
+        $mpdf->showImageErrors = false;
+
+        // ── Encabezado ────────────────────────────────────────────────────────
+        $tabla = "
+<table width='100%' style='border-collapse:collapse; font-family:Arial, sans-serif;'>
+    <tr>
+        <td style='width:25%; border:0.8px solid #000; padding:6px 8px;'>
+            <table width='100%'>
+                <tr>
+                    <td style='width:30%; text-align:left;'>
+                        <img src='{$logoalcaldia}' style='height:38px'>
+                    </td>
+                    <td style='width:70%; text-align:left; color:#104e8c;
+                                font-size:13px; font-weight:bold; line-height:1.3;'>
+                        SANTA ANA NORTE<br>EL SALVADOR
+                    </td>
+                </tr>
+            </table>
+        </td>
+        <td style='width:50%; border-top:0.8px solid #000; border-bottom:0.8px solid #000;
+                   padding:6px 8px; text-align:center; font-size:15px; font-weight:bold;'>
+            REPORTE CONSOLIDADO DE MATERIALES<br>
+            <span style='font-size:11px; font-weight:normal;'>Todos los Proyectos en ejecución</span>
+        </td>
+        <td style='width:25%; border:0.8px solid #000; padding:0; vertical-align:top;'>
+            <table width='100%' style='font-size:10px;'>
+                <tr>
+                    <td width='40%' style='border-right:0.8px solid #000;
+                                           border-bottom:0.8px solid #000; padding:4px 6px;'>
+                        <strong>Código:</strong>
+                    </td>
+                    <td width='60%' style='border-bottom:0.8px solid #000;
+                                           padding:4px 6px; text-align:center;'></td>
+                </tr>
+                <tr>
+                    <td style='border-right:0.8px solid #000;
+                               border-bottom:0.8px solid #000; padding:4px 6px;'>
+                        <strong>Versión:</strong>
+                    </td>
+                    <td style='border-bottom:0.8px solid #000;
+                               padding:4px 6px; text-align:center;'>000</td>
+                </tr>
+                <tr>
+                    <td style='border-right:0.8px solid #000; padding:4px 6px;'>
+                        <strong>Fecha de vigencia:</strong>
+                    </td>
+                    <td style='padding:4px 6px; text-align:center;'></td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+<br>";
+
+        // ── Info general ──────────────────────────────────────────────────────
+        $tabla .= "
+<table width='100%' style='margin-bottom:4px; border-collapse:collapse;'>
+    <tr>
+        <td style='font-size:13px; padding:4px 0;'>
+            <span style='font-weight:bold;'>Materiales consultados:</span> {$totalSeleccionados} &nbsp;|&nbsp;
+            <span style='font-weight:bold;'>Fecha de generación:</span> {$fechaFormat}
+        </td>
+    </tr>
+</table>";
+
+        // ── Estilos inline ────────────────────────────────────────────────────
+        $thStyle = "font-weight:bold; font-size:11px; border:0.8px solid #000;
+        padding:5px 4px; background:#d9e1f2; text-align:center;";
+        $tdStyle = "font-size:11px; border:0.8px solid #000; padding:4px;";
+        $tdC     = $tdStyle . " text-align:center;";
+
+        // ── Tabla ─────────────────────────────────────────────────────────────
+        $tabla .= "
+<table width='100%' style='border-collapse:collapse;'>
+    <thead>
+        <tr>
+            <th style='{$thStyle} width:15%;'>Obj. Espec.</th>
+            <th style='{$thStyle} width:60%;'>Material</th>
+            <th style='{$thStyle} width:15%;'>Medida</th>
+            <th style='{$thStyle} width:10%;'>Stock Total</th>
+        </tr>
+    </thead>
+    <tbody>";
+
+        if (empty($materiales)) {
+            $tabla .= "
+        <tr>
+            <td colspan='4' style='text-align:center; font-size:12px;
+                                    border:0.8px solid #000; padding:12px; color:#888;'>
+                No se encontraron materiales seleccionados.
+            </td>
+        </tr>";
+        } else {
+            foreach ($materiales as $mat) {
+
+                if ($mat['stock'] <= 0) {
+                    $stockStyle = $tdC . " font-weight:bold; color:#c0392b; background:#fdf0ee;";
+                    $rowBg      = "background:#fdf0ee;";
+                } else {
+                    $stockStyle = $tdC . " font-weight:bold; color:#1a5c3a;";
+                    $rowBg      = "";
+                }
+
+                $tabla .= "
+        <tr>
+            <td style='{$tdC} {$rowBg}'>" . e($mat['codigo']) . "</td>
+            <td style='{$tdStyle} {$rowBg}'>" . e($mat['nombre']) . "</td>
+            <td style='{$tdC} {$rowBg}'>" . e($mat['medida']) . "</td>
+            <td style='{$stockStyle}'>{$mat['stock']}</td>
+        </tr>";
+            }
+        }
+
+        $tabla .= "
+    </tbody>
+</table>";
+
+        $stylesheet = file_get_contents('css/cssregistro.css');
+        $mpdf->WriteHTML($stylesheet, 1);
+        $mpdf->setFooter("Página: " . '{PAGENO}' . "/" . '{nb}');
+        $mpdf->WriteHTML($tabla, 2);
+        $mpdf->Output();
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     public function reporteProyectoTerminado($idtrans)
     {

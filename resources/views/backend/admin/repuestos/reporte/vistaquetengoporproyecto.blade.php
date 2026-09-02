@@ -153,13 +153,75 @@
                                     @endforeach
                                 </select>
                                 <br>
+
+
+
                                 <button type="button" onclick="generarPdfActivo()" class="btn-pdf azul">
+                                    <img src="{{ asset('images/logopdf.png') }}" width="22px" height="22px">
+                                    Generar PDF
+                                </button>
+
+                                {{-- ✅ NUEVO: botón totalizado --}}
+                                <button type="button" onclick="generarPdfTotalizado()" class="btn-pdf"
+                                        style="background:linear-gradient(135deg,#1a4d5c,#117a8b);
+                             color:#fff; box-shadow:0 4px 14px rgba(17,122,139,.35); margin-left:8px;">
+                                    <img src="{{ asset('images/logopdf.png') }}" width="22px" height="22px">
+                                    Totalizado General
+                                </button>
+
+
+                            </div>
+                        </div>
+                    </div>
+
+
+                    {{-- ══ REPORTE 4: Consolidado por Materiales Seleccionados ══ --}}
+                    <div class="col-md-6">
+                        <div class="reporte-card">
+                            <div class="reporte-header" style="background:linear-gradient(135deg,#4a1a1a,#c0392b);">
+                                <i class="fas fa-layer-group"></i>
+                                <h5>Consolidado por Materiales</h5>
+                            </div>
+                            <div class="reporte-body">
+                                <p style="font-size:13px; color:#666; margin-bottom:14px;">
+                                    Muestra el stock actual disponible de los materiales seleccionados,
+                                    consolidando cantidades de todos los proyectos activos.
+                                </p>
+                                <hr class="divider">
+                                <label class="field-label">
+                                    <i class="fas fa-boxes mr-1"></i>Materiales
+                                </label>
+                                <select class="form-control"
+                                        id="select-materiales-consolidado"
+                                        multiple
+                                        style="width:100%;">
+                                    @foreach($arrayCatalogoMateriales as $mat)
+                                        <option value="{{ $mat->id }}">{{ $mat->nombre }}</option>
+                                    @endforeach
+                                </select>
+                                <div class="mt-2" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+
+                                    <button type="button"
+                                            onclick="limpiarSeleccionMateriales()"
+                                            class="btn btn-sm btn-outline-secondary">
+                                        <i class="fas fa-times mr-1"></i>Limpiar
+                                    </button>
+                                </div>
+                                <br>
+                                <button type="button"
+                                        onclick="generarPdfConsolidadoMateriales()"
+                                        class="btn-pdf"
+                                        style="background:linear-gradient(135deg,#4a1a1a,#c0392b);
+                           color:#fff; box-shadow:0 4px 14px rgba(192,57,43,.35);">
                                     <img src="{{ asset('images/logopdf.png') }}" width="22px" height="22px">
                                     Generar PDF
                                 </button>
                             </div>
                         </div>
                     </div>
+
+
+
 
                     {{-- ══ REPORTE 2: Sobrantes de Proyecto Completado ══ --}}
                     <div class="col-md-6">
@@ -415,6 +477,12 @@
                 theme: "bootstrap-5",
                 language: { noResults: function () { return "Búsqueda no encontrada"; } }
             });
+
+            $('#select-materiales-consolidado').select2({
+                theme: "bootstrap-5",
+                placeholder: "Buscar y seleccionar materiales...",
+                language: { noResults: function () { return "Búsqueda no encontrada"; } }
+            });
         });
 
         function generarPdfActivo() {
@@ -580,5 +648,30 @@
                     toastr.error('Error al actualizar');
                 });
         }
+
+
+        function generarPdfTotalizado() {
+            window.open("{{ URL::to('admin/reporte/quetengopor/proyectos/totalizado/pdf') }}");
+        }
+
+        function seleccionarTodosMateriales() {
+            $('#select-materiales-consolidado option').prop('selected', true);
+            $('#select-materiales-consolidado').trigger('change');
+        }
+
+        function limpiarSeleccionMateriales() {
+            $('#select-materiales-consolidado').val(null).trigger('change');
+        }
+
+        function generarPdfConsolidadoMateriales() {
+            var ids = $('#select-materiales-consolidado').val();
+            if (!ids || ids.length === 0) {
+                toastr.error('Debe seleccionar al menos un material');
+                return;
+            }
+            var params = ids.map(id => 'ids[]=' + id).join('&');
+            window.open("{{ URL::to('admin/reporte/consolidado/materiales/pdf') }}?" + params);
+        }
+
     </script>
 @endsection
