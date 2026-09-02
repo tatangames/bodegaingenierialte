@@ -510,7 +510,9 @@ class ReportesController extends Controller
         $proyectos = TipoProyecto::where('transferido', 0)->orderBy('nombre', 'ASC')->get();
         $transferido = TipoProyecto::where('transferido', 1)->orderBy('nombre', 'ASC')->get();
         $infoGeneral = InformacionGeneral::where('id', 1)->first();
-        $arrayCatalogoMateriales = Materiales::orderBy('nombre', 'ASC')->get();
+        $arrayCatalogoMateriales = Materiales::with('unidadMedida')
+            ->orderBy('nombre', 'ASC')
+            ->get();
 
         return view('backend.admin.repuestos.reporte.vistaquetengoporproyecto', compact('proyectos',
             'transferido',
@@ -7791,6 +7793,198 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
 
 
 
+
+
+    public function reporteExistenciaCerrado($id)
+    {
+        $proyecto = TipoProyecto::findOrFail($id);
+        $fechaFormat  = date("d-m-Y");
+        $logoalcaldia = 'images/logo.png';
+
+        $filas = DB::table('entradas_detalle as ed')
+            ->join('entradas as e', 'e.id', '=', 'ed.id_entradas')
+            ->join('materiales as m', 'm.id', '=', 'ed.id_material')
+            ->leftJoin('unidadmedida as um', 'um.id', '=', 'm.id_medida')
+            ->leftJoin('objeto_especifico as obj', 'obj.id', '=', 'm.id_objespecifico')
+            ->leftJoin(DB::raw('(
+            SELECT id_entrada_detalle, SUM(cantidad_salida) as total_salido
+            FROM salidas_detalle GROUP BY id_entrada_detalle
+        ) as sd'), 'sd.id_entrada_detalle', '=', 'ed.id')
+            ->where('e.id_tipoproyecto', $id)
+            ->selectRaw('
+            m.id as id_material,
+            m.nombre,
+            COALESCE(um.nombre, "—") as medida,
+            COALESCE(obj.codigo, "SIN-CODIGO") as codigo,
+            (ed.cantidad_inicial - COALESCE(sd.total_salido, 0)) as disponible
+        ')
+            ->havingRaw('disponible > 0')
+            ->get();
+
+        // Agrupar por código objeto específico → material
+        $porCodigo = [];
+
+        foreach ($filas as $fila) {
+            $codigo     = $fila->codigo;
+            $idMaterial = $fila->id_material;
+
+            if (!isset($porCodigo[$codigo])) {
+                $porCodigo[$codigo] = [
+                    'codigo'     => $codigo,
+                    'materiales' => [],
+                ];
+            }
+
+            if (!isset($porCodigo[$codigo]['materiales'][$idMaterial])) {
+                $porCodigo[$codigo]['materiales'][$idMaterial] = [
+                    'nombre' => $fila->nombre,
+                    'medida' => $fila->medida,
+                    'stock'  => 0,
+                ];
+            }
+
+            $porCodigo[$codigo]['materiales'][$idMaterial]['stock'] += $fila->disponible;
+        }
+
+        foreach ($porCodigo as &$grupo) {
+            uasort($grupo['materiales'], fn($a, $b) => strcmp($a['nombre'], $b['nombre']));
+        }
+        unset($grupo);
+
+        ksort($porCodigo);
+
+        // ── mPDF ─────────────────────────────────────────────────────────────────
+        $mpdf = new \Mpdf\Mpdf([
+            'tempDir'     => sys_get_temp_dir(),
+            'format'      => 'LETTER',
+            'orientation' => 'P',
+        ]);
+        $mpdf->SetTitle('Existencia Actual — ' . $proyecto->nombre);
+        $mpdf->showImageErrors = false;
+
+        // ── Encabezado ────────────────────────────────────────────────────────────
+        $tabla = "
+<table width='100%' style='border-collapse:collapse; font-family:Arial, sans-serif;'>
+    <tr>
+        <td style='width:25%; border:0.8px solid #000; padding:6px 8px;'>
+            <table width='100%'>
+                <tr>
+                    <td style='width:30%; text-align:left;'>
+                        <img src='{$logoalcaldia}' style='height:38px'>
+                    </td>
+                    <td style='width:70%; text-align:left; color:#104e8c;
+                                font-size:13px; font-weight:bold; line-height:1.3;'>
+                        SANTA ANA NORTE<br>EL SALVADOR
+                    </td>
+                </tr>
+            </table>
+        </td>
+        <td style='width:50%; border-top:0.8px solid #000; border-bottom:0.8px solid #000;
+                   padding:6px 8px; text-align:center; font-size:15px; font-weight:bold;'>
+            REPORTE DE EXISTENCIA ACTUAL<br>
+            <span style='font-size:11px; font-weight:normal;'>
+                Proyecto cerrado — stock disponible a la fecha
+            </span>
+        </td>
+        <td style='width:25%; border:0.8px solid #000; padding:0; vertical-align:top;'>
+            <table width='100%' style='font-size:10px;'>
+                <tr>
+                    <td width='40%' style='border-right:0.8px solid #000;
+                                           border-bottom:0.8px solid #000; padding:4px 6px;'>
+                        <strong>Código:</strong>
+                    </td>
+                    <td width='60%' style='border-bottom:0.8px solid #000;
+                                           padding:4px 6px; text-align:center;'></td>
+                </tr>
+                <tr>
+                    <td style='border-right:0.8px solid #000;
+                               border-bottom:0.8px solid #000; padding:4px 6px;'>
+                        <strong>Versión:</strong>
+                    </td>
+                    <td style='border-bottom:0.8px solid #000;
+                               padding:4px 6px; text-align:center;'>000</td>
+                </tr>
+                <tr>
+                    <td style='border-right:0.8px solid #000; padding:4px 6px;'>
+                        <strong>Fecha de vigencia:</strong>
+                    </td>
+                    <td style='padding:4px 6px; text-align:center;'></td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+<br>";
+
+        $tabla .= "
+<table width='100%' style='margin-bottom:4px; border-collapse:collapse;'>
+    <tr>
+        <td style='font-size:13px; padding:4px 0;'>
+            <span style='font-weight:bold;'>Proyecto:</span>
+                " . e($proyecto->nombre) . "<br>
+            <span style='font-weight:bold;'>Fecha de generación:</span> {$fechaFormat}
+        </td>
+    </tr>
+</table>";
+
+        $thStyle = "font-weight:bold; font-size:11px; border:0.8px solid #000;
+                padding:5px 4px; background:#d9e1f2; text-align:center;";
+        $tdStyle = "font-size:11px; border:0.8px solid #000; padding:4px;";
+        $tdC     = $tdStyle . " text-align:center;";
+
+        $tabla .= "
+<table width='100%' style='border-collapse:collapse;'>
+    <thead>
+        <tr>
+            <th style='{$thStyle} width:15%;'>Obj. Espec.</th>
+            <th style='{$thStyle} width:60%;'>Material</th>
+            <th style='{$thStyle} width:15%;'>Medida</th>
+            <th style='{$thStyle} width:10%;'>Stock Actual</th>
+        </tr>
+    </thead>
+    <tbody>";
+
+        if (empty($porCodigo)) {
+            $tabla .= "
+        <tr>
+            <td colspan='4' style='text-align:center; font-size:12px;
+                                    border:0.8px solid #000; padding:12px; color:#888;'>
+                No se encontraron materiales con existencia disponible.
+            </td>
+        </tr>";
+        } else {
+            foreach ($porCodigo as $grupo) {
+                $tabla .= "
+        <tr>
+            <td colspan='4' style='font-weight:bold; font-size:11px;
+                                    border:0.8px solid #000; padding:5px 8px;
+                                    background:#e8eef8;'>
+                Objeto Específico: " . e($grupo['codigo']) . "
+            </td>
+        </tr>";
+
+                foreach ($grupo['materiales'] as $mat) {
+                    $tabla .= "
+        <tr>
+            <td style='{$tdC}'>" . e($grupo['codigo']) . "</td>
+            <td style='{$tdStyle}'>" . e($mat['nombre']) . "</td>
+            <td style='{$tdC}'>" . e($mat['medida']) . "</td>
+            <td style='{$tdC} font-weight:bold; color:#1a5c3a;'>{$mat['stock']}</td>
+        </tr>";
+                }
+            }
+        }
+
+        $tabla .= "
+    </tbody>
+</table>";
+
+        $stylesheet = file_get_contents('css/cssregistro.css');
+        $mpdf->WriteHTML($stylesheet, 1);
+        $mpdf->setFooter("Página: " . '{PAGENO}' . "/" . '{nb}');
+        $mpdf->WriteHTML($tabla, 2);
+        $mpdf->Output();
+    }
 
 
 

@@ -196,7 +196,12 @@
                                         multiple
                                         style="width:100%;">
                                     @foreach($arrayCatalogoMateriales as $mat)
-                                        <option value="{{ $mat->id }}">{{ $mat->nombre }}</option>
+                                        <option value="{{ $mat->id }}">
+                                            {{ $mat->nombre }}
+                                            @if($mat->unidadMedida)
+                                                ({{ $mat->unidadMedida->nombre }})
+                                            @endif
+                                        </option>
                                     @endforeach
                                 </select>
                                 <div class="mt-2" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
@@ -276,7 +281,12 @@
                                         multiple
                                         style="width:100%;">
                                     @foreach($arrayCatalogoMateriales as $mat)
-                                        <option value="{{ $mat->id }}">{{ $mat->nombre }}</option>
+                                        <option value="{{ $mat->id }}">
+                                            {{ $mat->nombre }}
+                                            @if($mat->unidadMedida)
+                                                ({{ $mat->unidadMedida->nombre }})
+                                            @endif
+                                        </option>
                                     @endforeach
                                 </select>
 
@@ -303,6 +313,44 @@
 
 
 
+                    {{-- ══ REPORTE 7: Existencia Actual de Proyecto Cerrado ══ --}}
+                    <div class="col-md-6">
+                        <div class="reporte-card">
+                            <div class="reporte-header"
+                                 style="background:linear-gradient(135deg,#2d1b4e,#7b2d8b);">
+                                <i class="fas fa-search"></i>
+                                <h5>Existencia Actual — Proyecto Cerrado</h5>
+                            </div>
+                            <div class="reporte-body">
+                                <p style="font-size:13px; color:#666; margin-bottom:14px;">
+                                    Muestra el stock disponible actual de un proyecto cerrado específico,
+                                    descontando todas las salidas registradas posteriores al cierre.
+                                </p>
+                                <p>Si no hay existencia, no saldra en el reporte</p>
+                                <hr class="divider">
+                                <label class="field-label">
+                                    <i class="fas fa-lock mr-1"></i>Proyecto Cerrado
+                                </label>
+                                <select class="form-control"
+                                        id="select-proyecto-cerrado-existencia"
+                                        style="width:100%;">
+                                    @foreach($transferido as $dd)
+                                        <option value="{{ $dd->id }}">{{ $dd->nombre }}</option>
+                                    @endforeach
+                                </select>
+                                <br>
+                                <button type="button"
+                                        onclick="generarPdfExistenciaCerrado()"
+                                        class="btn-pdf"
+                                        style="background:linear-gradient(135deg,#2d1b4e,#7b2d8b);
+                           color:#fff; box-shadow:0 4px 14px rgba(123,45,139,.35);">
+                                    <img src="{{ asset('images/logopdf.png') }}" width="22px" height="22px">
+                                    Generar PDF
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
 
 
 
@@ -315,7 +363,7 @@
                                 <h5>REPORTE DE SALDOS DE MATERIALES SOBRANTES</h5>
                             </div>
                             <div class="reporte-body">
-                                <p style="font-size:13px; color:#666; margin-bottom:14px;">
+                                <p style="font-size:15px; color:#000000; margin-bottom:14px;">
                                     Muestra el inventario sobrante registrado al momento del cierre
                                     del proyecto. Los movimientos posteriores no afectan este reporte.
                                 </p>
@@ -573,6 +621,11 @@
                 placeholder: "Buscar y seleccionar materiales...",
                 language: { noResults: function () { return "Búsqueda no encontrada"; } }
             });
+
+            $('#select-proyecto-cerrado-existencia').select2({
+                theme: "bootstrap-5",
+                language: { noResults: function () { return "Búsqueda no encontrada"; } }
+            });
         });
 
         function generarPdfActivo() {
@@ -780,6 +833,13 @@
             }
             var params = ids.map(id => 'ids[]=' + id).join('&');
             window.open("{{ URL::to('admin/reporte/cerrados/consolidado/materiales/pdf') }}?" + params);
+        }
+
+
+        function generarPdfExistenciaCerrado() {
+            var id = $('#select-proyecto-cerrado-existencia').val();
+            if (!id) { toastr.error('Proyecto es requerido'); return; }
+            window.open("{{ URL::to('admin/reporte/cerrado/existencia/pdf') }}/" + id);
         }
 
 

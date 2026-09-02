@@ -748,33 +748,22 @@ class HistorialController extends Controller
         DB::beginTransaction();
 
         try {
-
             $idSalida  = $transferencia->id_salida;
             $idEntrada = $transferencia->id_entrada;
 
             // ==========================================================
             // 1) VALIDACION: el material que entro al proyecto destino
             //    NO debe haber sido usado todavia.
-            //    Si ya tiene salidas o reservas, no se puede deshacer.
             // ==========================================================
             if ($idEntrada) {
-
-                $detallesEntrada = EntradasDetalle::where(
-                    'id_entradas',
-                    $idEntrada
-                )->get();
+                $detallesEntrada = EntradasDetalle::where('id_entradas', $idEntrada)->get();
 
                 foreach ($detallesEntrada as $entDet) {
+                    $usado = SalidasDetalle::where('id_entrada_detalle', $entDet->id)
+                        ->sum('cantidad_salida');
 
-                    $usado = SalidasDetalle::where(
-                        'id_entrada_detalle',
-                        $entDet->id
-                    )->sum('cantidad_salida');
-
-                    $reservado = Reserva::where(
-                        'id_entrada_detalle',
-                        $entDet->id
-                    )->sum('cantidad');
+                    $reservado = Reserva::where('id_entrada_detalle', $entDet->id)
+                        ->sum('cantidad');
 
                     if ($usado > 0 || $reservado > 0) {
                         DB::rollback();
@@ -787,8 +776,14 @@ class HistorialController extends Controller
             }
 
             // ==========================================================
-            // 2) BORRAR SALIDA (la del proyecto cerrado / origen)
-            //    Primero los detalles, luego la cabecera.
+            // 2) BORRAR TRANSFERENCIA PRIMERO — libera los FK
+            //    id_salida e id_entrada antes de borrar las cabeceras.
+            // ==========================================================
+            $transferencia->detalle()->delete();
+            $transferencia->delete();
+
+            // ==========================================================
+            // 3) BORRAR SALIDA (ya sin FK que la referencie)
             // ==========================================================
             if ($idSalida) {
                 SalidasDetalle::where('id_salida', $idSalida)->delete();
@@ -796,32 +791,19 @@ class HistorialController extends Controller
             }
 
             // ==========================================================
-            // 3) BORRAR ENTRADA (la del proyecto destino)
-            //    Solo existe en transferencia a proyecto.
+            // 4) BORRAR ENTRADA (ya sin FK que la referencie)
             // ==========================================================
             if ($idEntrada) {
                 EntradasDetalle::where('id_entradas', $idEntrada)->delete();
                 Entradas::where('id', $idEntrada)->delete();
             }
 
-            // ==========================================================
-            // 4) BORRAR EL HISTORIAL (transferencia + detalle)
-            // ==========================================================
-            $transferencia->detalle()->delete();
-            $transferencia->delete();
-
             DB::commit();
-
             return response()->json(['success' => 1]);
 
         } catch (\Throwable $e) {
-
             DB::rollback();
-
-            Log::error(
-                'eliminarTransferencia: ' . $e->getMessage()
-            );
-
+            Log::error('eliminarTransferencia: ' . $e->getMessage());
             return response()->json(['success' => 99]);
         }
     }
