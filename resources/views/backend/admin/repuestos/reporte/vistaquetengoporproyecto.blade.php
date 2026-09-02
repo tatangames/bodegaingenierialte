@@ -347,6 +347,17 @@
                                     <img src="{{ asset('images/logopdf.png') }}" width="22px" height="22px">
                                     Generar PDF
                                 </button>
+
+                                <button type="button"
+                                        onclick="generarPdfConteoFisico()"
+                                        class="btn-pdf"
+                                        style="background:linear-gradient(135deg,#1a3a1a,#2e7d32);
+               color:#fff; box-shadow:0 4px 14px rgba(46,125,50,.35); margin-left:8px;">
+                                    <img src="{{ asset('images/logopdf.png') }}" width="22px" height="22px">
+                                    Para Conteo Físico
+                                </button>
+
+
                             </div>
                         </div>
                     </div>
@@ -842,6 +853,12 @@
             window.open("{{ URL::to('admin/reporte/cerrado/existencia/pdf') }}/" + id);
         }
 
+
+        function generarPdfConteoFisico() {
+            var id = $('#select-proyecto-cerrado-existencia').val();
+            if (!id) { toastr.error('Proyecto es requerido'); return; }
+            window.open("{{ URL::to('admin/reporte/cerrado/conteo/pdf') }}/" + id);
+        }
 
     </script>
 @endsection

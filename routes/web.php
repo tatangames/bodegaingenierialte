@@ -215,6 +215,8 @@ Route::middleware('auth:admin')->group(function () {
     Route::get('/admin/reporte/cerrado/existencia/pdf/{id}',
         [ReportesController::class, 'reporteExistenciaCerrado']);
 
+    Route::get('/admin/reporte/cerrado/conteo/pdf/{id}',
+        [ReportesController::class, 'reporteConteoFisicoCerrado']);
 
     Route::post('/admin/firmas/proyectos/completado/actualizar', [ReportesController::class, 'actualizarFirmasSobrantes']);
     Route::post('/admin/firmas/proyectos/traspaso/actualizar', [ReportesController::class, 'actualizarFirmasTraspaso']);
