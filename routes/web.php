@@ -200,10 +200,19 @@ Route::middleware('auth:admin')->group(function () {
     // --- REPORTE / INVENTARIO PROYECTO
     Route::get('/admin/reporte/inventario/quetengopor/proyecto', [ReportesController::class,'vistaQueTengoPorProyecto'])->name('admin.reporte.inventario.tengoporproyecto.index');
 
-
     Route::get('/admin/reporte/quetengopor/proyectos/pdf/{idproy}', [ReportesController::class,'reporteQueTengoPorProyecto']);
     Route::get('/admin/reporte/quetengopor/proyectos/totalizado/pdf', [ReportesController::class, 'reporteTotalizadoTodosProyectos']);
     Route::get('/admin/reporte/consolidado/materiales/pdf', [ReportesController::class, 'reporteConsolidadoMateriales']);
+
+
+
+    Route::get('/admin/reporte/cerrados/totalizado/pdf',
+        [ReportesController::class, 'reporteTotalizadoCerrados']);
+
+    Route::get('/admin/reporte/cerrados/consolidado/materiales/pdf',
+        [ReportesController::class, 'reporteConsolidadoMaterialesCerrados']);
+
+
 
 
     Route::post('/admin/firmas/proyectos/completado/actualizar', [ReportesController::class, 'actualizarFirmasSobrantes']);

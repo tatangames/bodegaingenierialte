@@ -223,6 +223,89 @@
 
 
 
+                    {{-- ══ REPORTE 5: Inventario Totalizado de Proyectos Cerrados ══ --}}
+                    <div class="col-md-6">
+                        <div class="reporte-card">
+                            <div class="reporte-header"
+                                 style="background:linear-gradient(135deg,#4a3000,#c87800);">
+                                <i class="fas fa-archive"></i>
+                                <h5>Inventario Totalizado — Proyectos Cerrados</h5>
+                            </div>
+                            <div class="reporte-body">
+                                <p style="font-size:13px; color:#666; margin-bottom:14px;">
+                                    Muestra el stock sobrante consolidado de <strong>todos</strong>
+                                    los proyectos cerrados, agrupado por objeto específico,
+                                    tal como fue registrado al momento del cierre de cada proyecto.
+                                </p>
+                                <p><strong>Si la existencia es 0, no saldra en el reporte</strong></p>
+                                <hr class="divider">
+
+                                <button type="button"
+                                        onclick="generarPdfTotalizadoCerrados()"
+                                        class="btn-pdf"
+                                        style="background:linear-gradient(135deg,#4a3000,#c87800);
+                           color:#fff; box-shadow:0 4px 14px rgba(200,120,0,.35);">
+                                    <img src="{{ asset('images/logopdf.png') }}" width="22px" height="22px">
+                                    Totalizado Proyectos Cerrados
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- ══ REPORTE 6: Consolidado por Materiales — Proyectos Cerrados ══ --}}
+                    <div class="col-md-6">
+                        <div class="reporte-card">
+                            <div class="reporte-header"
+                                 style="background:linear-gradient(135deg,#1a3a1a,#4a7c4a);">
+                                <i class="fas fa-layer-group"></i>
+                                <h5>Consolidado por Materiales — Proyectos Cerrados</h5>
+                            </div>
+                            <div class="reporte-body">
+                                <p style="font-size:13px; color:#666; margin-bottom:14px;">
+                                    Muestra el stock sobrante de los materiales seleccionados,
+                                    consolidando cantidades de <strong>todos los proyectos cerrados</strong>.
+                                </p>
+                                <p><strong>Si la existencia es 0, no saldra en el reporte</strong></p>
+                                <hr class="divider">
+
+                                <label class="field-label">
+                                    <i class="fas fa-boxes mr-1"></i>Materiales
+                                </label>
+                                <select class="form-control"
+                                        id="select-materiales-cerrados"
+                                        multiple
+                                        style="width:100%;">
+                                    @foreach($arrayCatalogoMateriales as $mat)
+                                        <option value="{{ $mat->id }}">{{ $mat->nombre }}</option>
+                                    @endforeach
+                                </select>
+
+                                <div class="mt-2" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                                    <button type="button"
+                                            onclick="limpiarSeleccionMaterialesCerrados()"
+                                            class="btn btn-sm btn-outline-secondary">
+                                        <i class="fas fa-times mr-1"></i>Limpiar
+                                    </button>
+                                </div>
+                                <br>
+
+                                <button type="button"
+                                        onclick="generarPdfConsolidadoMaterialesCerrados()"
+                                        class="btn-pdf"
+                                        style="background:linear-gradient(135deg,#1a3a1a,#4a7c4a);
+                           color:#fff; box-shadow:0 4px 14px rgba(74,124,74,.35);">
+                                    <img src="{{ asset('images/logopdf.png') }}" width="22px" height="22px">
+                                    Generar PDF
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+
+
+
+
+
                     {{-- ══ REPORTE 2: Sobrantes de Proyecto Completado ══ --}}
                     <div class="col-md-6">
                         <div class="reporte-card">
@@ -483,6 +566,13 @@
                 placeholder: "Buscar y seleccionar materiales...",
                 language: { noResults: function () { return "Búsqueda no encontrada"; } }
             });
+
+            // Inicializar select2 para materiales de proyectos cerrados
+            $('#select-materiales-cerrados').select2({
+                theme: "bootstrap-5",
+                placeholder: "Buscar y seleccionar materiales...",
+                language: { noResults: function () { return "Búsqueda no encontrada"; } }
+            });
         });
 
         function generarPdfActivo() {
@@ -672,6 +762,26 @@
             var params = ids.map(id => 'ids[]=' + id).join('&');
             window.open("{{ URL::to('admin/reporte/consolidado/materiales/pdf') }}?" + params);
         }
+
+
+        function generarPdfTotalizadoCerrados() {
+            window.open("{{ URL::to('admin/reporte/cerrados/totalizado/pdf') }}");
+        }
+
+        function limpiarSeleccionMaterialesCerrados() {
+            $('#select-materiales-cerrados').val(null).trigger('change');
+        }
+
+        function generarPdfConsolidadoMaterialesCerrados() {
+            var ids = $('#select-materiales-cerrados').val();
+            if (!ids || ids.length === 0) {
+                toastr.error('Debe seleccionar al menos un material');
+                return;
+            }
+            var params = ids.map(id => 'ids[]=' + id).join('&');
+            window.open("{{ URL::to('admin/reporte/cerrados/consolidado/materiales/pdf') }}?" + params);
+        }
+
 
     </script>
 @endsection
