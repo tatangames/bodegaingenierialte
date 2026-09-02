@@ -8132,8 +8132,8 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
             <th style='{$thStyle} width:42%;'>Material</th>
             <th style='{$thStyle} width:10%;'>Medida</th>
             <th style='{$thStyle} width:9%;'>Stock Sistema</th>
-            <th style='{$thBlanco} width:13%;'>Stock Real<br><span style='font-weight:normal;font-size:10px;'>(conteo físico)</span></th>
-            <th style='{$thBlanco} width:14%;'>Diferencia<br><span style='font-weight:normal;font-size:10px;'>(real - sistema)</span></th>
+            <th style='{$thBlanco} width:13%;'>Stock Actual<br><span style='font-weight:normal;font-size:10px;'></span></th>
+            <th style='{$thBlanco} width:14%;'>Diferencia<br><span style='font-weight:normal;font-size:10px;'></span></th>
         </tr>
     </thead>
     <tbody>";
