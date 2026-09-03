@@ -202,6 +202,7 @@ Route::middleware('auth:admin')->group(function () {
 
     Route::get('/admin/reporte/quetengopor/proyectos/pdf/{idproy}', [ReportesController::class,'reporteQueTengoPorProyecto']);
     Route::get('/admin/reporte/quetengopor/proyectos/totalizado/pdf', [ReportesController::class, 'reporteTotalizadoTodosProyectos']);
+    Route::get('/admin/reporte/quetengopor/proyectos/totalizado-precio/pdf', [ReportesController::class, 'reporteTotalizadoTodosProyectosPrecio']);
     Route::get('/admin/reporte/consolidado/materiales/pdf', [ReportesController::class, 'reporteConsolidadoMateriales']);
 
 

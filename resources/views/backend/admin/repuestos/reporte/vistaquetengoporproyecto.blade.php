@@ -170,6 +170,35 @@
                                 </button>
 
 
+
+                                {{-- ✅ NUEVO: Totalizado General - Precio Unitario --}}
+                                <div style="margin-top:18px; border-top:2px dashed #e8eef8; padding-top:16px;">
+
+                                    {{-- Toggle conteo físico --}}
+                                    <div class="custom-control custom-switch" style="margin-bottom:10px;">
+                                        <input type="checkbox"
+                                               class="custom-control-input"
+                                               id="toggle-conteo-fisico-activo">
+                                        <label class="custom-control-label"
+                                               for="toggle-conteo-fisico-activo"
+                                               style="font-size:13px; font-weight:600; color:#555; cursor:pointer;">
+                                            Incluir columnas de Conteo Físico
+                                        </label>
+                                    </div>
+
+                                    <button type="button"
+                                            onclick="generarPdfTotalizadoPrecioActivo()"
+                                            class="btn-pdf"
+                                            style="background:linear-gradient(135deg,#1a4d5c,#117a8b);
+                       color:#fff; box-shadow:0 4px 14px rgba(17,122,139,.35);">
+                                        <img src="{{ asset('images/logopdf.png') }}" width="22px" height="22px">
+                                        Totalizado General - Precio Unitario
+                                    </button>
+                                </div>
+
+
+
+
                             </div>
                         </div>
                     </div>
@@ -343,7 +372,6 @@
                                 </div>
 
 
-
                                 {{-- ═══════════════════════════════════════ --}}
                                 {{-- BOTÓN 5: TOTALIZADO PROYECTOS CERRADOS - PRECIO UNITARIO --}}
                                 {{-- ═══════════════════════════════════════ --}}
@@ -352,16 +380,30 @@
 
                                     <p style="font-size:13px; color:#555; margin-bottom:8px;">
                                         <strong>Totalizado - Precio Unitario</strong>
-                                        Muestra el stock sobrante consolidado de todos los proyectos cerrados, agrupado por objeto específico, tal como fue registrado al momento del cierre de cada proyecto.
-                                        Mostrara precio unitario desglosando cada material.
+                                        Muestra el stock sobrante consolidado de todos los proyectos cerrados, agrupado
+                                        por objeto específico. Muestra precio unitario desglosando cada material.
                                         Si afecta por Transferencia o descargo general.
                                     </p>
+
+                                    {{-- Toggle conteo físico --}}
+                                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+                                        <div class="custom-control custom-switch">
+                                            <input type="checkbox"
+                                                   class="custom-control-input"
+                                                   id="toggle-conteo-fisico-desglose">
+                                            <label class="custom-control-label"
+                                                   for="toggle-conteo-fisico-desglose"
+                                                   style="font-size:13px; font-weight:600; color:#555; cursor:pointer;">
+                                                Incluir columnas de Conteo Físico
+                                            </label>
+                                        </div>
+                                    </div>
 
                                     <button type="button"
                                             onclick="generarPdfTotalizadoCerradosPrecioDesglose()"
                                             class="btn-pdf"
                                             style="background:linear-gradient(135deg,#4a3000,#c87800);
-                           color:#fff; box-shadow:0 4px 14px rgba(200,120,0,.35);">
+                   color:#fff; box-shadow:0 4px 14px rgba(200,120,0,.35);">
                                         <img src="{{ asset('images/logopdf.png') }}" width="22px" height="22px">
                                         Totalizado Proyectos Cerrados - Precio Unitario
                                     </button>
@@ -910,7 +952,8 @@
         }
 
         function generarPdfTotalizadoCerradosPrecioDesglose() {
-            window.open("{{ URL::to('admin/reporte/cerrados/totalizado-desglosado/pdf') }}");
+            var conteo = $('#toggle-conteo-fisico-desglose').is(':checked') ? 1 : 0;
+            window.open("{{ URL::to('admin/reporte/cerrados/totalizado-desglosado/pdf') }}?conteo=" + conteo);
         }
 
         function limpiarSeleccionMaterialesCerrados() {
@@ -942,6 +985,13 @@
             var id = $('#select-proyecto-cerrado-existencia').val();
             if (!id) { toastr.error('Proyecto es requerido'); return; }
             window.open("{{ URL::to('admin/reporte/cerrado/lote/pdf') }}/" + id);
+        }
+
+
+
+        function generarPdfTotalizadoPrecioActivo() {
+            var conteo = $('#toggle-conteo-fisico-activo').is(':checked') ? 1 : 0;
+            window.open("{{ URL::to('admin/reporte/quetengopor/proyectos/totalizado-precio/pdf') }}?conteo=" + conteo);
         }
 
 
