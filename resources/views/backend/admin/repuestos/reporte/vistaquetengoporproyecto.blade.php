@@ -134,7 +134,7 @@
                         <div class="reporte-card">
                             <div class="reporte-header activo">
                                 <i class="fas fa-boxes"></i>
-                                <h5>Inventario Actual de Proyecto</h5>
+                                <h5>Inventario Actual de Proyecto - EN EJECUCIÓN</h5>
                             </div>
                             <div class="reporte-body">
                                 <p style="font-size:13px; color:#666; margin-bottom:14px;">
@@ -180,7 +180,7 @@
                         <div class="reporte-card">
                             <div class="reporte-header" style="background:linear-gradient(135deg,#4a1a1a,#c0392b);">
                                 <i class="fas fa-layer-group"></i>
-                                <h5>Consolidado por Materiales</h5>
+                                <h5>Consolidado por Materiales - EN EJECUCIÓN</h5>
                             </div>
                             <div class="reporte-body">
                                 <p style="font-size:13px; color:#666; margin-bottom:14px;">
@@ -365,6 +365,10 @@
                                     <img src="{{ asset('images/logopdf.png') }}" width="22px" height="22px">
                                     Con Precio / Por Lote
                                 </button>
+
+                                <br> <br> <br>
+                                <small>Boton Precio/Por Lote: mostrara materiales individuales para mostrar precio unitario por cada ingreso
+                                para verificar monto</small>
 
                             </div>
                         </div>
