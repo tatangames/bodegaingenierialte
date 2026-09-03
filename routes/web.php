@@ -209,11 +209,16 @@ Route::middleware('auth:admin')->group(function () {
     Route::get('/admin/reporte/cerrados/totalizado/pdf',
         [ReportesController::class, 'reporteTotalizadoCerrados']);
 
+
+
+    Route::get('/admin/reporte/cerrados/totalizado-desglosado/pdf',
+        [ReportesController::class, 'reporteTotalizadoCerradosDesglosadoPrecio']);
+
+
+
     Route::get('/admin/reporte/cerrados/consolidado/materiales/pdf',
         [ReportesController::class, 'reporteConsolidadoMaterialesCerrados']);
 
-    Route::get('/admin/reporte/cerrado/existencia/pdf/{id}',
-        [ReportesController::class, 'reporteExistenciaCerrado']);
 
     Route::get('/admin/reporte/cerrado/conteo/pdf/{id}',
         [ReportesController::class, 'reporteConteoFisicoCerrado']);

@@ -227,35 +227,160 @@
 
 
 
-
-                    {{-- ══ REPORTE 5: Inventario Totalizado de Proyectos Cerrados ══ --}}
+                    {{-- ══ REPORTE 7: Existencia Actual de Proyecto Cerrado ══ --}}
                     <div class="col-md-6">
                         <div class="reporte-card">
+
                             <div class="reporte-header"
-                                 style="background:linear-gradient(135deg,#4a3000,#c87800);">
-                                <i class="fas fa-archive"></i>
-                                <h5>Inventario Totalizado — Proyectos Cerrados</h5>
+                                 style="background:linear-gradient(135deg,#2d1b4e,#7b2d8b);">
+                                <i class="fas fa-search"></i>
+                                <h5>Existencia Actual — Proyecto Cerrado</h5>
                             </div>
+
                             <div class="reporte-body">
-                                <p style="font-size:13px; color:#666; margin-bottom:14px;">
-                                    Muestra el stock sobrante consolidado de <strong>todos</strong>
-                                    los proyectos cerrados, agrupado por objeto específico,
-                                    tal como fue registrado al momento del cierre de cada proyecto.
-                                </p>
-                                <p><strong>Si la existencia es 0, no saldra en el reporte</strong></p>
+
                                 <hr class="divider">
 
-                                <button type="button"
-                                        onclick="generarPdfTotalizadoCerrados()"
-                                        class="btn-pdf"
-                                        style="background:linear-gradient(135deg,#4a3000,#c87800);
+                                <label class="field-label">
+                                    <i class="fas fa-lock mr-1"></i>
+                                    Proyecto Cerrado
+                                </label>
+
+                                <select class="form-control"
+                                        id="select-proyecto-cerrado-existencia"
+                                        style="width:100%;">
+                                    @foreach($transferido as $dd)
+                                        <option value="{{ $dd->id }}">
+                                            {{ $dd->nombre }}
+                                        </option>
+                                    @endforeach
+                                </select>
+
+                                <br>
+
+
+                                {{-- ═══════════════════════════════════════ --}}
+                                {{-- BOTÓN 2: CONTEO FÍSICO --}}
+                                {{-- ═══════════════════════════════════════ --}}
+
+                                <div style="margin-bottom:18px;">
+
+                                    <p style="font-size:13px; color:#555; margin-bottom:8px;">
+                                        <strong>Conteo Físico:</strong>
+                                        Genera un listado de los materiales existentes para realizar
+                                        el conteo físico y verificar las cantidades disponibles en bodega.
+                                        Si afecta por Transferencia o descargo general.
+                                    </p>
+
+                                    <button type="button"
+                                            onclick="generarPdfConteoFisico()"
+                                            class="btn-pdf"
+                                            style="background:linear-gradient(135deg,#1a3a1a,#2e7d32);
+                               color:#fff;
+                               box-shadow:0 4px 14px rgba(46,125,50,.35);
+                               width:100%;">
+                                        <img src="{{ asset('images/logopdf.png') }}"
+                                             width="22px"
+                                             height="22px">
+                                        Para Conteo Físico
+                                    </button>
+
+                                </div>
+
+
+                                {{-- ═══════════════════════════════════════ --}}
+                                {{-- BOTÓN 3: PRECIO / LOTE --}}
+                                {{-- ═══════════════════════════════════════ --}}
+
+                                <div style="margin-bottom:10px;">
+
+                                    <p style="font-size:13px; color:#555; margin-bottom:8px;">
+                                        <strong>Precio / Por Lote:</strong>
+                                        Muestra los materiales individualmente según cada ingreso o lote,
+                                        incluyendo el precio unitario para facilitar la verificación
+                                        del monto total de las existencias. Si afecta por Transferencia o descargo general.
+                                    </p>
+
+                                    <button type="button"
+                                            onclick="generarPdfExistenciaLote()"
+                                            class="btn-pdf"
+                                            style="background:linear-gradient(135deg,#1a3a1a,#2e7d32);
+                               color:#fff;
+                               box-shadow:0 4px 14px rgba(46,125,50,.35);
+                               width:100%;">
+                                        <img src="{{ asset('images/logopdf.png') }}"
+                                             width="22px"
+                                             height="22px">
+                                        Con Precio / Por Lote
+                                    </button>
+
+                                </div>
+
+
+
+
+                                {{-- ═══════════════════════════════════════ --}}
+                                {{-- BOTÓN 4: TOTALIZADO PROYECTOS CERRADOS --}}
+                                {{-- ═══════════════════════════════════════ --}}
+
+                                <div style="margin-bottom:10px;">
+
+                                    <p style="font-size:13px; color:#555; margin-bottom:8px;">
+                                        <strong>Totalizado</strong>
+                                        Muestra el stock sobrante consolidado de todos los proyectos cerrados, agrupado por objeto específico, tal como fue registrado al momento del cierre de cada proyecto.
+                                        Si afecta por Transferencia o descargo general.
+                                    </p>
+
+                                    <button type="button"
+                                            onclick="generarPdfTotalizadoCerrados()"
+                                            class="btn-pdf"
+                                            style="background:linear-gradient(135deg,#4a3000,#c87800);
                            color:#fff; box-shadow:0 4px 14px rgba(200,120,0,.35);">
-                                    <img src="{{ asset('images/logopdf.png') }}" width="22px" height="22px">
-                                    Totalizado Proyectos Cerrados
-                                </button>
+                                        <img src="{{ asset('images/logopdf.png') }}" width="22px" height="22px">
+                                        Totalizado Proyectos Cerrados
+                                    </button>
+
+                                </div>
+
+
+
+                                {{-- ═══════════════════════════════════════ --}}
+                                {{-- BOTÓN 5: TOTALIZADO PROYECTOS CERRADOS - PRECIO UNITARIO --}}
+                                {{-- ═══════════════════════════════════════ --}}
+
+                                <div style="margin-bottom:10px;">
+
+                                    <p style="font-size:13px; color:#555; margin-bottom:8px;">
+                                        <strong>Totalizado - Precio Unitario</strong>
+                                        Muestra el stock sobrante consolidado de todos los proyectos cerrados, agrupado por objeto específico, tal como fue registrado al momento del cierre de cada proyecto.
+                                        Mostrara precio unitario desglosando cada material.
+                                        Si afecta por Transferencia o descargo general.
+                                    </p>
+
+                                    <button type="button"
+                                            onclick="generarPdfTotalizadoCerradosPrecioDesglose()"
+                                            class="btn-pdf"
+                                            style="background:linear-gradient(135deg,#4a3000,#c87800);
+                           color:#fff; box-shadow:0 4px 14px rgba(200,120,0,.35);">
+                                        <img src="{{ asset('images/logopdf.png') }}" width="22px" height="22px">
+                                        Totalizado Proyectos Cerrados - Precio Unitario
+                                    </button>
+
+                                </div>
+
+
+
+
+
                             </div>
                         </div>
                     </div>
+
+
+
+
+
+
 
                     {{-- ══ REPORTE 6: Consolidado por Materiales — Proyectos Cerrados ══ --}}
                     <div class="col-md-6">
@@ -313,66 +438,6 @@
 
 
 
-                    {{-- ══ REPORTE 7: Existencia Actual de Proyecto Cerrado ══ --}}
-                    <div class="col-md-6">
-                        <div class="reporte-card">
-                            <div class="reporte-header"
-                                 style="background:linear-gradient(135deg,#2d1b4e,#7b2d8b);">
-                                <i class="fas fa-search"></i>
-                                <h5>Existencia Actual — Proyecto Cerrado</h5>
-                            </div>
-                            <div class="reporte-body">
-                                <p style="font-size:13px; color:#666; margin-bottom:14px;">
-                                    Muestra el stock disponible actual de un proyecto cerrado específico,
-                                    descontando todas las salidas registradas posteriores al cierre.
-                                </p>
-                                <p>Si no hay existencia, no saldra en el reporte</p>
-                                <hr class="divider">
-                                <label class="field-label">
-                                    <i class="fas fa-lock mr-1"></i>Proyecto Cerrado
-                                </label>
-                                <select class="form-control"
-                                        id="select-proyecto-cerrado-existencia"
-                                        style="width:100%;">
-                                    @foreach($transferido as $dd)
-                                        <option value="{{ $dd->id }}">{{ $dd->nombre }}</option>
-                                    @endforeach
-                                </select>
-                                <br>
-                                <button type="button"
-                                        onclick="generarPdfExistenciaCerrado()"
-                                        class="btn-pdf"
-                                        style="background:linear-gradient(135deg,#2d1b4e,#7b2d8b);
-                           color:#fff; box-shadow:0 4px 14px rgba(123,45,139,.35);">
-                                    <img src="{{ asset('images/logopdf.png') }}" width="22px" height="22px">
-                                    Generar PDF
-                                </button>
-
-                                <button type="button"
-                                        onclick="generarPdfConteoFisico()"
-                                        class="btn-pdf"
-                                        style="background:linear-gradient(135deg,#1a3a1a,#2e7d32);
-               color:#fff; box-shadow:0 4px 14px rgba(46,125,50,.35); margin-left:8px;">
-                                    <img src="{{ asset('images/logopdf.png') }}" width="22px" height="22px">
-                                    Para Conteo Físico
-                                </button>
-
-                                <button type="button"
-                                        onclick="generarPdfExistenciaLote()"
-                                        class="btn-pdf"
-                                        style="background:linear-gradient(135deg,#1a3a1a,#2e7d32);
-               color:#fff; box-shadow:0 4px 14px rgba(46,125,50,.35); margin-left:8px;">
-                                    <img src="{{ asset('images/logopdf.png') }}" width="22px" height="22px">
-                                    Con Precio / Por Lote
-                                </button>
-
-                                <br> <br> <br>
-                                <small>Boton Precio/Por Lote: mostrara materiales individuales para mostrar precio unitario por cada ingreso
-                                para verificar monto</small>
-
-                            </div>
-                        </div>
-                    </div>
 
 
 
@@ -844,6 +909,10 @@
             window.open("{{ URL::to('admin/reporte/cerrados/totalizado/pdf') }}");
         }
 
+        function generarPdfTotalizadoCerradosPrecioDesglose() {
+            window.open("{{ URL::to('admin/reporte/cerrados/totalizado-desglosado/pdf') }}");
+        }
+
         function limpiarSeleccionMaterialesCerrados() {
             $('#select-materiales-cerrados').val(null).trigger('change');
         }
@@ -859,11 +928,7 @@
         }
 
 
-        function generarPdfExistenciaCerrado() {
-            var id = $('#select-proyecto-cerrado-existencia').val();
-            if (!id) { toastr.error('Proyecto es requerido'); return; }
-            window.open("{{ URL::to('admin/reporte/cerrado/existencia/pdf') }}/" + id);
-        }
+
 
 
         function generarPdfConteoFisico() {
