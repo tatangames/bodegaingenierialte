@@ -1200,7 +1200,7 @@ class ReportesController extends Controller
             <th style='{$thStyle} width:{$wMed};'>Medida</th>
             <th style='{$thStyle} width:{$wPrecio};'>Precio Unit.</th>
             <th style='{$thStyle} width:{$wStock};'>Stock Sistema</th>
-            <th style='{$thStyle} width:{$wTotal};'>Total Lote</th>";
+            <th style='{$thStyle} width:{$wTotal};'>Total</th>";
 
         if ($conConteo) {
             $tabla .= "
