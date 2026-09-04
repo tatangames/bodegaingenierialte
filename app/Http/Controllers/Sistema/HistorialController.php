@@ -210,6 +210,7 @@ class HistorialController extends Controller
                     'codigo'         => $item->codigo ?? '',
                     'marca'            => $item->material->codigo ?? '',
                     'material'       => $item->material->nombre ?? '',
+                    'unidad_medida'   => $item->material->unidadMedida->nombre ?? '—',  // ← nuevo
                     'cantidad_inicial'=> $item->cantidad_inicial,
                     'precio'         => number_format($item->precio, 4),
                     'precio_raw'     => $item->precio,  // sin formato para el input

@@ -176,6 +176,7 @@
                                 <th>Detalle</th>
                                 <th>Marca</th>
                                 <th>Material</th>
+                                <th class="text-center">U. Medida</th>   {{-- ← nueva --}}
                                 <th class="text-center">Cantidad</th>
                                 <th class="text-right">Precio unitario</th>
                                 <th id="detalle-col-accion" class="text-center">Acciones</th>
@@ -539,6 +540,7 @@
                                     <td>${fila.codigo ?? ''}</td>
                                     <td>${fila.marca ?? ''}</td>
                                     <td>${fila.material}</td>
+                                    <td class="text-center">${fila.unidad_medida}</td>   <!-- ← nueva -->
                                     <td class="text-center">${fila.cantidad_inicial}</td>
                                     <td class="text-right">$${fila.precio}</td>
                                     <td class="text-center text-nowrap">${botones}</td>
