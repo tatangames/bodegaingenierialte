@@ -192,6 +192,7 @@
                                 <th>#</th>
                                 <th>Código</th>
                                 <th>Material</th>
+                                <th class="text-center">U. Medida</th>   {{-- ← nueva --}}
                                 <th class="text-center">Cantidad</th>
                                 <th class="text-right">Precio unitario</th>
                             </tr>
@@ -443,6 +444,7 @@
                                     <td>${index + 1}</td>
                                     <td>${fila.codigo}</td>
                                     <td>${fila.material}</td>
+                                    <td class="text-center">${fila.unidad_medida}</td>   <!-- ← nueva -->
                                     <td class="text-center">${fila.cantidad_salida}</td>
                                     <td class="text-right">$${fila.precio}</td>
                                 </tr>`;

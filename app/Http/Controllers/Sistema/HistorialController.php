@@ -506,14 +506,15 @@ class HistorialController extends Controller
         }
 
         $detalle = $salida->detalle()
-            ->with('entradaDetalle.material')
+            ->with('entradaDetalle.material.unidadMedida')  // ← agregar .unidadMedida
             ->get()
             ->map(function ($item) {
                 return [
-                    'codigo'         => $item->entradaDetalle->id_material ?? '',
-                    'material'       => $item->entradaDetalle->material->nombre ?? '',
-                    'cantidad_salida'=> $item->cantidad_salida,
-                    'precio'         => number_format($item->entradaDetalle->precio, 4),
+                    'codigo'          => $item->entradaDetalle->id_material ?? '',
+                    'material'        => $item->entradaDetalle->material->nombre ?? '',
+                    'unidad_medida'   => $item->entradaDetalle->material->unidadMedida->nombre ?? '—',  // ← nuevo
+                    'cantidad_salida' => $item->cantidad_salida,
+                    'precio'          => number_format($item->entradaDetalle->precio, 4),
                 ];
             });
 
