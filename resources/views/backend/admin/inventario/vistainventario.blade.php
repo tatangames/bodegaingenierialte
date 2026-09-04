@@ -107,18 +107,7 @@
                 <button type="button" onclick="modalAgregar()" class="btn btn-dark btn-sm mr-3">
                     <i class="fas fa-plus-square"></i> Registrar Material
                 </button>
-                <div class="btn-group" role="group">
-                    <button type="button" id="btn-todos"
-                            class="btn btn-sm btn-primary"
-                            onclick="filtrarTabla('todos')">
-                        <i class="fas fa-list mr-1"></i>Todos
-                    </button>
-                    <button type="button" id="btn-sin-objeto"
-                            class="btn btn-sm btn-outline-info"
-                            onclick="filtrarTabla('sin_objeto')">
-                        <i class="fas fa-unlink mr-1"></i>Sin Objeto Específico
-                    </button>
-                </div>
+
             </div>
         </section>
 
