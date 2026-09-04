@@ -308,16 +308,26 @@ class SalidasController extends Controller
 
     // *****************************
 
-    public function indexTransferencias(){
-
-        // LISTADO DE PROYECTOS (MENOS EL ID 1 YA QUE SERA EL INVENTARIO GENERAL)
-        // Y QUE NO HAYAN SIDO TRANSFERIDOS
-
+    public function indexTransferencias()
+    {
+        // Proyectos activos (para cerrar)
         $tipoproyecto = TipoProyecto::orderBy('nombre')
             ->where('transferido', '!=', 1)
             ->get();
 
-        return view('backend.admin.repuestos.registros.vistatransferidos', compact('tipoproyecto'));
+        // Proyectos cerrados (para reabrir) — indica si tiene retiros
+        $proyectosCerrados = TipoProyecto::where('transferido', 1)
+            ->orderBy('nombre')
+            ->get()
+            ->map(function ($p) {
+                $p->puede_reabrir = !Transferencia::where('id_tipoproyecto_origen', $p->id)
+                    ->whereIn('tipo_salida', ['proyecto', 'general'])
+                    ->exists();
+                return $p;
+            });
+
+        return view('backend.admin.repuestos.registros.vistatransferidos',
+            compact('tipoproyecto', 'proyectosCerrados'));
     }
 
 
@@ -418,6 +428,56 @@ class SalidasController extends Controller
             Log::error('geenrarSalidaTransferencia: ' . $e);
             DB::rollback();
             return ['success' => 99];
+        }
+    }
+
+
+
+    public function reabrirProyecto(Request $request)
+    {
+        $proyecto = TipoProyecto::find($request->id);
+
+        if (!$proyecto || $proyecto->transferido == 0) {
+            return response()->json(['success' => 0]); // no existe o ya está abierto
+        }
+
+        // Verificar que no tenga retiros
+        $tieneRetiros = Transferencia::where('id_tipoproyecto_origen', $proyecto->id)
+            ->whereIn('tipo_salida', ['proyecto', 'general'])
+            ->exists();
+
+        if ($tieneRetiros) {
+            return response()->json([
+                'success' => 2,
+                'msg'     => 'No se puede reabrir: ya se han retirado materiales de este proyecto.',
+            ]);
+        }
+
+        DB::beginTransaction();
+
+        try {
+            // Borrar el snapshot (TransferenciaDetalle + Transferencia tipo snapshot)
+            $snapshot = Transferencia::where('id_tipoproyecto_origen', $proyecto->id)
+                ->where('tipo_salida', 'snapshot')
+                ->first();
+
+            if ($snapshot) {
+                $snapshot->detalle()->delete();
+                $snapshot->delete();
+            }
+
+            // Reabrir el proyecto
+            $proyecto->transferido  = 0;
+            $proyecto->fecha_cierre = null;
+            $proyecto->save();
+
+            DB::commit();
+            return response()->json(['success' => 1]);
+
+        } catch (\Throwable $e) {
+            DB::rollback();
+            Log::error('reabrirProyecto: ' . $e->getMessage());
+            return response()->json(['success' => 99]);
         }
     }
 
