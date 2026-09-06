@@ -177,9 +177,10 @@
                             <thead class="thead-dark">
                             <tr>
                                 <th style="width:4%">#</th>
-                                <th style="width:28%">Material</th>
-                                <th style="width:28%">Objeto Específico</th>
-                                <th class="text-center" style="width:12%">Cantidad sobrante</th>
+                                <th style="width:24%">Material</th>
+                                <th style="width:10%">Unidad</th>
+                                <th style="width:24%">Objeto Específico</th>
+                                <th class="text-center" style="width:10%">Cantidad sobrante</th>
                                 <th class="text-right" style="width:14%">Precio unitario</th>
                                 <th class="text-right" style="width:14%">Subtotal</th>
                             </tr>
@@ -187,7 +188,7 @@
                             <tbody id="detalle-tbody"></tbody>
                             <tfoot>
                             <tr class="table-dark">
-                                <td colspan="5" class="text-right font-weight-bold">Total estimado:</td>
+                                <td colspan="6" class="text-right font-weight-bold">Total:</td>
                                 <td class="text-right font-weight-bold" id="detalle-total"></td>
                             </tr>
                             </tfoot>
@@ -400,6 +401,9 @@
                 <tr>
                     <td>${index + 1}</td>
                     <td>${fila.nombre_material}</td>
+                    <td class="text-center">
+                        <small class="text-muted">${fila.unidad_medida}</small>
+                    </td>
                     <td>
                         <small class="text-muted">
                             ${fila.objeto_especifico}

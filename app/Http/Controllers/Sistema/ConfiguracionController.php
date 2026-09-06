@@ -2,10 +2,21 @@
 
 namespace App\Http\Controllers\Sistema;
 
-use App\Http\Controllers\Controller;use App\Models\Cuenta;use App\Models\Departamentos;use App\Models\Empleado;use App\Models\ObjetoEspecifico;use App\Models\Rubro;use App\Models\UnidadMedida;use Illuminate\Http\Request;use Illuminate\Support\Facades\Validator;
+use App\Http\Controllers\Controller;
+use App\Models\Cuenta;
+use App\Models\Departamentos;
+use App\Models\Materiales;
+use App\Models\ObjetoEspecifico;
+use App\Models\Rubro;
+use App\Models\UnidadMedida;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
 class ConfiguracionController extends Controller
 {
+
+    //********* UNIDAD DE MEDIDA **********************************************
+
 
     public function indexUnidadMedida(){
         return view('backend.admin.unidadmedida.vistaunidadmedida');
@@ -47,7 +58,9 @@ class ConfiguracionController extends Controller
 
         if($lista = UnidadMedida::where('id', $request->id)->first()){
 
-            return ['success' => 1, 'medida' => $lista];
+            $enUso = Materiales::where('id_medida', $request->id)->exists();
+
+            return ['success' => 1, 'medida' => $lista, 'enUso' => $enUso];
         }else{
             return ['success' => 2];
         }
@@ -65,6 +78,13 @@ class ConfiguracionController extends Controller
         if ($validar->fails()){ return ['success' => 0];}
 
         if(UnidadMedida::where('id', $request->id)->first()){
+
+            // Verificar si algún material ya tiene asignada esta unidad de medida
+            $tieneMateriales = Materiales::where('id_medida', $request->id)->exists();
+
+            if($tieneMateriales){
+                return ['success' => 3]; // No se puede editar, está en uso
+            }
 
             UnidadMedida::where('id', $request->id)->update([
                 'nombre' => $request->medida

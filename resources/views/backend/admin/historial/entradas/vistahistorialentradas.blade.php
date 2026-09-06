@@ -40,6 +40,22 @@
     </li>
 @endsection
 
+@section('css')
+    <style>
+        #placeholder-historial {
+            padding: 60px 0;
+        }
+        #placeholder-historial i {
+            color: #adb5bd;
+        }
+        /* Oculta toda la columna de Acciones (header y celdas) cuando el
+           proyecto está cerrado, sin importar cuándo se insertan las filas */
+        #modalDetalle table.oculto-acciones .col-acciones {
+            display: none;
+        }
+    </style>
+@stop
+
 @section('content')
     <div id="divcontenedor">
 
@@ -96,7 +112,18 @@
                     <div class="card-body">
                         <div class="row">
                             <div class="col-md-12">
-                                <div id="tablaDatatable"></div>
+                                <div id="tablaDatatable">
+                                    {{-- Nada se carga hasta que el usuario presione Filtrar --}}
+                                    <div class="text-center text-muted" id="placeholder-historial">
+                                        <i class="fas fa-filter fa-2x mb-3"></i>
+                                        <p class="mb-0">
+                                            Selecciona un proyecto o un rango de fechas si quieres acotar la búsqueda,
+                                        </p>
+                                        <p>
+                                            o presiona <strong>Filtrar</strong> directamente para ver todo el historial de entradas.
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -176,10 +203,11 @@
                                 <th>Detalle</th>
                                 <th>Marca</th>
                                 <th>Material</th>
-                                <th class="text-center">U. Medida</th>   {{-- ← nueva --}}
+                                <th class="text-center">U. Medida</th>
                                 <th class="text-center">Cantidad</th>
                                 <th class="text-right">Precio unitario</th>
-                                <th id="detalle-col-accion" class="text-center">Acciones</th>
+                                <th class="text-right">Total</th>
+                                <th id="detalle-col-accion" class="text-center col-acciones">Acciones</th>
                             </tr>
                             </thead>
                             <tbody id="detalle-tbody"></tbody>
@@ -315,7 +343,20 @@
                 $('#tabla_filter input').addClass('form-control form-control-sm').css('display', 'inline-block');
             }
 
-            // ── Cargar tabla con filtros ──────────────────────────
+            // ── Loading mientras se trae la tabla ─────────────────
+            function mostrarLoading() {
+                $('#tablaDatatable').html(
+                    '<div class="text-center py-5">' +
+                    '<i class="fas fa-spinner fa-spin fa-2x"></i>' +
+                    '<p class="mt-2 mb-0 text-muted">Cargando entradas...</p>' +
+                    '</div>'
+                );
+            }
+
+            // ── Cargar tabla (con o sin filtros) ──────────────────
+            // Se invoca solo cuando el usuario presiona "Filtrar". Si no hay
+            // filtros seleccionados, trae todos los resultados; nunca se
+            // llama automáticamente al entrar a la pantalla.
             function cargarTabla() {
                 const proyecto   = $('#filtro-proyecto').val();
                 const fechaDesde = $('#filtro-fecha-desde').val();
@@ -328,8 +369,12 @@
 
                 const url = params.toString() ? ruta + '?' + params.toString() : ruta;
 
+                mostrarLoading();
+
                 $('#tablaDatatable').load(url, function () {
-                    initDataTable();
+                    if ($('#tabla').length) {
+                        initDataTable();
+                    }
                 });
             }
 
@@ -339,10 +384,13 @@
                 $('#filtro-proyecto').val('').trigger('change');
                 $('#filtro-fecha-desde').val('');
                 $('#filtro-fecha-hasta').val('');
-                cargarTabla();
+                // Nota: limpiar no vuelve a cargar la tabla automáticamente;
+                // el usuario presiona "Filtrar" cuando quiera traer todo de nuevo.
             };
 
-            cargarTabla();
+            // Ya NO se llama cargarTabla() al inicio.
+            // La tabla se mantiene con el placeholder hasta que el usuario
+            // presione "Filtrar" (con o sin filtros llenos).
 
             // ── Delegación de evento para botón editar detalle ────
             $(document).on('click', '.btn-editar-detalle', function () {
@@ -498,10 +546,10 @@
 
             if (cerrado) {
                 $('#detalle-badge-cerrado').show();
-                $('#detalle-col-accion').hide();
+                $('#detalle-contenido table').addClass('oculto-acciones');
             } else {
                 $('#detalle-badge-cerrado').hide();
-                $('#detalle-col-accion').show();
+                $('#detalle-contenido table').removeClass('oculto-acciones');
             }
 
             $('#modalDetalle').modal('show');
@@ -511,8 +559,9 @@
                     $('#detalle-loading').hide();
                     if (response.data.success === 1 && response.data.detalle.length > 0) {
                         let html = '';
+                        let totalGeneral = 0;
+
                         response.data.detalle.forEach((fila, index) => {
-                            // ✅ Botones con data-* para evitar problemas con caracteres especiales
                             let botones = '';
                             if (!cerrado) {
                                 botones = `
@@ -534,18 +583,32 @@
                                     </button>`;
                             }
 
+                            const precioNum = parseFloat(fila.precio_raw) || 0;
+                            const cantidad  = parseFloat(fila.cantidad_inicial) || 0;
+                            const total     = precioNum * cantidad;
+                            totalGeneral   += total;
+
                             html += `
                                 <tr>
                                     <td>${index + 1}</td>
                                     <td>${fila.codigo ?? ''}</td>
                                     <td>${fila.marca ?? ''}</td>
                                     <td>${fila.material}</td>
-                                    <td class="text-center">${fila.unidad_medida}</td>   <!-- ← nueva -->
+                                    <td class="text-center">${fila.unidad_medida}</td>
                                     <td class="text-center">${fila.cantidad_inicial}</td>
                                     <td class="text-right">$${fila.precio}</td>
-                                    <td class="text-center text-nowrap">${botones}</td>
+                                    <td class="text-right">$${total.toFixed(2)}</td>
+                                    <td class="text-center text-nowrap col-acciones">${botones}</td>
                                 </tr>`;
                         });
+
+                        html += `
+                            <tr class="font-weight-bold" style="background-color:#f8f9fa;">
+                                <td colspan="7" class="text-right">Total general</td>
+                                <td class="text-right">$${totalGeneral.toFixed(2)}</td>
+                                <td class="col-acciones"></td>
+                            </tr>`;
+
                         $('#detalle-tbody').html(html);
                         $('#detalle-contenido').show();
                     } else {

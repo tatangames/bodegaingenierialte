@@ -14,6 +14,7 @@ use App\Http\Controllers\Sistema\SalidasController;
 use App\Http\Controllers\Sistema\HistorialController;
 use App\Http\Controllers\Sistema\ReportesController;
 use App\Http\Controllers\Sistema\ReservasController;
+use App\Http\Controllers\Sistema\HistorialTransferenciaController;
 
 
 
@@ -159,12 +160,14 @@ Route::middleware('auth:admin')->group(function () {
 
 
     // --- HISTORIAL / TRANSFERENCIAS ---
-    Route::get('/admin/historial/transferencias', [HistorialController::class, 'indexHistorialTransferencias'])->name('admin.historial.transferencias.index');
-    Route::get('/admin/historial/transferencias/tabla', [HistorialController::class, 'tablaHistorialTransferencias']);
-    Route::post('/admin/historial/transferencias/informacion', [HistorialController::class, 'informacionTransferencia']);
-    Route::post('/admin/historial/transferencias/eliminar', [HistorialController::class, 'eliminarTransferencia']);
-    Route::post('/admin/historial/transferencias/detalle', [HistorialController::class, 'detalleTransferencia']);
-    Route::get('/admin/historial/transferencias/acta/pdf/{id}', [HistorialController::class, 'actaDesdeHistorial']);
+    Route::get('/admin/historial/transferencias', [HistorialTransferenciaController::class, 'indexHistorialTransferencias'])->name('admin.historial.transferencias.index');
+    Route::get('/admin/historial/transferencias/tabla', [HistorialTransferenciaController::class, 'tablaHistorialTransferencias']);
+    Route::post('/admin/historial/transferencias/informacion', [HistorialTransferenciaController::class, 'informacionTransferencia']);
+    Route::post('/admin/historial/transferencias/eliminar', [HistorialTransferenciaController::class, 'eliminarTransferencia']);
+    Route::post('/admin/historial/transferencias/detalle', [HistorialTransferenciaController::class, 'detalleTransferencia']);
+    Route::get('/admin/historial/transferencias/acta/pdf/{id}', [HistorialTransferenciaController::class, 'actaDesdeHistorial']);
+
+
 
 
     // --- REPORTES DE DIFERENTES FORMULARIOS ---

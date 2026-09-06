@@ -124,6 +124,13 @@
                 </div>
 
                 <div class="modal-body">
+
+                    <!-- Aviso de bloqueo -->
+                    <div id="aviso-en-uso" class="alert alert-warning" style="display: none;">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Esta unidad de medida no se puede editar porque ya está asignada a uno o más materiales.
+                    </div>
+
                     <form id="formulario-editar" onsubmit="event.preventDefault(); editar();">
                         <div class="card-body">
                             <div class="row">
@@ -145,11 +152,13 @@
                 </div>
                 <div class="modal-footer justify-content-between">
                     <button type="button" class="btn btn-default" data-dismiss="modal">Cerrar</button>
-                    <button type="submit" class="btn btn-primary" onclick="editar()">Guardar</button>
+                    <button type="submit" class="btn btn-primary" id="btn-guardar-editar" onclick="editar()">Guardar</button>
                 </div>
             </div>
         </div>
     </div>
+
+
 </div>
 
 @stop
@@ -283,6 +292,16 @@
                         $('#id-editar').val(response.data.medida.id);
                         $('#medida-editar').val(response.data.medida.nombre);
 
+                        if(response.data.enUso){
+                            $('#aviso-en-uso').show();
+                            $('#medida-editar').prop('disabled', true);
+                            $('#btn-guardar-editar').prop('disabled', true);
+                        } else {
+                            $('#aviso-en-uso').hide();
+                            $('#medida-editar').prop('disabled', false);
+                            $('#btn-guardar-editar').prop('disabled', false);
+                        }
+
                     }else{
                         toastr.error('Información no encontrada');
                     }
@@ -321,6 +340,9 @@
                         toastr.success('Actualizado correctamente');
                         $('#modalEditar').modal('hide');
                         recargar();
+                    }
+                    else if(response.data.success === 3){
+                        toastr.error('No se puede editar: esta unidad de medida ya está asignada a uno o más materiales');
                     }
                     else {
                         toastr.error('Error al actualizar');
