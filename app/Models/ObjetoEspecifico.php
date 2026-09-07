@@ -17,4 +17,10 @@ class ObjetoEspecifico extends Model
         return $this->belongsTo(Cuenta::class, 'id_cuenta');
     }
 
+    // Relación inversa: un objeto específico puede tener muchos materiales
+    public function materiales()
+    {
+        return $this->hasMany(Materiales::class, 'id_objespecifico');
+    }
+
 }

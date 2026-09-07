@@ -156,6 +156,15 @@
                         </button>
                     </div>
                     <div class="modal-body">
+
+                        {{-- Alerta: tiene entradas registradas --}}
+                        <div id="alerta-entradas" class="alert alert-warning d-none" role="alert">
+                            <i class="fas fa-exclamation-triangle mr-2"></i>
+                            <strong>No se puede editar.</strong>
+                            Este proyecto ya tiene ingresos de material registrados.
+                            No es posible modificar su nombre mientras tenga entradas asociadas.
+                        </div>
+
                         <form id="formulario-editar" onsubmit="event.preventDefault(); editar();">
                             <div class="card-body">
                                 <div class="row">
@@ -165,7 +174,8 @@
                                         </div>
                                         <div class="form-group">
                                             <label>Nombre de Proyecto</label>
-                                            <input type="text" maxlength="800" class="form-control" id="nombre-editar" autocomplete="off">
+                                            <input type="text" maxlength="800" class="form-control"
+                                                   id="nombre-editar" autocomplete="off">
                                         </div>
                                     </div>
                                 </div>
@@ -174,11 +184,12 @@
                     </div>
                     <div class="modal-footer justify-content-between">
                         <button type="button" class="btn btn-default" data-dismiss="modal">Cerrar</button>
-                        <button type="submit" class="btn btn-primary" onclick="editar()">Guardar</button>
+                        <button type="button" id="btn-guardar-editar" class="btn btn-primary" onclick="editar()">Guardar</button>
                     </div>
                 </div>
             </div>
         </div>
+
 
     </div>
 @stop
@@ -308,17 +319,32 @@
                 });
         }
 
-        function informacion(id){
+        function informacion(id) {
             openLoading();
-            document.getElementById("formulario-editar").reset();
+            document.getElementById('formulario-editar').reset();
 
-            axios.post(urlAdmin + '/admin/proyecto/informacion', { 'id': id })
+            // Limpiar estado anterior
+            $('#alerta-entradas').addClass('d-none');
+            $('#formulario-editar input:not([type=hidden])').prop('disabled', false);
+            $('#btn-guardar-editar').prop('disabled', false).show();
+
+            axios.post(urlAdmin + '/admin/proyecto/informacion', { id: id })
                 .then((response) => {
                     closeLoading();
-                    if(response.data.success === 1){
+                    if (response.data.success === 1) {
+                        var info          = response.data.info;
+                        var tieneEntradas = response.data.tiene_entradas;
+
+                        $('#id-editar').val(info.id);
+                        $('#nombre-editar').val(info.nombre);
+
+                        if (tieneEntradas) {
+                            $('#alerta-entradas').removeClass('d-none');
+                            $('#formulario-editar input:not([type=hidden])').prop('disabled', true);
+                            $('#btn-guardar-editar').prop('disabled', true).hide();
+                        }
+
                         $('#modalEditar').modal('show');
-                        $('#id-editar').val(response.data.info.id);
-                        $('#nombre-editar').val(response.data.info.nombre);
                     } else {
                         toastr.error('Información no encontrada');
                     }

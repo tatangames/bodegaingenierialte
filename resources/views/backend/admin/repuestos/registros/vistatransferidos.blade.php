@@ -112,7 +112,7 @@
                         <div class="card card-warning">
                             <div class="card-header">
                                 <h3 class="card-title">
-                                    <i class="fas fa-lock-open mr-1"></i> Reabrir Proyecto Cerrado - SIN TRANSFERENCIAS
+                                    <i class="fas fa-lock-open mr-1"></i> Reabrir Proyecto Cerrado - QUE NO TENGAN TRANSFERENCIAS AUN.
                                 </h3>
                             </div>
                             <div class="card-body">

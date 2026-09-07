@@ -149,7 +149,17 @@
                             <span>&times;</span>
                         </button>
                     </div>
+
                     <div class="modal-body">
+
+                        {{-- Alerta: tiene materiales asignados --}}
+                        <div id="alerta-materiales" class="alert alert-warning d-none" role="alert">
+                            <i class="fas fa-exclamation-triangle mr-2"></i>
+                            <strong>No se puede editar.</strong>
+                            Esta cuenta tiene objetos específicos con materiales asignados.
+                            Desvincule primero los materiales asociados para poder modificarla.
+                        </div>
+
                         <form id="formulario-editar" onsubmit="event.preventDefault(); editar();">
                             <input type="hidden" id="id-editar">
                             <div class="row">
@@ -193,11 +203,13 @@
                             </div>
                         </form>
                     </div>
+
+
                     <div class="modal-footer justify-content-between">
                         <button type="button" class="btn btn-secondary" data-dismiss="modal">
                             <i class="fas fa-times mr-1"></i>Cerrar
                         </button>
-                        <button type="button" class="btn btn-warning" onclick="editar()">
+                        <button type="button" id="btn-guardar-editar" class="btn btn-warning" onclick="editar()">
                             <i class="fas fa-save mr-1"></i>Guardar cambios
                         </button>
                     </div>
@@ -326,15 +338,29 @@
             openLoading();
             document.getElementById('formulario-editar').reset();
 
+            // Limpiar estado anterior
+            $('#alerta-materiales').addClass('d-none');
+            $('#formulario-editar input, #formulario-editar select').prop('disabled', false);
+            $('#btn-guardar-editar').prop('disabled', false).show();
+
             axios.post(urlAdmin + '/admin/cuenta/informacion', { id: id })
                 .then((response) => {
                     closeLoading();
                     if (response.data.success === 1) {
-                        var info = response.data.info;
+                        var info            = response.data.info;
+                        var tieneMateriales = response.data.tiene_materiales;
+
                         $('#id-editar').val(info.id);
                         $('#id_rubro-editar').val(info.id_rubro).trigger('change');
                         $('#codigo-editar').val(info.codigo ?? '');
                         $('#nombre-editar').val(info.nombre);
+
+                        if (tieneMateriales) {
+                            $('#alerta-materiales').removeClass('d-none');
+                            $('#formulario-editar input, #formulario-editar select').prop('disabled', true);
+                            $('#btn-guardar-editar').prop('disabled', true).hide();
+                        }
+
                         $('#modalEditar').modal('show');
                     } else {
                         toastr.error('Información no encontrada');

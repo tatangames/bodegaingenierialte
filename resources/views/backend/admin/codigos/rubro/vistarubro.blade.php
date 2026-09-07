@@ -128,7 +128,17 @@
                         </button>
                     </div>
 
+
                     <div class="modal-body">
+
+                        {{-- Alerta: tiene materiales asignados --}}
+                        <div id="alerta-materiales" class="alert alert-warning d-none" role="alert">
+                            <i class="fas fa-exclamation-triangle mr-2"></i>
+                            <strong>No se puede editar.</strong>
+                            Este rubro tiene cuentas con objetos específicos que ya tienen materiales asignados.
+                            Desvincule primero los materiales asociados para poder modificarlo.
+                        </div>
+
                         <form id="formulario-editar" onsubmit="event.preventDefault(); editar();">
                             <div class="card-body">
                                 <div class="row">
@@ -139,13 +149,15 @@
                                         </div>
 
                                         <div class="form-group">
-                                            <label>Código <span style="color: red">*</span> </label>
-                                            <input type="text" maxlength="100" class="form-control" id="codigo-editar" autocomplete="off">
+                                            <label>Código <span style="color: red">*</span></label>
+                                            <input type="text" maxlength="100" class="form-control"
+                                                   id="codigo-editar" autocomplete="off">
                                         </div>
 
                                         <div class="form-group">
-                                            <label>Nombre <span style="color: red">*</span> </label>
-                                            <input type="text" maxlength="800" class="form-control" id="nombre-editar" autocomplete="off">
+                                            <label>Nombre <span style="color: red">*</span></label>
+                                            <input type="text" maxlength="800" class="form-control"
+                                                   id="nombre-editar" autocomplete="off">
                                         </div>
 
                                     </div>
@@ -153,9 +165,10 @@
                             </div>
                         </form>
                     </div>
+
                     <div class="modal-footer justify-content-between">
                         <button type="button" class="btn btn-default" data-dismiss="modal">Cerrar</button>
-                        <button type="submit" class="btn btn-primary" onclick="editar()">Guardar</button>
+                        <button type="button" id="btn-guardar-editar" class="btn btn-primary" onclick="editar()">Guardar</button>
                     </div>
                 </div>
             </div>
@@ -281,26 +294,38 @@
                 });
         }
 
-        function informacion(id){
+        function informacion(id) {
             openLoading();
-            document.getElementById("formulario-editar").reset();
+            document.getElementById('formulario-editar').reset();
 
-            axios.post(urlAdmin+'/admin/rubro/informacion',{
-                'id': id
-            })
+            // Limpiar estado anterior
+            $('#alerta-materiales').addClass('d-none');
+            $('#formulario-editar input').prop('disabled', false);
+            $('#btn-guardar-editar').prop('disabled', false).show();
+
+            axios.post(urlAdmin + '/admin/rubro/informacion', { id: id })
                 .then((response) => {
                     closeLoading();
-                    if(response.data.success === 1){
-                        $('#modalEditar').modal('show');
-                        $('#id-editar').val(response.data.info.id);
-                        $('#nombre-editar').val(response.data.info.nombre);
-                        $('#codigo-editar').val(response.data.info.codigo);
+                    if (response.data.success === 1) {
+                        var info            = response.data.info;
+                        var tieneMateriales = response.data.tiene_materiales;
 
-                    }else{
+                        $('#id-editar').val(info.id);
+                        $('#nombre-editar').val(info.nombre);
+                        $('#codigo-editar').val(info.codigo);
+
+                        if (tieneMateriales) {
+                            $('#alerta-materiales').removeClass('d-none');
+                            $('#formulario-editar input').prop('disabled', true);
+                            $('#btn-guardar-editar').prop('disabled', true).hide();
+                        }
+
+                        $('#modalEditar').modal('show');
+                    } else {
                         toastr.error('Información no encontrada');
                     }
                 })
-                .catch((error) => {
+                .catch(() => {
                     closeLoading();
                     toastr.error('Información no encontrada');
                 });

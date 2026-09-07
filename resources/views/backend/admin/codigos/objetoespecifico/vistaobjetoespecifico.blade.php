@@ -150,6 +150,14 @@
                         </button>
                     </div>
                     <div class="modal-body">
+
+                        {{-- Alerta: tiene materiales asignados --}}
+                        <div id="alerta-materiales" class="alert alert-warning d-none" role="alert">
+                            <i class="fas fa-exclamation-triangle mr-2"></i>
+                            <strong>No se puede editar.</strong>
+                            Este objeto específico ya tiene materiales asignados.
+                        </div>
+
                         <form id="formulario-editar" onsubmit="event.preventDefault(); editar();">
                             <input type="hidden" id="id-editar">
                             <div class="row">
@@ -200,13 +208,14 @@
                         <button type="button" class="btn btn-secondary" data-dismiss="modal">
                             <i class="fas fa-times mr-1"></i>Cerrar
                         </button>
-                        <button type="button" class="btn btn-warning" onclick="editar()">
+                        <button type="button" id="btn-guardar-editar" class="btn btn-warning" onclick="editar()">
                             <i class="fas fa-save mr-1"></i>Guardar cambios
                         </button>
                     </div>
                 </div>
             </div>
         </div>
+
 
     </div>
 @stop
@@ -334,25 +343,40 @@
                 .catch(() => { closeLoading(); toastr.error('Error al registrar'); });
         }
 
-        // ── Cargar info para editar ────────────────────────────────────
+        // ── Cargar info para editar ────────────────────────────────────────
         function informacion(id) {
             openLoading();
             document.getElementById('formulario-editar').reset();
+
+            // Limpiar estado anterior del modal
+            $('#alerta-materiales').addClass('d-none');
+            $('#formulario-editar input, #formulario-editar select').prop('disabled', false);
+            $('#btn-guardar-editar').prop('disabled', false).show();
 
             axios.post(urlAdmin + '/admin/objetoespecifico/informacion', { id: id })
                 .then((response) => {
                     closeLoading();
                     if (response.data.success === 1) {
-                        var info = response.data.info;
+                        var info            = response.data.info;
+                        var tieneMateriales = response.data.tiene_materiales;
+
                         $('#id-editar').val(info.id);
                         $('#codigo-editar').val(info.codigo);
                         $('#nombre-editar').val(info.nombre);
+
                         $('#modalEditar').modal('show');
-                        // Select2 se inicializa en shown.bs.modal,
-                        // así que esperamos un tick para setear el valor
+
                         $('#modalEditar').one('shown.bs.modal', function () {
                             $('#id_cuenta-editar').val(info.id_cuenta).trigger('change');
+
+                            if (tieneMateriales) {
+                                // Mostrar alerta y bloquear campos + botón
+                                $('#alerta-materiales').removeClass('d-none');
+                                $('#formulario-editar input, #formulario-editar select').prop('disabled', true);
+                                $('#btn-guardar-editar').prop('disabled', true).hide();
+                            }
                         });
+
                     } else {
                         toastr.error('Información no encontrada');
                     }

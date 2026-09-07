@@ -53,21 +53,25 @@ class TipoProyectoController extends Controller
         }
     }
 
-    public function informacionProyecto(Request $request){
-        $regla = array(
+    public function informacionProyecto(Request $request)
+    {
+        $validar = Validator::make($request->all(), [
             'id' => 'required',
-        );
+        ]);
 
-        $validar = Validator::make($request->all(), $regla);
+        if ($validar->fails()) { return ['success' => 0]; }
 
-        if ($validar->fails()){ return ['success' => 0];}
+        $dato = TipoProyecto::find($request->id);
 
-        if($lista = TipoProyecto::where('id', $request->id)->first()){
+        if (!$dato) { return ['success' => 2]; }
 
-            return ['success' => 1, 'info' => $lista];
-        }else{
-            return ['success' => 2];
-        }
+        $tieneEntradas = $dato->entradas()->exists();
+
+        return [
+            'success'        => 1,
+            'info'           => $dato,
+            'tiene_entradas' => $tieneEntradas,
+        ];
     }
 
     public function editarProyecto(Request $request){

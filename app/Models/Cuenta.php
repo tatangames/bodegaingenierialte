@@ -16,4 +16,9 @@ class Cuenta extends Model
     {
         return $this->belongsTo(Rubro::class, 'id_rubro');
     }
+
+    public function objetosEspecificos()
+    {
+        return $this->hasMany(ObjetoEspecifico::class, 'id_cuenta');
+    }
 }

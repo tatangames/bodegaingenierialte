@@ -4708,6 +4708,10 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
         $mpdf->Output();
     }
 
+
+
+
+
     public function formSolicitudPreview(Request $request)
     {
         $logoalcaldia       = 'images/logo.png';
@@ -4989,131 +4993,126 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
     </tr>
 </table>";
 
+
+
         // ── Espaciador antes de las firmas ────────────────────────────
         $html .= "<div style='height:{$informacionGeneral->px_firmas}px;
-                   line-height:{$informacionGeneral->px_firmas}px;
-                   font-size:1px;'>&nbsp;</div>";
+           line-height:{$informacionGeneral->px_firmas}px;
+           font-size:1px;'>&nbsp;</div>";
 
-        // ── Firmas 2x2 ────────────────────────────────────────────────
+// ── Firmas: tamaños centralizados en variables ──────────────────
+// Ajusta SOLO estos valores si necesitas cambiar tamaños en el futuro.
+        $fzHeader      = '13px'; // ELABORADO POR / REVISADO POR / AUTORIZADO POR / ES CONFORME
+        $fzLabel       = '11px'; // FIRMA / NOMBRE / CARGO
+        $fzCargo       = '11px'; // RESPONSABLE DEL PROYECTO / ALCALDE MUNICIPAL
+        $fzCargoLg     = '10px'; // etiquetas largas entre corchetes (varias líneas)
+        $pbTitulo      = '28px'; // espacio debajo de ELABORADO POR / REVISADO POR / AUTORIZADO POR / ES CONFORME
+        $labelWidthPct = 20;     // % del ancho del bloque para la columna FIRMA:/NOMBRE:/CARGO:
+        $lineWidthPct  = 100 - $labelWidthPct;
+        $gapFirma      = '42px'; // espacio en blanco para la firma a mano
+        $gapLinea      = '22px'; // espacio en blanco entre NOMBRE y CARGO
+        $borderW       = '1px';
+
+        $stLabel = "font-size:{$fzLabel}; font-family:Arial,sans-serif;
+            white-space:nowrap; vertical-align:bottom; padding-bottom:6px;";
+        $stLinea = "border-bottom:{$borderW} solid #000; vertical-align:bottom;";
+
+// ── Genera un bloque de firma completo (evita repetir 4 tablas casi iguales) ──
+// Anchos SIEMPRE en % en cada <td>, sin colgroup ni table-layout:fixed: así
+// ningún bloque puede estirarse más que el otro por tener un texto más largo
+// (ese era el motivo del desbalance en REVISADO POR / ES CONFORME).
+        $bloqueFirma = function (string $titulo, string $textoCargo, bool $incluirCargo = true, bool $cargoLargo = false)
+        use ($fzHeader, $stLabel, $stLinea, $fzCargo, $fzCargoLg, $gapFirma, $gapLinea, $labelWidthPct, $lineWidthPct, $pbTitulo) {
+
+            $filaCargo = '';
+            if ($incluirCargo) {
+                $filaCargo = "
+        <tr>
+            <td width='{$labelWidthPct}%' style='{$stLabel}'>CARGO:</td>
+            <td width='{$lineWidthPct}%' style='{$stLinea}'>&nbsp;</td>
+        </tr>
+        <tr><td colspan='2' style='height:{$gapLinea};'></td></tr>";
+            }
+
+            $fzFinal = $cargoLargo ? $fzCargoLg : $fzCargo;
+
+            return "
+    <table width='100%' style='border-collapse:collapse;'>
+        <tr>
+            <td colspan='2' style='font-size:{$fzHeader}; font-weight:bold;
+                                    font-family:Arial,sans-serif; padding-bottom:{$pbTitulo};'>
+                {$titulo}
+            </td>
+        </tr>
+        <tr>
+            <td width='{$labelWidthPct}%' style='{$stLabel}'>FIRMA:</td>
+            <td width='{$lineWidthPct}%' style='{$stLinea}'>&nbsp;</td>
+        </tr>
+        <tr><td colspan='2' style='height:{$gapFirma};'></td></tr>
+        <tr>
+            <td width='{$labelWidthPct}%' style='{$stLabel}'>NOMBRE:</td>
+            <td width='{$lineWidthPct}%' style='{$stLinea}'>&nbsp;</td>
+        </tr>
+        <tr><td colspan='2' style='height:{$gapLinea};'></td></tr>
+        {$filaCargo}
+        <tr>
+            <td colspan='2' style='font-size:{$fzFinal}; font-weight:bold;
+                                    text-align:center; font-family:Arial,sans-serif;
+                                    padding-top:8px; word-wrap:break-word;'>
+                {$textoCargo}
+            </td>
+        </tr>
+    </table>";
+        };
+
+// ── Grupo 1: Elaborado / Revisado ────────────────────────────────
         $html .= "
-<table width='100%' style='border-collapse:collapse; font-family:Arial,sans-serif; font-size:20px;'>
-
+<table width='100%' style='border-collapse:collapse;'>
     <tr>
-        <td style='width:50%; padding-right:40px; vertical-align:top;'>
-            <strong>ELABORADO POR:</strong><br><br>
-            <table width='100%' style='border-collapse:collapse;'>
-                <tr>
-                    <td style='width:15%;'>FIRMA:</td>
-                    <td style='border-bottom:0.8px solid #000; width:85%;'>&nbsp;</td>
-                </tr>
-                <tr><td colspan='2' style='height:34px;'></td></tr>
-                <tr>
-                    <td>NOMBRE:</td>
-                    <td style='border-bottom:0.8px solid #000;'>&nbsp;</td>
-                </tr>
-                <tr><td colspan='2' style='height:34px;'></td></tr>
-                <tr>
-                    <td>CARGO:</td>
-                    <td style='border-bottom:0.8px solid #000;'>&nbsp;</td>
-                </tr>
-                <tr><td colspan='2' style='height:34px;'></td></tr>
-                <tr>
-                    <td colspan='2' style='text-align:center; font-size:18px;'>
-                        RESPONSABLE DEL PROYECTO
-                    </td>
-                </tr>
-            </table>
+        <td width='50%' style='padding-right:24px; vertical-align:top;'>"
+            . $bloqueFirma('ELABORADO POR:', 'RESPONSABLE DEL PROYECTO', true, false) . "
         </td>
-        <td style='width:50%; padding-left:40px; vertical-align:top;'>
-            <strong>REVISADO POR:</strong><br><br>
-            <table width='100%' style='border-collapse:collapse;'>
-                <tr>
-                    <td style='width:15%;'>FIRMA:</td>
-                    <td style='border-bottom:0.8px solid #000; width:85%;'>&nbsp;</td>
-                </tr>
-                <tr><td colspan='2' style='height:34px;'></td></tr>
-                <tr>
-                    <td>NOMBRE:</td>
-                    <td style='border-bottom:0.8px solid #000;'>&nbsp;</td>
-                </tr>
-                <tr><td colspan='2' style='height:34px;'></td></tr>
-                <tr>
-                    <td>CARGO:</td>
-                    <td style='border-bottom:0.8px solid #000;'>&nbsp;</td>
-                </tr>
-                <tr><td colspan='2' style='height:34px;'></td></tr>
-                <tr>
-                    <td colspan='2' style='text-align:center; font-size:18px;'>
-                        [SUPERVISOR DEL PROYECTO O JEFE O ENCARGADO SOLICITANTE]
-                    </td>
-                </tr>
-            </table>
+        <td width='50%' style='padding-left:24px; vertical-align:top;'>"
+            . $bloqueFirma('REVISADO POR:', '[SUPERVISOR DEL PROYECTO O JEFE O ENCARGADO SOLICITANTE]', true, true) . "
         </td>
     </tr>
-
-    <tr><td colspan='2' style='height:180px;'></td></tr>
-
-    <tr>
-        <td style='width:50%; padding-right:40px; padding-top:50px; vertical-align:top;'>
-            <strong>AUTORIZADO POR:</strong><br><br>
-            <table width='100%' style='border-collapse:collapse;'>
-                <tr>
-                    <td style='width:15%;'>FIRMA:</td>
-                    <td style='border-bottom:0.8px solid #000; width:85%;'>&nbsp;</td>
-                </tr>
-                <tr><td colspan='2' style='height:34px;'></td></tr>
-                <tr>
-                    <td>NOMBRE:</td>
-                    <td style='border-bottom:0.8px solid #000;'>&nbsp;</td>
-                </tr>
-                <tr><td colspan='2' style='height:34px;'></td></tr>
-                <tr>
-                    <td colspan='2' style='text-align:center; font-size:18px;'>
-                        ALCALDE MUNICIPAL
-                    </td>
-                </tr>
-            </table>
-        </td>
-        <td style='width:50%; padding-left:40px; padding-top:50px; vertical-align:top;'>
-            <strong>ES CONFORME:</strong><br><br>
-            <table width='100%' style='border-collapse:collapse;'>
-                <tr>
-                    <td style='width:15%;'>FIRMA:</td>
-                    <td style='border-bottom:0.8px solid #000; width:85%;'>&nbsp;</td>
-                </tr>
-                <tr><td colspan='2' style='height:34px;'></td></tr>
-                <tr>
-                    <td>NOMBRE:</td>
-                    <td style='border-bottom:0.8px solid #000;'>&nbsp;</td>
-                </tr>
-                <tr><td colspan='2' style='height:34px;'></td></tr>
-                <tr>
-                    <td>CARGO:</td>
-                    <td style='border-bottom:0.8px solid #000;'>&nbsp;</td>
-                </tr>
-                <tr><td colspan='2' style='height:34px;'></td></tr>
-                <tr>
-                    <td colspan='2' style='text-align:center; font-size:18px;'>
-                        [ENCARGADO DE BODEGA DE PROYECTO O RESPONSABLE ASIGNADO]
-                    </td>
-                </tr>
-            </table>
-        </td>
-    </tr>
-
 </table>";
+
+// ── Espaciador entre los dos grupos de firmas ─────────────────────
+        $html .= "<div style='height:190px; font-size:1px;'>&nbsp;</div>";
+
+// ── Grupo 2: Autorizado / Es conforme ─────────────────────────────
+        $html .= "
+<table width='100%' style='border-collapse:collapse;'>
+    <tr>
+        <td width='50%' style='padding-right:24px; vertical-align:top;'>"
+            . $bloqueFirma('AUTORIZADO POR:', 'ALCALDE MUNICIPAL', false, false) . "
+        </td>
+        <td width='50%' style='padding-left:24px; vertical-align:top;'>"
+            . $bloqueFirma('ES CONFORME:', '[ENCARGADO DE BODEGA DE PROYECTO O RESPONSABLE ASIGNADO]', true, true) . "
+        </td>
+    </tr>
+</table>";
+
+
 
         $mpdf = new \Mpdf\Mpdf([
             'tempDir'     => sys_get_temp_dir(),
             'format'      => 'LETTER',
             'orientation' => 'P',
         ]);
+        $mpdf->shrink_tables_to_fit = 0; // clave: evita que mPDF achique tablas/texto en automático
         $mpdf->SetTitle('GEAD-002-FORM');
         $mpdf->showImageErrors = false;
-        $mpdf->setFooter("Página {PAGENO} de {nb}");
         $mpdf->WriteHTML($html, \Mpdf\HTMLParserMode::HTML_BODY);
         $mpdf->Output();
     }
+
+
+
+    //******** END - formSolicitudPreview
+
+
 
 
     public function form003SolicitudPreview(Request $request)
@@ -5573,7 +5572,6 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
         ]);
         $mpdf->SetTitle('GEAD-002-ACTA Preview');
         $mpdf->showImageErrors = false;
-        $mpdf->setFooter("Página {PAGENO} de {nb}");
         $mpdf->WriteHTML($html, \Mpdf\HTMLParserMode::HTML_BODY);
         $mpdf->Output();
     }
@@ -5831,7 +5829,7 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
                 </tr>
                 <tr><td colspan='2' style='height:42px;'></td></tr>
                 <tr>
-                    <td colspan='2' style='text-align:center; font-size:19px; line-height:1.5;'>
+                  <td colspan='2' style='text-align:center; font-size:19px; font-weight:bold; line-height:1.5;'>
                         $nombreFirma1
                     </td>
                 </tr>
@@ -5856,7 +5854,7 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
                 </tr>
                 <tr><td colspan='2' style='height:42px;'></td></tr>
                 <tr>
-                    <td colspan='2' style='text-align:center; font-size:19px; line-height:1.5;'>
+                   <td colspan='2' style='text-align:center; font-size:19px; font-weight:bold; line-height:1.5;'>
                         $nombreFirma2
                     </td>
                 </tr>
