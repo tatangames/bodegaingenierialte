@@ -95,17 +95,6 @@
         .select2-container--bootstrap-5 .select2-results__option--highlighted {
             background-color: #3b82f6 !important; color: #fff !important;
         }
-
-        /* ══ Loading de la tabla de inventario ══════════════════════════════ */
-        #loading-inventario {
-            padding: 60px 0;
-        }
-        #loading-inventario i {
-            color: #3b82f6;
-        }
-        #loading-inventario p {
-            font-size: 14px;
-        }
     </style>
 @stop
 
@@ -131,13 +120,7 @@
                     <div class="card-body">
                         <div class="row">
                             <div class="col-md-12">
-                                <div id="tablaDatatable">
-                                    {{-- Loading inicial mientras se carga la tabla --}}
-                                    <div class="text-center" id="loading-inventario">
-                                        <i class="fas fa-spinner fa-spin fa-2x"></i>
-                                        <p class="mt-2 mb-0 text-muted">Cargando inventario...</p>
-                                    </div>
-                                </div>
+                                <div id="tablaDatatable"></div>
                             </div>
                         </div>
                     </div>
@@ -416,29 +399,14 @@
                 'select-unidad-editar', 'select-objeto-editar'
             ].forEach(initSelect2);
 
-            // El loading de "Cargando inventario..." ya está pintado en el HTML inicial,
-            // cargarTabla lo reemplazará en cuanto llegue la respuesta.
             cargarTabla('todos');
         });
-
-        // ── Loading de la tabla de inventario ───────────────────────────
-        function mostrarLoadingInventario() {
-            $('#tablaDatatable').html(
-                '<div class="text-center" id="loading-inventario">' +
-                '<i class="fas fa-spinner fa-spin fa-2x"></i>' +
-                '<p class="mt-2 mb-0 text-muted">Cargando inventario...</p>' +
-                '</div>'
-            );
-        }
 
         function cargarTabla(filtro) {
             var url = rutaTabla + '?filtro=' + filtro;
             if ($.fn.DataTable.isDataTable('#tabla')) {
                 $('#tabla').DataTable().destroy();
             }
-
-            mostrarLoadingInventario();
-
             $('#tablaDatatable').load(url, function () {
                 initDataTable();
             });
@@ -571,18 +539,12 @@
 
             axios.post(urlAdmin + '/admin/inventario/editar', formData)
                 .then((response) => {
+                    closeLoading();
                     if (response.data.success === 1) {
                         toastr.success('Actualizado correctamente');
                         $('#modalEditar').modal('hide');
-                        // Se mantiene el loading visible mientras se recarga la tabla
-                        // con los datos ya actualizados, y se apaga al terminar.
                         cargarTabla(filtroActual);
-                        closeLoading();
-                    } else if (response.data.success === 3) {
-                        closeLoading();
-                        toastr.error(response.data.msg || 'Este material ya tiene entradas registradas y no puede editarse.');
                     } else {
-                        closeLoading();
                         toastr.error('Error al actualizar');
                     }
                 })
