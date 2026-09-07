@@ -5393,56 +5393,61 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
     </tr>
 </table>";
 
-        // ── Firmas ────────────────────────────────────────────────────
+        // ── Firmas (tamaño copiado del ACTA: 18%/82%, padding-bottom:12px,
+        //     separadores de 42px, encabezados 21px, nombre 19px bold) ───
         $px = $informacionGeneral->px_firmas ?? 40;
 
         $html .= "
 <table width='100%' style='border-collapse:collapse; font-family:Arial,sans-serif;
-                            margin-top:{$px}px; font-size:20px; line-height:1.6;'>
+                            margin-top:{$px}px; font-size:19px; line-height:1.6;'>
     <tr>
         <td style='width:50%; padding-right:40px; vertical-align:top;'>
-            <strong>ELABORADO POR:</strong><br><br>
+            <strong style='font-size:21px;'>ELABORADO POR:</strong><br><br>
             <table width='100%' style='border-collapse:collapse;'>
                 <tr>
-                    <td style='width:15%;'>FIRMA:</td>
-                    <td style='border-bottom:0.8px solid #000; width:85%;'>&nbsp;</td>
+                    <td style='width:18%; padding-bottom:12px;'>FIRMA:</td>
+                    <td style='border-bottom:0.8px solid #000; width:82%;'>&nbsp;</td>
                 </tr>
-                <tr><td colspan='2' style='height:28px;'></td></tr>
+                <tr><td colspan='2' style='height:42px;'></td></tr>
                 <tr>
-                    <td>NOMBRE:</td>
+                    <td style='padding-bottom:12px;'>NOMBRE:</td>
                     <td style='border-bottom:0.8px solid #000;'>&nbsp;</td>
                 </tr>
-                <tr><td colspan='2' style='height:28px;'></td></tr>
+                <tr><td colspan='2' style='height:42px;'></td></tr>
                 <tr>
-                    <td>CARGO:</td>
+                    <td style='padding-bottom:12px;'>CARGO:</td>
                     <td style='border-bottom:0.8px solid #000;'>&nbsp;</td>
                 </tr>
-                <tr><td colspan='2' style='height:28px;'></td></tr>
+                <tr><td colspan='2' style='height:42px;'></td></tr>
                 <tr>
-                    <td colspan='2' style='text-align:center; font-size:19px;'>$firma1</td>
+                    <td colspan='2' style='text-align:center; font-size:19px; font-weight:bold; line-height:1.5;'>
+                        $firma1
+                    </td>
                 </tr>
             </table>
         </td>
         <td style='width:50%; padding-left:40px; vertical-align:top;'>
-            <strong>AUTORIZADO POR:</strong><br><br>
+            <strong style='font-size:21px;'>AUTORIZADO POR:</strong><br><br>
             <table width='100%' style='border-collapse:collapse;'>
                 <tr>
-                    <td style='width:15%;'>FIRMA:</td>
-                    <td style='border-bottom:0.8px solid #000; width:85%;'>&nbsp;</td>
+                    <td style='width:18%; padding-bottom:12px;'>FIRMA:</td>
+                    <td style='border-bottom:0.8px solid #000; width:82%;'>&nbsp;</td>
                 </tr>
-                <tr><td colspan='2' style='height:28px;'></td></tr>
+                <tr><td colspan='2' style='height:42px;'></td></tr>
                 <tr>
-                    <td>NOMBRE:</td>
+                    <td style='padding-bottom:12px;'>NOMBRE:</td>
                     <td style='border-bottom:0.8px solid #000;'>&nbsp;</td>
                 </tr>
-                <tr><td colspan='2' style='height:28px;'></td></tr>
+                <tr><td colspan='2' style='height:42px;'></td></tr>
                 <tr>
-                    <td>CARGO:</td>
+                    <td style='padding-bottom:12px;'>CARGO:</td>
                     <td style='border-bottom:0.8px solid #000;'>&nbsp;</td>
                 </tr>
-                <tr><td colspan='2' style='height:28px;'></td></tr>
+                <tr><td colspan='2' style='height:42px;'></td></tr>
                 <tr>
-                    <td colspan='2' style='text-align:center; font-size:19px;'>$firma2</td>
+                    <td colspan='2' style='text-align:center; font-size:19px; font-weight:bold; line-height:1.5;'>
+                        $firma2
+                    </td>
                 </tr>
             </table>
         </td>
@@ -5452,25 +5457,25 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
 
     <tr>
         <td colspan='2' style='vertical-align:top; text-align:center;'>
-            <strong>ES CONFORME:</strong><br><br>
+            <strong style='font-size:21px;'>ES CONFORME:</strong><br><br>
             <table width='50%' style='border-collapse:collapse; margin:0 auto;'>
                 <tr>
-                    <td style='width:15%;'>FIRMA:</td>
-                    <td style='border-bottom:0.8px solid #000; width:85%;'>&nbsp;</td>
+                    <td style='width:18%; padding-bottom:12px;'>FIRMA:</td>
+                    <td style='border-bottom:0.8px solid #000; width:82%;'>&nbsp;</td>
                 </tr>
-                <tr><td colspan='2' style='height:28px;'></td></tr>
+                <tr><td colspan='2' style='height:42px;'></td></tr>
                 <tr>
-                    <td>NOMBRE:</td>
+                    <td style='padding-bottom:12px;'>NOMBRE:</td>
                     <td style='border-bottom:0.8px solid #000;'>&nbsp;</td>
                 </tr>
-                <tr><td colspan='2' style='height:28px;'></td></tr>
+                <tr><td colspan='2' style='height:42px;'></td></tr>
                 <tr>
-                    <td>CARGO:</td>
+                    <td style='padding-bottom:12px;'>CARGO:</td>
                     <td style='border-bottom:0.8px solid #000;'>&nbsp;</td>
                 </tr>
-                <tr><td colspan='2' style='height:28px;'></td></tr>
+                <tr><td colspan='2' style='height:42px;'></td></tr>
                 <tr>
-                    <td colspan='2' style='text-align:center; font-size:19px;'>
+                    <td colspan='2' style='text-align:center; font-size:19px; font-weight:bold; line-height:1.5;'>
                         $firma3
                     </td>
                 </tr>
@@ -5490,6 +5495,14 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
         $mpdf->WriteHTML($html, \Mpdf\HTMLParserMode::HTML_BODY);
         $mpdf->Output();
     }
+
+
+
+
+    //********* END - form003SolicitudPreview
+
+
+
 
 
 
@@ -7207,6 +7220,8 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
         }
     }
 
+
+
     public function actaRecepcionPreviewReserva(Request $request)
     {
         // ── Nombre del proyecto origen ────────────────────────────────────────
@@ -7482,7 +7497,7 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
         <td style='font-weight:bold;'>OBSERVACIONES:</td>
     </tr>
     <tr>
-        <td style='min-height:40px; vertical-align:top;'>" . e($observaciones) . "</td>
+        <td style='height:60px; vertical-align:top;'>" . e($observaciones) . "</td>
     </tr>
 </table>";
 
@@ -7490,64 +7505,74 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
         $px = $informacionGeneral->px_firmas ?? 40;
         $html .= "<div style='margin-top:{$px}px;'></div>";
 
-        // ── Firmas ────────────────────────────────────────────────────────────
+        // ── Firmas (mismo tamaño estándar: 18%/82%, separadores 42px,
+        //     encabezados 21px, nombre 19px bold) ─────────────────────────────
         $html .= "
-<table width='100%' style='border-collapse:collapse; font-family:Arial,sans-serif; font-size:35px; line-height:1.5;'>
-    <tr>
-        <td style='width:50%; padding-right:40px; vertical-align:top;'>
-            <strong style='font-size:40px;'>ENTREGADO POR:</strong>
-            <br><br><br><br><br><br><br><br>
-            <table width='100%' style='border-collapse:collapse;'>
+            <table width='100%' style='border-collapse:collapse; font-family:Arial,sans-serif;
+                                        font-size:19px; line-height:1.6;'>
                 <tr>
-                    <td style='width:18%; font-size:40px; padding-bottom:12px;'>FIRMA:</td>
-                    <td style='border-bottom:1.5px solid #000; width:82%;'>&nbsp;</td>
-                </tr>
-                <tr><td colspan='2'><br><br><br><br></td></tr>
-                <tr>
-                    <td style='font-size:40px; padding-bottom:12px;'>NOMBRE:</td>
-                    <td style='border-bottom:1.5px solid #000;'>&nbsp;</td>
-                </tr>
-                <tr><td colspan='2'><br><br><br><br></td></tr>
-                <tr>
-                    <td style='font-size:40px; padding-bottom:12px;'>CARGO:</td>
-                    <td style='border-bottom:1.5px solid #000;'>&nbsp;</td>
-                </tr>
-                <tr><td colspan='2'><br><br><br><br></td></tr>
-                <tr>
-                    <td colspan='2' style='text-align:center; font-size:40px; line-height:1.5;'>
-                        {$nombreFirma1}
+                    <td style='width:50%; padding-right:40px; vertical-align:top;'>
+                        <table width='100%' style='border-collapse:collapse;'>
+                            <tr>
+                                <td colspan='2' style='font-size:21px; font-weight:bold; padding-bottom:10px;'>
+                                    ENTREGADO POR:
+                                </td>
+                            </tr>
+                            <tr><td colspan='2' style='height:35px;'></td></tr>
+                            <tr>
+                                <td style='width:18%; padding-bottom:12px;'>FIRMA:</td>
+                                <td style='border-bottom:0.8px solid #000; width:82%;'>&nbsp;</td>
+                            </tr>
+                            <tr><td colspan='2' style='height:42px;'></td></tr>
+                            <tr>
+                                <td style='padding-bottom:12px;'>NOMBRE:</td>
+                                <td style='border-bottom:0.8px solid #000;'>&nbsp;</td>
+                            </tr>
+                            <tr><td colspan='2' style='height:42px;'></td></tr>
+                            <tr>
+                                <td style='padding-bottom:12px;'>CARGO:</td>
+                                <td style='border-bottom:0.8px solid #000;'>&nbsp;</td>
+                            </tr>
+                            <tr><td colspan='2' style='height:42px;'></td></tr>
+                            <tr>
+                                <td colspan='2' style='text-align:center; font-size:19px; font-weight:bold; line-height:1.5;'>
+                                    $nombreFirma1
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                    <td style='width:50%; padding-left:40px; vertical-align:top;'>
+                        <table width='100%' style='border-collapse:collapse;'>
+                            <tr>
+                                <td colspan='2' style='font-size:21px; font-weight:bold; padding-bottom:10px;'>
+                                    RECIBIDO POR:
+                                </td>
+                            </tr>
+                            <tr><td colspan='2' style='height:35px;'></td></tr>
+                            <tr>
+                                <td style='width:18%; padding-bottom:12px;'>FIRMA:</td>
+                                <td style='border-bottom:0.8px solid #000; width:82%;'>&nbsp;</td>
+                            </tr>
+                            <tr><td colspan='2' style='height:42px;'></td></tr>
+                            <tr>
+                                <td style='padding-bottom:12px;'>NOMBRE:</td>
+                                <td style='border-bottom:0.8px solid #000;'>&nbsp;</td>
+                            </tr>
+                            <tr><td colspan='2' style='height:42px;'></td></tr>
+                            <tr>
+                                <td style='padding-bottom:12px;'>CARGO:</td>
+                                <td style='border-bottom:0.8px solid #000;'>&nbsp;</td>
+                            </tr>
+                            <tr><td colspan='2' style='height:42px;'></td></tr>
+                            <tr>
+                                <td colspan='2' style='text-align:center; font-size:19px; font-weight:bold; line-height:1.5;'>
+                                    $nombreFirma2
+                                </td>
+                            </tr>
+                        </table>
                     </td>
                 </tr>
-            </table>
-        </td>
-        <td style='width:50%; padding-left:40px; vertical-align:top;'>
-            <strong style='font-size:40px;'>RECIBIDO POR:</strong>
-            <br><br><br><br><br><br><br><br>
-            <table width='100%' style='border-collapse:collapse;'>
-                <tr>
-                    <td style='width:18%; font-size:40px; padding-bottom:12px;'>FIRMA:</td>
-                    <td style='border-bottom:1.5px solid #000; width:82%;'>&nbsp;</td>
-                </tr>
-                <tr><td colspan='2'><br><br><br><br></td></tr>
-                <tr>
-                    <td style='font-size:40px; padding-bottom:12px;'>NOMBRE:</td>
-                    <td style='border-bottom:1.5px solid #000;'>&nbsp;</td>
-                </tr>
-                <tr><td colspan='2'><br><br><br><br></td></tr>
-                <tr>
-                    <td style='font-size:40px; padding-bottom:12px;'>CARGO:</td>
-                    <td style='border-bottom:1.5px solid #000;'>&nbsp;</td>
-                </tr>
-                <tr><td colspan='2'><br><br><br><br></td></tr>
-                <tr>
-                    <td colspan='2' style='text-align:center; font-size:40px; line-height:1.5;'>
-                        {$nombreFirma2}
-                    </td>
-                </tr>
-            </table>
-        </td>
-    </tr>
-</table>";
+            </table>";
 
         // ═════════════════════════════════════════════════════════════════════
         // GENERAR PDF
@@ -7559,10 +7584,14 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
         ]);
         $mpdf->SetTitle('GEAD-002-ACTA Preview');
         $mpdf->showImageErrors = false;
-        $mpdf->setFooter("Página {PAGENO} de {nb}");
         $mpdf->WriteHTML($html, \Mpdf\HTMLParserMode::HTML_BODY);
         $mpdf->Output();
     }
+
+
+
+
+    // ****** END  - actaRecepcionPreviewReserva
 
 
 

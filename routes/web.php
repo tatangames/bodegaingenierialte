@@ -170,24 +170,27 @@ Route::middleware('auth:admin')->group(function () {
 
 
 
-    // --- REPORTES DE DIFERENTES FORMULARIOS ---
+    // --- PDF - GENERADO TRANSFERENCIA A PROYECTO PRE AUTORIZACION ---
     Route::post('/admin/reporte/form/solicitud/preview',
         [ReportesController::class, 'formSolicitudPreview'])
         ->name('reporte.form.solicitud.preview');
 
+    // --- PDF - GENERADO EN SALIDA GENERAL
     Route::post('/admin/reporte/form003/solicitud/preview',
         [ReportesController::class, 'form003SolicitudPreview'])
         ->name('reporte.form003.solicitud.preview');
 
+    // --- PDF - GENERADO TRANSFERENCIA A PROYECTO YA AUTORIZADO ---
     Route::post('/admin/reporte/acta/preview',
         [ReportesController::class, 'actaRecepcionPreview'])
         ->name('reporte.acta.preview');
 
+    // --- PDF - GENERADO MATERIALES RESERVADOS ---
     Route::post('/admin/reporte/acta/preview/reserva',
         [ReportesController::class, 'actaRecepcionPreviewReserva'])
         ->name('reporte.acta.preview');
 
-
+    // --- PDF - GENERADO AL RESERVAR MATERIALES - Formulario de Reserva — GEAD-001-FORM ---
     Route::post('/admin/reporte/form001/reserva/preview',
         [ReportesController::class, 'form001ReservaPreview'])
         ->name('reporte.form001.reserva.preview');
@@ -209,20 +212,14 @@ Route::middleware('auth:admin')->group(function () {
     Route::get('/admin/reporte/consolidado/materiales/pdf', [ReportesController::class, 'reporteConsolidadoMateriales']);
 
 
-
     Route::get('/admin/reporte/cerrados/totalizado/pdf',
         [ReportesController::class, 'reporteTotalizadoCerrados']);
-
-
 
     Route::get('/admin/reporte/cerrados/totalizado-desglosado/pdf',
         [ReportesController::class, 'reporteTotalizadoCerradosDesglosadoPrecio']);
 
-
-
     Route::get('/admin/reporte/cerrados/consolidado/materiales/pdf',
         [ReportesController::class, 'reporteConsolidadoMaterialesCerrados']);
-
 
     Route::get('/admin/reporte/cerrado/conteo/pdf/{id}',
         [ReportesController::class, 'reporteConteoFisicoCerrado']);
@@ -230,14 +227,11 @@ Route::middleware('auth:admin')->group(function () {
     Route::get('/admin/reporte/cerrado/lote/pdf/{id}',
         [ReportesController::class, 'reporteLoteCerrado']);
 
-
     Route::post('/admin/firmas/proyectos/completado/actualizar', [ReportesController::class, 'actualizarFirmasSobrantes']);
     Route::post('/admin/firmas/proyectos/traspaso/actualizar', [ReportesController::class, 'actualizarFirmasTraspaso']);
 
-
     // --- REPORTE / VER LOS MATERIALES QUE SOBRARON DE UN PROYECTO COMPLETADO
     Route::get('/admin/reporte/inventario/sobranteterminado/proy/{idtrans}', [ReportesController::class,'reporteProyectoTerminado']);
-
 
     // Destino de sobrantes — a proyecto o salida general - GEAD-002-FORM
     Route::get('/admin/reporte/inventario/destino/sobrantes/{idtrans}/{tipo}',
