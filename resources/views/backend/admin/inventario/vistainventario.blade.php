@@ -260,49 +260,7 @@
 
     </div>
 
-    {{-- ══ Modal Proyectos ══ --}}
-    <div class="modal fade" id="modalProyectos" tabindex="-1" role="dialog">
-        <div class="modal-dialog modal-lg" role="document">
-            <div class="modal-content">
-                <div class="modal-header bg-info">
-                    <h5 class="modal-title text-white">
-                        <i class="fas fa-map-marker-alt mr-2"></i>
-                        Distribución — <span id="proyectos-material"></span>
-                    </h5>
-                    <button type="button" class="close text-white" data-dismiss="modal">
-                        <span>&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <div id="proyectos-loading" class="text-center py-4">
-                        <i class="fas fa-spinner fa-spin fa-2x"></i>
-                    </div>
-                    <div id="proyectos-contenido" style="display:none;">
-                        <table class="table table-bordered table-striped table-sm">
-                            <thead class="thead-dark">
-                            <tr>
-                                <th style="width: 5%">#</th>
-                                <th>Proyecto</th>
-                                <th class="text-center">Entradas</th>
-                                <th class="text-center">Salidas</th>
-                                <th class="text-center">Disponible</th>
-                            </tr>
-                            </thead>
-                            <tbody id="proyectos-tbody"></tbody>
 
-                        </table>
-                    </div>
-                    <div id="proyectos-vacio" class="text-center text-muted py-4" style="display:none;">
-                        <i class="fas fa-inbox fa-2x mb-2"></i>
-                        <p>Este material no tiene movimientos registrados.</p>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
-                </div>
-            </div>
-        </div>
-    </div>
 
 @stop
 
@@ -544,8 +502,10 @@
                         toastr.success('Actualizado correctamente');
                         $('#modalEditar').modal('hide');
                         cargarTabla(filtroActual);
+                    } else if (response.data.success === 3) {
+                        toastr.warning(response.data.msg || 'Este material ya tiene entradas registradas y no puede editarse.');
                     } else {
-                        toastr.error('Error al actualizar');
+                        toastr.error(response.data.msg || 'Error al actualizar');
                     }
                 })
                 .catch(() => { closeLoading(); toastr.error('Error al actualizar'); });
@@ -566,50 +526,7 @@
             }, 10);
         }
 
-        // ── Ver proyectos ─────────────────────────────────────────────
-        function verProyectos(id, nombre) {
-            $('#proyectos-material').text(nombre);
-            $('#proyectos-tbody').html('');
-            $('#proyectos-contenido').hide();
-            $('#proyectos-vacio').hide();
-            $('#proyectos-loading').show();
-            $('#modalProyectos').modal('show');
 
-            axios.post(urlAdmin + '/admin/inventario/proyectos', { id: id })
-                .then((response) => {
-                    $('#proyectos-loading').hide();
-                    if (response.data.success === 1 && response.data.proyectos.length > 0) {
-                        let html = '';
-                        let totalEntradas = 0, totalSalidas = 0, totalDisponible = 0;
-
-                        response.data.proyectos.forEach((fila, index) => {
-                            totalEntradas   += fila.entradas;
-                            totalSalidas    += fila.salidas;
-                            totalDisponible += fila.disponible;
-
-                            html += `
-                                <tr>
-                                    <td>${index + 1}</td>
-                                    <td>${fila.proyecto}</td>
-                                    <td class="text-center">${fila.entradas}</td>
-                                    <td class="text-center">${fila.salidas}</td>
-                                    <td class="text-center"><strong>${fila.disponible}</strong></td>
-                                </tr>`;
-                        });
-
-                        $('#proyectos-tbody').html(html);
-
-                        $('#proyectos-contenido').show();
-                    } else {
-                        $('#proyectos-vacio').show();
-                    }
-                })
-                .catch(() => {
-                    $('#proyectos-loading').hide();
-                    $('#proyectos-vacio').show();
-                    toastr.error('Error al cargar la distribución');
-                });
-        }
 
     </script>
 @endsection
