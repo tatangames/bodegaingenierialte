@@ -619,25 +619,25 @@ class HistorialTransferenciaController extends Controller
                             margin-top:{$px}px; font-size:22px; line-height:1.8;'>
     <tr>
         <td style='width:50%; padding-right:50px; vertical-align:top;'>
-            <strong style='font-size:28px;'>ENTREGADO POR:</strong><br><br>
+            <strong style='font-size:24px;'>ENTREGADO POR:</strong><br><br>
 
-            <table width='100%' style='border-collapse:collapse; font-size:28px;'>
+            <table width='100%' style='border-collapse:collapse; font-size:24px;'>
                 <tr>
-                    <td style='width:22%; padding-bottom:14px; font-weight:bold;'>FIRMA:</td>
+                    <td style='width:22%; padding-bottom:14px; font-weight:normal;'>FIRMA:</td>
                     <td style='border-bottom:1.5px solid #000; width:78%;'>&nbsp;</td>
                 </tr>
 
                 <tr><td colspan='2' style='height:45px;'></td></tr>
 
                 <tr>
-                    <td style='padding-bottom:14px; font-weight:bold;'>NOMBRE:</td>
+                    <td style='padding-bottom:14px; font-weight:normal;'>NOMBRE:</td>
                     <td style='border-bottom:1.5px solid #000;'>&nbsp;</td>
                 </tr>
 
                 <tr><td colspan='2' style='height:45px;'></td></tr>
 
                 <tr>
-                    <td style='padding-bottom:14px; font-weight:bold;'>CARGO:</td>
+                    <td style='padding-bottom:14px; font-weight:normal;'>CARGO:</td>
                     <td style='border-bottom:1.5px solid #000;'>&nbsp;</td>
                 </tr>
 
@@ -653,25 +653,25 @@ class HistorialTransferenciaController extends Controller
         </td>
 
         <td style='width:50%; padding-left:50px; vertical-align:top;'>
-            <strong style='font-size:28px;'>RECIBIDO POR:</strong><br><br>
+            <strong style='font-size:24px;'>RECIBIDO POR:</strong><br><br>
 
-            <table width='100%' style='border-collapse:collapse; font-size:28px;'>
+            <table width='100%' style='border-collapse:collapse; font-size:24px;'>
                 <tr>
-                    <td style='width:22%; padding-bottom:14px; font-weight:bold;'>FIRMA:</td>
+                    <td style='width:22%; padding-bottom:14px; font-weight:normal;'>FIRMA:</td>
                     <td style='border-bottom:1.5px solid #000; width:78%;'>&nbsp;</td>
                 </tr>
 
                 <tr><td colspan='2' style='height:45px;'></td></tr>
 
                 <tr>
-                    <td style='padding-bottom:14px; font-weight:bold;'>NOMBRE:</td>
+                    <td style='padding-bottom:14px; font-weight:normal;'>NOMBRE:</td>
                     <td style='border-bottom:1.5px solid #000;'>&nbsp;</td>
                 </tr>
 
                 <tr><td colspan='2' style='height:45px;'></td></tr>
 
                 <tr>
-                    <td style='padding-bottom:14px; font-weight:bold;'>CARGO:</td>
+                    <td style='padding-bottom:14px; font-weight:normal;'>CARGO:</td>
                     <td style='border-bottom:1.5px solid #000;'>&nbsp;</td>
                 </tr>
 
