@@ -500,7 +500,7 @@
             Swal.fire({
                 title: 'Guardar Entrada?',
                 text: "",
-                icon: 'question',
+                type: 'question',
                 showCancelButton: true,
                 confirmButtonColor: '#28a745',
                 cancelButtonColor: '#d33',

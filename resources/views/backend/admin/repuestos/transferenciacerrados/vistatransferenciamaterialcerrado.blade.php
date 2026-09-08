@@ -1142,7 +1142,7 @@
                 Swal.fire({
                     title: '¿Confirmar reserva?',
                     text:  '¿Reservar estos materiales? Quedarán bloqueados hasta su despacho.',
-                    icon: 'question', showCancelButton: true,
+                    type: 'question', showCancelButton: true,
                     confirmButtonColor: '#6f42c1', cancelButtonColor: '#d33',
                     cancelButtonText: 'Cancelar', confirmButtonText: 'Sí, reservar'
                 }).then((result) => { if (result.isConfirmed) ejecutarGuardar('guardar'); });
@@ -1229,12 +1229,12 @@
                                 html: '<b>' + response.data.nombre_material + '</b><br><br>' +
                                     'Solicitado: <b>' + response.data.cantidad_pedida + '</b><br>' +
                                     'Disponible libre: <b>' + response.data.disponible + '</b>',
-                                icon: 'warning', confirmButtonColor: '#d33', confirmButtonText: 'Entendido'
+                                type: 'warning', confirmButtonColor: '#d33', confirmButtonText: 'Entendido'
                             });
                         } else if (response.data.success === 10) {
                             Swal.fire({
                                 title: 'Materiales Reservados',
-                                icon: 'success',
+                                type: 'success',
                                 allowOutsideClick: false,
                                 confirmButtonColor: '#6f42c1',
                                 confirmButtonText: 'Aceptar'
@@ -1279,7 +1279,7 @@
                             html: '<b>' + response.data.nombre_material + '</b><br><br>' +
                                 'Solicitado: <b>' + response.data.cantidad_pedida + '</b><br>' +
                                 'Disponible libre: <b>' + response.data.disponible + '</b>',
-                            icon: 'warning',
+                            type: 'warning',
                             confirmButtonColor: '#d33',
                             confirmButtonText: 'Entendido'
                         });
@@ -1288,7 +1288,7 @@
                         Swal.fire({
                             title: 'Proyecto destino no válido',
                             text: 'El proyecto destino está cerrado o no existe. Selecciona un proyecto activo.',
-                            icon: 'error',
+                            type: 'error',
                             confirmButtonColor: '#d33',
                             confirmButtonText: 'Entendido'
                         });
@@ -1297,7 +1297,7 @@
                         Swal.fire({
                             title: 'Proyecto origen no válido',
                             text: 'El proyecto origen no está cerrado. Esta operación solo aplica a proyectos cerrados.',
-                            icon: 'error',
+                            type: 'error',
                             confirmButtonColor: '#d33',
                             confirmButtonText: 'Entendido'
                         });
@@ -1307,7 +1307,7 @@
                             title: 'Fecha no válida',
                             html: 'La fecha de la transferencia no puede ser anterior al cierre del proyecto.<br><br>' +
                                 'Fecha de cierre: <b>' + response.data.fecha_cierre + '</b>',
-                            icon: 'error',
+                            type: 'error',
                             confirmButtonColor: '#d33',
                             confirmButtonText: 'Entendido'
                         });
@@ -1319,7 +1319,7 @@
                         };
                         Swal.fire({
                             title: titulos[tipoDestino] || 'Guardado',
-                            icon: 'success',
+                            type: 'success',
                             allowOutsideClick: false,
                             confirmButtonColor: '#28a745',
                             confirmButtonText: 'Aceptar'
@@ -1329,7 +1329,7 @@
                         Swal.fire({
                             title: 'Error inesperado',
                             text: 'Ocurrió un error al procesar la operación. Contacta al administrador.',
-                            icon: 'error',
+                            type: 'error',
                             confirmButtonColor: '#d33',
                             confirmButtonText: 'Entendido'
                         });

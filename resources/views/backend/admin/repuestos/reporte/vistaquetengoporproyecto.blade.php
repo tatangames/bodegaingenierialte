@@ -299,6 +299,10 @@
                                         Genera un listado de los materiales existentes para realizar
                                         el conteo físico y verificar las cantidades disponibles en bodega.
                                         Si afecta por Transferencia o descargo general.
+
+                                        <br>
+                                        <strong>Materiales salen sumados del mismo, no muestra precio unitario,
+                                            solo Total, del precio unitario por cantidad individualmente.</strong>
                                     </p>
 
                                     <button type="button"
@@ -328,6 +332,8 @@
                                         Muestra los materiales individualmente según cada ingreso o lote,
                                         incluyendo el precio unitario para facilitar la verificación
                                         del monto total de las existencias. Si afecta por Transferencia o descargo general.
+                                    <br>
+                                        <strong>Materiales salen individuales, aunque tengan mismo precio y nombre</strong>
                                     </p>
 
                                     <button type="button"
@@ -345,9 +351,6 @@
 
                                 </div>
 
-
-
-
                                 {{-- ═══════════════════════════════════════ --}}
                                 {{-- BOTÓN 4: TOTALIZADO PROYECTOS CERRADOS --}}
                                 {{-- ═══════════════════════════════════════ --}}
@@ -355,9 +358,11 @@
                                 <div style="margin-bottom:10px;">
 
                                     <p style="font-size:13px; color:#555; margin-bottom:8px;">
-                                        <strong>Totalizado</strong>
+                                        <strong>Totalizado Todos los Proyectos:</strong>
                                         Muestra el stock sobrante consolidado de todos los proyectos cerrados, agrupado por objeto específico, tal como fue registrado al momento del cierre de cada proyecto.
                                         Si afecta por Transferencia o descargo general.
+                                        <br>
+                                        <strong>Total es igual a precio unitario por cantidad individualmente de cada entrada del material.</strong>
                                     </p>
 
                                     <button type="button"
@@ -383,6 +388,7 @@
                                         Muestra el stock sobrante consolidado de todos los proyectos cerrados, agrupado
                                         por objeto específico. Muestra precio unitario desglosando cada material.
                                         Si afecta por Transferencia o descargo general.
+
                                     </p>
 
                                     {{-- Toggle conteo físico --}}

@@ -235,7 +235,7 @@
             Swal.fire({
                 title: '¿Cerrar Proyecto?',
                 text: 'El proyecto quedará marcado como cerrado.',
-                icon: 'question',
+                type: 'question',
                 showCancelButton: true,
                 confirmButtonColor: '#28a745',
                 cancelButtonColor: '#d33',
@@ -261,7 +261,7 @@
                                 Swal.fire({
                                     title: 'No Guardado',
                                     text: 'Este proyecto ya fue cerrado anteriormente.',
-                                    icon: 'info',
+                                    type: 'info',
                                     confirmButtonColor: '#28a745',
                                     confirmButtonText: 'Aceptar'
                                 });
@@ -271,7 +271,7 @@
                                     html: 'La última salida registrada es del <b>' + response.data.ultima_salida + '</b>.<br><br>' +
                                         'La fecha de cierre (<b>' + response.data.fecha_cierre + '</b>) ' +
                                         'no puede ser anterior a la última salida.',
-                                    icon: 'warning',
+                                    type: 'warning',
                                     confirmButtonColor: '#d33',
                                     confirmButtonText: 'Entendido'
                                 });
@@ -279,7 +279,7 @@
                                 Swal.fire({
                                     title: 'Cierre Exitoso',
                                     text: 'El proyecto ha sido cerrado correctamente.',
-                                    icon: 'success',
+                                    type: 'success',
                                     confirmButtonColor: '#28a745',
                                     confirmButtonText: 'Aceptar',
                                     allowOutsideClick: false,
@@ -306,7 +306,7 @@
                 title: '¿Reabrir proyecto?',
                 html: 'El proyecto <b>' + nombre + '</b> volverá a estar activo.<br>' +
                     '<small class="text-muted">Se eliminará el snapshot de cierre.</small>',
-                icon: 'question',
+                type: 'question',
                 showCancelButton: true,
                 confirmButtonColor: '#28a745',
                 cancelButtonColor: '#6c757d',
@@ -325,7 +325,7 @@
                                     Swal.fire({
                                         title: 'Proyecto Reabierto',
                                         text: 'El proyecto ha sido reabierto correctamente.',
-                                        icon: 'success',
+                                        type: 'success',
                                         confirmButtonColor: '#28a745',
                                         confirmButtonText: 'Aceptar',
                                         allowOutsideClick: false,
@@ -336,7 +336,7 @@
                                     Swal.fire({
                                         title: 'No se puede reabrir',
                                         text: response.data.msg,
-                                        icon: 'warning',
+                                        type: 'warning',
                                         confirmButtonColor: '#d33',
                                         confirmButtonText: 'Entendido'
                                     });

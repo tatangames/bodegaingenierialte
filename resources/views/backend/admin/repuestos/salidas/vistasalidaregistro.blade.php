@@ -619,7 +619,7 @@
             colorBlancoTabla();
             Swal.fire({
                 title: '¿Guardar Salida?',
-                icon: 'question',
+                type: 'question',
                 showCancelButton: true,
                 confirmButtonColor: '#28a745',
                 cancelButtonColor: '#d33',
@@ -683,7 +683,7 @@
                                 '<b>' + response.data.nombre_material + '</b><br><br>' +
                                 'Solicitado: <b>' + response.data.cantidad_pedida + '</b><br>' +
                                 'Disponible: <b>' + response.data.disponible + '</b>',
-                            icon: 'warning',
+                            type: 'warning',
                             confirmButtonColor: '#d33',
                             confirmButtonText: 'Entendido'
                         });
@@ -697,7 +697,7 @@
                                 'tiene fecha de ingreso <b>' + response.data.fecha_ingreso + '</b>.<br><br>' +
                                 'La fecha de salida (<b>' + response.data.fecha_salida + '</b>) ' +
                                 'no puede ser anterior al ingreso.',
-                            icon: 'warning',
+                            type: 'warning',
                             confirmButtonColor: '#d33',
                             confirmButtonText: 'Entendido'
                         });
@@ -712,7 +712,7 @@
         function msgActualizado() {
             Swal.fire({
                 title: 'Salida Registrada',
-                icon: 'success',
+                type: 'success',
                 allowOutsideClick: false,
                 confirmButtonColor: '#28a745',
                 confirmButtonText: 'Aceptar'

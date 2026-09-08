@@ -486,7 +486,7 @@
                     axios.post(urlAdmin + '/admin/historial/entradas/eliminar', { id: id })
                         .then((response) => {
                             closeLoading();
-
+                            console.log(response)
                             switch (response.data.success) {
 
                                 case 1:
@@ -499,7 +499,7 @@
                                         title: 'No se puede eliminar',
                                         text:  response.data.msg ||
                                             'Esta entrada tiene reservas ya despachadas y no puede eliminarse.',
-                                        icon:  'warning',
+                                        type:  'warning',
                                         confirmButtonColor: '#d33',
                                         confirmButtonText:  'Entendido'
                                     });
@@ -510,9 +510,19 @@
                                         title: 'No se puede eliminar aquí',
                                         text:  response.data.msg ||
                                             'Esta entrada proviene de una transferencia. Elimínela desde el Historial de Transferencias.',
-                                        icon:  'info',
+                                        type:  'info',
                                         confirmButtonColor: '#2156af',
                                         confirmButtonText:  'Entendido'
+                                    });
+                                    break;
+
+                                case 4:
+                                    Swal.fire({
+                                        title: 'No se puede eliminar',
+                                        text: response.data.msg || 'Esta entrada tiene salidas registradas y no puede eliminarse.',
+                                        type: 'warning',
+                                        confirmButtonColor: '#d33',
+                                        confirmButtonText: 'Entendido'
                                     });
                                     break;
 
@@ -674,7 +684,7 @@
             Swal.fire({
                 title: '¿Eliminar material?',
                 html: `Se eliminará el material: <b>${material}</b><br><br>
-               <small class="text-muted">Si es el último material de esta entrada, la entrada completa también será eliminada.</small>`,
+       <small class="text-muted">Si es el último material de esta entrada, la entrada completa también será eliminada.</small>`,
                 type: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#d33',
@@ -709,7 +719,7 @@
                                     Swal.fire({
                                         title: 'No se puede eliminar',
                                         text:  response.data.msg || 'El proyecto está cerrado.',
-                                        icon:  'warning',
+                                        type:  'warning',
                                         confirmButtonColor: '#d33',
                                         confirmButtonText:  'Entendido'
                                     });
@@ -720,7 +730,7 @@
                                         title: 'No se puede eliminar aquí',
                                         text:  response.data.msg ||
                                             'Este material proviene de una transferencia. Elimínelo desde el Historial de Transferencias.',
-                                        icon:  'info',
+                                        type:  'info',
                                         confirmButtonColor: '#2156af',
                                         confirmButtonText:  'Entendido'
                                     });
@@ -730,7 +740,7 @@
                                     Swal.fire({
                                         title: 'No se puede eliminar',
                                         text:  response.data.msg || 'Este material ya tiene salidas registradas.',
-                                        icon:  'warning',
+                                        type:  'warning',
                                         confirmButtonColor: '#d33',
                                         confirmButtonText:  'Entendido'
                                     });
@@ -740,7 +750,7 @@
                                     Swal.fire({
                                         title: 'No se puede eliminar',
                                         text:  response.data.msg || 'Este material tiene reservas asociadas.',
-                                        icon:  'warning',
+                                        type:  'warning',
                                         confirmButtonColor: '#d33',
                                         confirmButtonText:  'Entendido'
                                     });
@@ -750,7 +760,7 @@
                                     Swal.fire({
                                         title: 'No se puede eliminar',
                                         text:  response.data.msg || 'Este material está incluido en una transferencia.',
-                                        icon:  'warning',
+                                        type:  'warning',
                                         confirmButtonColor: '#d33',
                                         confirmButtonText:  'Entendido'
                                     });

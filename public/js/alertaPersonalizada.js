@@ -22,7 +22,7 @@ function alertaMensaje(tipo, titulo, mensaje){
         heightAuto: false,
         title: titulo,
         text: mensaje,
-        icon: tipo,
+        type: tipo,
         showCancelButton: false,
         confirmButtonColor: '#3085d6',
         confirmButtonText: 'Aceptar',

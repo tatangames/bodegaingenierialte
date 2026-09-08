@@ -107,11 +107,6 @@ class HistorialController extends Controller
             // ──────────────────────────────────────────────────────────
             // BLOQUEO: la entrada es DESTINO de una transferencia
             // ──────────────────────────────────────────────────────────
-            // Si esta entrada nació de una transferencia, borrarla por
-            // separado dejaría viva la salida del proyecto origen y el
-            // material quedaría descuadrado. Debe eliminarse desde el
-            // Historial de Transferencias (eliminarTransferencia borra
-            // el par completo: salida + entrada + historial).
             $esDestinoTransferencia = Transferencia::where('id_entrada', $entrada->id)
                 ->exists();
 
@@ -129,11 +124,27 @@ class HistorialController extends Controller
             if ($idsDetalle->isNotEmpty()) {
 
                 // ──────────────────────────────────────────────────────
-                // RESERVAS asociadas a estos entradas_detalle
+                // BLOQUEO: tiene salidas NORMALES registradas
                 // ──────────────────────────────────────────────────────
-                $reservas = Reserva::whereIn('id_entrada_detalle', $idsDetalle)->get();
+                // Solo bloqueamos salidas reales (es_transferencia = false).
+                // Las salidas de transferencia se limpian en cascada más abajo.
+                $tieneSalidasNormales = SalidasDetalle::whereIn('id_entrada_detalle', $idsDetalle)
+                    ->whereHas('salida', fn($q) => $q->where('es_transferencia', false))
+                    ->exists();
 
-                // Reservas ya despachadas → no se puede borrar
+                if ($tieneSalidasNormales) {
+                    DB::rollback();
+                    return response()->json([
+                        'success' => 4,
+                        'msg'     => 'Esta entrada tiene salidas registradas. '
+                            . 'No se puede eliminar.',
+                    ]);
+                }
+
+                // ──────────────────────────────────────────────────────
+                // BLOQUEO: reservas ya despachadas
+                // ──────────────────────────────────────────────────────
+                $reservas       = Reserva::whereIn('id_entrada_detalle', $idsDetalle)->get();
                 $hayDespachadas = $reservas->where('despachado', 1)->count() > 0;
 
                 if ($hayDespachadas) {
@@ -145,22 +156,20 @@ class HistorialController extends Controller
                     ]);
                 }
 
-                // Borrar en cascada las reservas PENDIENTES (despachado = 0)
+                // Borrar reservas pendientes
                 Reserva::whereIn('id_entrada_detalle', $idsDetalle)
                     ->where('despachado', 0)
                     ->delete();
 
                 // ──────────────────────────────────────────────────────
-                // SALIDAS afectadas (IDs antes de borrar sus detalles)
+                // SALIDAS DE TRANSFERENCIA huérfanas (limpiar en cascada)
                 // ──────────────────────────────────────────────────────
                 $idsSalidas = SalidasDetalle::whereIn('id_entrada_detalle', $idsDetalle)
                     ->pluck('id_salida')
                     ->unique();
 
-                // Borrar salidas_detalle que apuntan a estos entradas_detalle
                 SalidasDetalle::whereIn('id_entrada_detalle', $idsDetalle)->delete();
 
-                // Borrar salidas que quedaron sin ningún detalle
                 if ($idsSalidas->isNotEmpty()) {
                     $salidasHuerfanas = Salidas::whereIn('id', $idsSalidas)
                         ->whereDoesntHave('detalle')
@@ -171,16 +180,13 @@ class HistorialController extends Controller
                     }
                 }
 
-                // ──────────────────────────────────────────────────────
-                // TRANSFERENCIA_DETALLE huérfano que apunte a estos detalles
-                // ──────────────────────────────────────────────────────
+                // TransferenciaDetalle huérfano
                 TransferenciaDetalle::whereIn('id_entrada_detalle', $idsDetalle)->delete();
 
                 // Borrar entradas_detalle
                 $entrada->detalle()->delete();
             }
 
-            // Borrar la entrada
             $entrada->delete();
 
             DB::commit();

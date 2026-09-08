@@ -704,7 +704,7 @@
                 Swal.fire({
                     title: '¿Cancelar reservas?',
                     html: 'Las reservas seleccionadas serán <strong>canceladas</strong> sin generar salida.',
-                    icon: 'question',
+                    type: 'question',
                     showCancelButton:   true,
                     confirmButtonColor: '#6f42c1',
                     cancelButtonColor:  '#d33',
@@ -864,7 +864,7 @@
                         Swal.fire({
                             title: 'Proceso Exitoso',
                             text:  'Las reservas seleccionadas han sido procesadas correctamente.',
-                            icon:  'success',
+                            type:  'success',
                             allowOutsideClick:  false,
                             confirmButtonColor: '#6f42c1',
                             confirmButtonText:  'Aceptar'
