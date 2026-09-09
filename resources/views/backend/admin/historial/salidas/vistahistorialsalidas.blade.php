@@ -1,9 +1,9 @@
 @extends('adminlte::page')
 
-@section('title', 'Historial / Entradas')
+@section('title', 'Historial / Salidas')
 
 @section('content_header')
-    <h1>Historial / Entradas</h1>
+    <h1>Historial / Salidas</h1>
 @stop
 
 @section('plugins.Datatables', true)
@@ -40,22 +40,6 @@
     </li>
 @endsection
 
-@section('css')
-    <style>
-        #placeholder-historial {
-            padding: 60px 0;
-        }
-        #placeholder-historial i {
-            color: #adb5bd;
-        }
-        /* Oculta toda la columna de Acciones (header y celdas) cuando el
-           proyecto está cerrado, sin importar cuándo se insertan las filas */
-        #modalDetalle table.oculto-acciones .col-acciones {
-            display: none;
-        }
-    </style>
-@stop
-
 @section('content')
     <div id="divcontenedor">
 
@@ -67,6 +51,8 @@
                         <h3 class="card-title"><i class="fas fa-filter mr-1"></i> Filtros</h3>
                     </div>
                     <div class="card-body">
+
+                        {{-- Fila 1: Proyecto + Fechas + Botones --}}
                         <div class="row align-items-end">
                             <div class="col-md-4">
                                 <label class="font-weight-bold">Proyecto</label>
@@ -97,6 +83,25 @@
                                 </button>
                             </div>
                         </div>
+
+                        {{-- Fila 2: Búsqueda por material --}}
+                        <div class="row align-items-end mt-3">
+                            <div class="col-md-6">
+                                <label class="font-weight-bold">
+                                    <i class="fas fa-box mr-1 text-muted"></i> Buscar por material (nombre)
+                                </label>
+                                <input type="text"
+                                       class="form-control"
+                                       id="filtro-material"
+                                       placeholder="Ej: cemento, MAT-001 ...">
+                            </div>
+                            <div class="col-md-6 d-flex align-items-end">
+                                <small class="text-muted">
+                                    Filtra las salidas que contengan ese material en su detalle.
+                                </small>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             </div>
@@ -107,21 +112,18 @@
             <div class="container-fluid">
                 <div class="card card-blue">
                     <div class="card-header">
-                        <h3 class="card-title">Listado de Entradas</h3>
+                        <h3 class="card-title">Listado de Salidas</h3>
                     </div>
                     <div class="card-body">
                         <div class="row">
                             <div class="col-md-12">
                                 <div id="tablaDatatable">
-                                    {{-- Nada se carga hasta que el usuario presione Filtrar --}}
-                                    <div class="text-center text-muted" id="placeholder-historial">
-                                        <i class="fas fa-filter fa-2x mb-3"></i>
-                                        <p class="mb-0">
-                                            Selecciona un proyecto o un rango de fechas si quieres acotar la búsqueda,
-                                        </p>
-                                        <p>
-                                            o presiona <strong>Filtrar</strong> directamente para ver todo el historial de entradas.
-                                        </p>
+                                    {{-- Loading inicial --}}
+                                    <div id="loading-historial" class="text-center py-5">
+                                        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                                            <span class="sr-only">Cargando...</span>
+                                        </div>
+                                        <p class="mt-3 text-muted">Cargando historial de salidas...</p>
                                     </div>
                                 </div>
                             </div>
@@ -132,13 +134,13 @@
         </section>
     </div>
 
-    {{-- Modal Editar Entrada --}}
+    {{-- Modal Editar Salida --}}
     <div class="modal fade" id="modalEditar" tabindex="-1" role="dialog">
         <div class="modal-dialog modal-md" role="document">
             <div class="modal-content">
                 <div class="modal-header bg-warning">
                     <h5 class="modal-title text-white">
-                        <i class="fas fa-edit mr-2"></i>Editar Entrada
+                        <i class="fas fa-edit mr-2"></i>Editar Salida
                     </h5>
                     <button type="button" class="close text-white" data-dismiss="modal">
                         <span>&times;</span>
@@ -152,14 +154,10 @@
                             <input type="date" id="fecha-editar" class="form-control">
                         </div>
                         <div class="form-group">
-                            <label>Factura</label>
-                            <input type="text" id="factura-editar" class="form-control"
-                                   placeholder="Número de factura (opcional)" maxlength="100">
-                        </div>
-                        <div class="form-group">
                             <label>Descripción</label>
                             <textarea id="descripcion-editar" class="form-control"
-                                      rows="3" maxlength="800" placeholder="Descripción opcional"></textarea>
+                                      rows="3" maxlength="800"
+                                      placeholder="Descripción opcional"></textarea>
                         </div>
                     </form>
                 </div>
@@ -173,14 +171,14 @@
         </div>
     </div>
 
-    {{-- Modal Detalle Entrada --}}
+    {{-- Modal Detalle Salida --}}
     <div class="modal fade" id="modalDetalle" tabindex="-1" role="dialog">
         <div class="modal-dialog modal-lg" role="document">
             <div class="modal-content">
                 <div class="modal-header bg-info">
                     <h5 class="modal-title text-white">
                         <i class="fas fa-list mr-2"></i>
-                        Detalle de Entrada —
+                        Detalle de Salida —
                         <span id="detalle-proyecto"></span>
                         <small class="ml-2" id="detalle-fecha"></small>
                         <span id="detalle-badge-cerrado" class="badge badge-danger ml-2" style="display:none;">
@@ -200,14 +198,10 @@
                             <thead class="thead-dark">
                             <tr>
                                 <th>#</th>
-                                <th>Detalle</th>
-                                <th>Marca</th>
+                                <th>Código</th>
                                 <th>Material</th>
-                                <th class="text-center">U. Medida</th>
                                 <th class="text-center">Cantidad</th>
                                 <th class="text-right">Precio unitario</th>
-                                <th class="text-right">Total</th>
-                                <th id="detalle-col-accion" class="text-center col-acciones">Acciones</th>
                             </tr>
                             </thead>
                             <tbody id="detalle-tbody"></tbody>
@@ -215,52 +209,11 @@
                     </div>
                     <div id="detalle-vacio" class="text-center text-muted py-4" style="display:none;">
                         <i class="fas fa-inbox fa-2x mb-2"></i>
-                        <p>Esta entrada no tiene materiales registrados.</p>
+                        <p>Esta salida no tiene materiales registrados.</p>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    {{-- Modal Editar Detalle --}}
-    <div class="modal fade" id="modalEditarDetalle" tabindex="-1" role="dialog">
-        <div class="modal-dialog modal-lg" role="document">
-            <div class="modal-content">
-                <div class="modal-header bg-warning">
-                    <h5 class="modal-title text-white">
-                        <i class="fas fa-edit mr-2"></i>Editar Material
-                    </h5>
-                    <button type="button" class="close text-white" data-dismiss="modal">
-                        <span>&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <form id="formulario-editar-detalle">
-                        <input type="hidden" id="detalle-id-editar">
-                        <div class="form-group">
-                            <label>Material</label>
-                            <input type="text" id="detalle-material-editar" class="form-control" disabled>
-                        </div>
-                        <div class="form-group">
-                            <label>Detalle (Opcional)</label>
-                            <input type="text" id="detalle-codigo-editar" class="form-control"
-                                   maxlength="100" placeholder="Código (opcional)">
-                        </div>
-                        <div class="form-group">
-                            <label>Precio unitario <span class="text-danger">*</span></label>
-                            <input type="number" id="detalle-precio-editar" class="form-control"
-                                   step="0.0001" min="0" placeholder="0.0000">
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-warning" onclick="editarDetalle()">
-                        <i class="fas fa-save mr-1"></i>Guardar
-                    </button>
                 </div>
             </div>
         </div>
@@ -275,7 +228,7 @@
 
     <script>
         $(function () {
-            const ruta = "{{ url('/admin/historial/entradas/tabla') }}";
+            const ruta = "{{ url('/admin/historial/salidas/tabla') }}";
 
             // ── Select2 con badge de estado ───────────────────────
             $('#filtro-proyecto').select2({
@@ -285,7 +238,7 @@
                 language: { noResults: function () { return 'No encontrado'; } },
                 templateResult: function (data) {
                     if (!data.id) return data.text;
-                    var cerrado = $(data.element).data('cerrado') == '1';
+                    var cerrado = $(data.element).data('cerrado') == '1';  // 👈
                     return $('<span class="d-flex align-items-center justify-content-between">')
                         .append($('<span>').text(data.text))
                         .append($('<span>')
@@ -295,7 +248,7 @@
                 },
                 templateSelection: function (data) {
                     if (!data.id) return data.text;
-                    var cerrado = $(data.element).data('cerrado') == '1';
+                    var cerrado = $(data.element).data('cerrado') == '1';  // 👈
                     return $('<span>')
                         .append($('<span>').text(data.text))
                         .append($('<span>')
@@ -343,38 +296,33 @@
                 $('#tabla_filter input').addClass('form-control form-control-sm').css('display', 'inline-block');
             }
 
-            // ── Loading mientras se trae la tabla ─────────────────
-            function mostrarLoading() {
-                $('#tablaDatatable').html(
-                    '<div class="text-center py-5">' +
-                    '<i class="fas fa-spinner fa-spin fa-2x"></i>' +
-                    '<p class="mt-2 mb-0 text-muted">Cargando entradas...</p>' +
-                    '</div>'
-                );
-            }
-
-            // ── Cargar tabla (con o sin filtros) ──────────────────
-            // Se invoca solo cuando el usuario presiona "Filtrar". Si no hay
-            // filtros seleccionados, trae todos los resultados; nunca se
-            // llama automáticamente al entrar a la pantalla.
+            // ── Cargar tabla con filtros ──────────────────────────
             function cargarTabla() {
                 const proyecto   = $('#filtro-proyecto').val();
                 const fechaDesde = $('#filtro-fecha-desde').val();
                 const fechaHasta = $('#filtro-fecha-hasta').val();
+                const material   = $('#filtro-material').val().trim();
 
                 const params = new URLSearchParams();
                 if (proyecto)   params.append('proyecto',    proyecto);
                 if (fechaDesde) params.append('fecha_desde', fechaDesde);
                 if (fechaHasta) params.append('fecha_hasta', fechaHasta);
+                if (material)   params.append('material',    material);
 
                 const url = params.toString() ? ruta + '?' + params.toString() : ruta;
 
-                mostrarLoading();
+                // Mostrar loading antes de la petición
+                $('#tablaDatatable').html(`
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                            <span class="sr-only">Cargando...</span>
+                        </div>
+                        <p class="mt-3 text-muted">Cargando historial de salidas...</p>
+                    </div>
+                `);
 
                 $('#tablaDatatable').load(url, function () {
-                    if ($('#tabla').length) {
-                        initDataTable();
-                    }
+                    initDataTable();
                 });
             }
 
@@ -384,33 +332,11 @@
                 $('#filtro-proyecto').val('').trigger('change');
                 $('#filtro-fecha-desde').val('');
                 $('#filtro-fecha-hasta').val('');
-                // Nota: limpiar no vuelve a cargar la tabla automáticamente;
-                // el usuario presiona "Filtrar" cuando quiera traer todo de nuevo.
+                $('#filtro-material').val('');
+                cargarTabla();
             };
 
-            // Ya NO se llama cargarTabla() al inicio.
-            // La tabla se mantiene con el placeholder hasta que el usuario
-            // presione "Filtrar" (con o sin filtros llenos).
-
-            // ── Delegación de evento para botón editar detalle ────
-            $(document).on('click', '.btn-editar-detalle', function () {
-                const btn = $(this);
-                modalEditarDetalle(
-                    btn.data('id'),
-                    btn.data('material'),
-                    btn.data('codigo'),
-                    btn.data('precio')
-                );
-            });
-
-            // ── Delegación de evento para botón eliminar detalle ──
-            $(document).on('click', '.btn-eliminar-detalle', function () {
-                const btn = $(this);
-                eliminarDetalle(
-                    btn.data('id'),
-                    btn.data('material')
-                );
-            });
+            cargarTabla();
         });
     </script>
 
@@ -421,15 +347,15 @@
             openLoading();
             document.getElementById('formulario-editar').reset();
 
-            axios.post(urlAdmin + '/admin/historial/entradas/informacion', { id: id })
+            axios.post(urlAdmin + '/admin/historial/salidas/informacion', { id: id })
                 .then((response) => {
                     closeLoading();
                     if (response.data.success === 1) {
-                        const e = response.data.entrada;
-                        $('#id-editar').val(e.id);
-                        $('#fecha-editar').val(e.fecha);
-                        $('#factura-editar').val(e.factura ?? '');
-                        $('#descripcion-editar').val(e.descripcion ?? '');
+                        const s = response.data.salida;
+                        $('#id-editar').val(s.id);
+                        const soloFecha = s.fecha ? s.fecha.substring(0, 10) : '';
+                        $('#fecha-editar').val(soloFecha);
+                        $('#descripcion-editar').val(s.descripcion ?? '');
                         $('#modalEditar').modal('show');
                     } else {
                         toastr.error('No se pudo cargar la información');
@@ -441,27 +367,36 @@
         function editar() {
             const id          = $('#id-editar').val();
             const fecha       = $('#fecha-editar').val().trim();
-            const factura     = $('#factura-editar').val().trim();
             const descripcion = $('#descripcion-editar').val().trim();
 
             if (fecha === '')             { toastr.error('La fecha es requerida'); return; }
-            if (factura.length > 100)     { toastr.error('Factura máximo 100 caracteres'); return; }
             if (descripcion.length > 800) { toastr.error('Descripción máximo 800 caracteres'); return; }
 
             openLoading();
             const formData = new FormData();
             formData.append('id',          id);
             formData.append('fecha',       fecha);
-            formData.append('factura',     factura);
             formData.append('descripcion', descripcion);
 
-            axios.post(urlAdmin + '/admin/historial/entradas/editar', formData)
+            axios.post(urlAdmin + '/admin/historial/salidas/editar', formData)
                 .then((response) => {
                     closeLoading();
                     if (response.data.success === 1) {
-                        toastr.success('Entrada actualizada correctamente');
+                        toastr.success('Salida actualizada correctamente');
                         $('#modalEditar').modal('hide');
                         recargar();
+                    } else if (response.data.success === 2) {
+                        Swal.fire({
+                            title: 'Fecha inválida',
+                            html:
+                                'El material <b>' + response.data.nombre_material + '</b> ' +
+                                'tiene fecha de ingreso <b>' + response.data.fecha_ingreso + '</b>.<br><br>' +
+                                'La fecha de salida (<b>' + response.data.fecha_salida + '</b>) ' +
+                                'no puede ser anterior al ingreso.',
+                            icon: 'warning',
+                            confirmButtonColor: '#d33',
+                            confirmButtonText: 'Entendido'
+                        });
                     } else {
                         toastr.error('Error al actualizar');
                     }
@@ -469,10 +404,10 @@
                 .catch(() => { closeLoading(); toastr.error('Error al actualizar'); });
         }
 
-        // ── Eliminar entrada completa ─────────────────────────────
+        // ── Eliminar ──────────────────────────────────────────────
         function eliminar(id) {
             Swal.fire({
-                title: '¿Eliminar entrada?',
+                title: '¿Eliminar salida?',
                 text: 'Se eliminarán también todos los detalles relacionados. Esta acción no se puede deshacer.',
                 type: 'warning',
                 showCancelButton: true,
@@ -483,60 +418,14 @@
             }).then((result) => {
                 if (result.value) {
                     openLoading();
-                    axios.post(urlAdmin + '/admin/historial/entradas/eliminar', { id: id })
+                    axios.post(urlAdmin + '/admin/historial/salidas/eliminar', { id: id })
                         .then((response) => {
                             closeLoading();
-
-                            switch (response.data.success) {
-
-                                case 1:
-                                    toastr.success('Entrada eliminada correctamente');
-                                    recargar();
-                                    break;
-
-                                case 2:
-                                    Swal.fire({
-                                        title: 'No se puede eliminar',
-                                        text:  response.data.msg ||
-                                            'Esta entrada tiene reservas ya despachadas y no puede eliminarse.',
-                                        type:  'warning',
-                                        confirmButtonColor: '#d33',
-                                        confirmButtonText:  'Entendido'
-                                    });
-                                    break;
-
-                                case 3:
-                                    Swal.fire({
-                                        title: 'No se puede eliminar aquí',
-                                        text:  response.data.msg ||
-                                            'Esta entrada proviene de una transferencia. Elimínela desde el Historial de Transferencias.',
-                                        type:  'info',
-                                        confirmButtonColor: '#2156af',
-                                        confirmButtonText:  'Entendido'
-                                    });
-                                    break;
-
-                                case 4:
-                                    Swal.fire({
-                                        title: 'No se puede eliminar',
-                                        text: response.data.msg || 'Esta entrada tiene salidas registradas y no puede eliminarse.',
-                                        type: 'warning',
-                                        confirmButtonColor: '#d33',
-                                        confirmButtonText: 'Entendido'
-                                    });
-                                    break;
-
-                                case 0:
-                                    toastr.error('La entrada no existe o ya fue eliminada');
-                                    recargar();
-                                    break;
-
-                                case 99:
-                                    toastr.error('Ocurrió un error al eliminar. Intente nuevamente.');
-                                    break;
-
-                                default:
-                                    toastr.error('Error al eliminar');
+                            if (response.data.success === 1) {
+                                toastr.success('Salida eliminada correctamente');
+                                recargar();
+                            } else {
+                                toastr.error('Error al eliminar');
                             }
                         })
                         .catch(() => { closeLoading(); toastr.error('Error al eliminar'); });
@@ -544,9 +433,8 @@
             });
         }
 
-        // ── Detalle entrada ───────────────────────────────────────
+        // ── Detalle salida ────────────────────────────────────────
         function verDetalle(id, proyecto, fecha, cerrado) {
-            $('#detalle-id-editar').data('entrada-id', id);
             $('#detalle-proyecto').text(proyecto);
             $('#detalle-fecha').text(fecha);
             $('#detalle-tbody').html('');
@@ -556,69 +444,27 @@
 
             if (cerrado) {
                 $('#detalle-badge-cerrado').show();
-                $('#detalle-contenido table').addClass('oculto-acciones');
             } else {
                 $('#detalle-badge-cerrado').hide();
-                $('#detalle-contenido table').removeClass('oculto-acciones');
             }
 
             $('#modalDetalle').modal('show');
 
-            axios.post(urlAdmin + '/admin/historial/entradas/detalle', { id: id })
+            axios.post(urlAdmin + '/admin/historial/salidas/detalle', { id: id })
                 .then((response) => {
                     $('#detalle-loading').hide();
                     if (response.data.success === 1 && response.data.detalle.length > 0) {
                         let html = '';
-                        let totalGeneral = 0;
-
                         response.data.detalle.forEach((fila, index) => {
-                            let botones = '';
-                            if (!cerrado) {
-                                botones = `
-                                    <button type="button"
-                                            class="btn btn-warning btn-xs btn-editar-detalle mr-1"
-                                            title="Editar"
-                                            data-id="${fila.id}"
-                                            data-material="${fila.material}"
-                                            data-codigo="${fila.codigo ?? ''}"
-                                            data-precio="${fila.precio_raw}">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button type="button"
-                                            class="btn btn-danger btn-xs btn-eliminar-detalle"
-                                            title="Eliminar"
-                                            data-id="${fila.id}"
-                                            data-material="${fila.material}">
-                                        <i class="fas fa-trash"></i>
-                                    </button>`;
-                            }
-
-                            const precioNum = parseFloat(fila.precio_raw) || 0;
-                            const cantidad  = parseFloat(fila.cantidad_inicial) || 0;
-                            const total     = precioNum * cantidad;
-                            totalGeneral   += total;
-
                             html += `
                                 <tr>
                                     <td>${index + 1}</td>
-                                    <td>${fila.codigo ?? ''}</td>
-                                    <td>${fila.marca ?? ''}</td>
+                                    <td>${fila.codigo}</td>
                                     <td>${fila.material}</td>
-                                    <td class="text-center">${fila.unidad_medida}</td>
-                                    <td class="text-center">${fila.cantidad_inicial}</td>
+                                    <td class="text-center">${fila.cantidad_salida}</td>
                                     <td class="text-right">$${fila.precio}</td>
-                                    <td class="text-right">$${total.toFixed(2)}</td>
-                                    <td class="text-center text-nowrap col-acciones">${botones}</td>
                                 </tr>`;
                         });
-
-                        html += `
-                            <tr class="font-weight-bold" style="background-color:#f8f9fa;">
-                                <td colspan="7" class="text-right">Total general</td>
-                                <td class="text-right">$${totalGeneral.toFixed(2)}</td>
-                                <td class="col-acciones"></td>
-                            </tr>`;
-
                         $('#detalle-tbody').html(html);
                         $('#detalle-contenido').show();
                     } else {
@@ -630,157 +476,6 @@
                     $('#detalle-vacio').show();
                     toastr.error('Error al cargar el detalle');
                 });
-        }
-
-        // ── Editar fila de detalle ────────────────────────────────
-        function modalEditarDetalle(id, material, codigo, precio) {
-            document.getElementById('formulario-editar-detalle').reset();
-            $('#detalle-id-editar').val(id);
-            $('#detalle-material-editar').val(material);
-            $('#detalle-codigo-editar').val(codigo !== '' ? codigo : '');
-            $('#detalle-precio-editar').val(precio);
-            $('#modalEditarDetalle').modal('show');
-        }
-
-        function editarDetalle() {
-            const id     = $('#detalle-id-editar').val();
-            const codigo = $('#detalle-codigo-editar').val().trim();
-            const precio = $('#detalle-precio-editar').val().trim();
-
-            if (precio === '' || isNaN(precio) || parseFloat(precio) < 0) {
-                toastr.error('Precio inválido'); return;
-            }
-            if (codigo.length > 100) {
-                toastr.error('Código máximo 100 caracteres'); return;
-            }
-
-            openLoading();
-            const formData = new FormData();
-            formData.append('id',     id);
-            formData.append('codigo', codigo);
-            formData.append('precio', precio);
-
-            axios.post(urlAdmin + '/admin/historial/entradas/detalle/editar', formData)
-                .then((response) => {
-                    closeLoading();
-                    if (response.data.success === 1) {
-                        toastr.success('Actualizado correctamente');
-                        $('#modalEditarDetalle').modal('hide');
-
-                        const entradaId = $('#detalle-id-editar').data('entrada-id');
-                        const proyecto  = $('#detalle-proyecto').text();
-                        const fecha     = $('#detalle-fecha').text();
-                        const cerrado   = $('#detalle-badge-cerrado').is(':visible') ? 1 : 0;
-                        verDetalle(entradaId, proyecto, fecha, cerrado);
-                    } else {
-                        toastr.error('Error al actualizar');
-                    }
-                })
-                .catch(() => { closeLoading(); toastr.error('Error al actualizar'); });
-        }
-
-        // ── Eliminar fila de detalle ──────────────────────────────
-        function eliminarDetalle(id, material) {
-            Swal.fire({
-                title: '¿Eliminar material?',
-                html: `Se eliminará el material: <b>${material}</b><br><br>
-               <small class="text-muted">Si es el último material de esta entrada, la entrada completa también será eliminada.</small>`,
-                type: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#6c757d',
-                confirmButtonText: 'Sí, eliminar',
-                cancelButtonText: 'Cancelar'
-            }).then((result) => {
-                if (result.value) {
-                    openLoading();
-                    axios.post(urlAdmin + '/admin/historial/entradas/detalle/eliminar', { id: id })
-                        .then((response) => {
-                            closeLoading();
-
-                            switch (response.data.success) {
-                                case 1:
-                                    if (response.data.entrada_borrada) {
-                                        toastr.success('Material eliminado. La entrada fue eliminada por no tener más materiales.');
-                                        $('#modalDetalle').modal('hide');
-                                        recargar();
-                                    } else {
-                                        toastr.success('Material eliminado correctamente');
-                                        const entradaId = $('#detalle-id-editar').data('entrada-id');
-                                        const proyecto  = $('#detalle-proyecto').text();
-                                        const fecha     = $('#detalle-fecha').text();
-                                        const cerrado   = $('#detalle-badge-cerrado').is(':visible') ? 1 : 0;
-                                        verDetalle(entradaId, proyecto, fecha, cerrado);
-                                        recargar();
-                                    }
-                                    break;
-
-                                case 2:
-                                    Swal.fire({
-                                        title: 'No se puede eliminar',
-                                        text:  response.data.msg || 'El proyecto está cerrado.',
-                                        type:  'warning',
-                                        confirmButtonColor: '#d33',
-                                        confirmButtonText:  'Entendido'
-                                    });
-                                    break;
-
-                                case 3:
-                                    Swal.fire({
-                                        title: 'No se puede eliminar aquí',
-                                        text:  response.data.msg ||
-                                            'Este material proviene de una transferencia. Elimínelo desde el Historial de Transferencias.',
-                                        type:  'info',
-                                        confirmButtonColor: '#2156af',
-                                        confirmButtonText:  'Entendido'
-                                    });
-                                    break;
-
-                                case 4:
-                                    Swal.fire({
-                                        title: 'No se puede eliminar',
-                                        text:  response.data.msg || 'Este material ya tiene salidas registradas.',
-                                        type:  'warning',
-                                        confirmButtonColor: '#d33',
-                                        confirmButtonText:  'Entendido'
-                                    });
-                                    break;
-
-                                case 5:
-                                    Swal.fire({
-                                        title: 'No se puede eliminar',
-                                        text:  response.data.msg || 'Este material tiene reservas asociadas.',
-                                        type:  'warning',
-                                        confirmButtonColor: '#d33',
-                                        confirmButtonText:  'Entendido'
-                                    });
-                                    break;
-
-                                case 6:
-                                    Swal.fire({
-                                        title: 'No se puede eliminar',
-                                        text:  response.data.msg || 'Este material está incluido en una transferencia.',
-                                        type:  'warning',
-                                        confirmButtonColor: '#d33',
-                                        confirmButtonText:  'Entendido'
-                                    });
-                                    break;
-
-                                case 0:
-                                    toastr.error('El material no existe o ya fue eliminado');
-                                    break;
-
-                                case 99:
-                                    toastr.error(response.data.msg || 'Ocurrió un error al eliminar.');
-                                    break;
-
-                                default:
-                                    toastr.error('Error al eliminar');
-                            }
-                        })
-                        .catch(() => { closeLoading(); toastr.error('Error al eliminar'); });
-                }
-            });
         }
 
     </script>
