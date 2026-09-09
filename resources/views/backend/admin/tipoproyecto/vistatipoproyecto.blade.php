@@ -380,6 +380,12 @@
                         toastr.success('Actualizado correctamente');
                         $('#modalEditar').modal('hide');
                         recargar();
+                    } else if(response.data.success === 3){
+                        toastr.error('No se puede editar: este proyecto ya tiene entradas registradas');
+                        $('#modalEditar').modal('hide');
+                        recargar();
+                    } else if(response.data.success === 2){
+                        toastr.error('Proyecto no encontrado');
                     } else {
                         toastr.error('Error al actualizar');
                     }

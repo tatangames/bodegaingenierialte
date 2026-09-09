@@ -55,27 +55,33 @@ class TipoProyectoController extends Controller
 
     public function informacionProyecto(Request $request)
     {
-        $validar = Validator::make($request->all(), [
-            'id' => 'required',
-        ]);
+        $regla = array(
+            'id' => 'required'
+        );
 
-        if ($validar->fails()) { return ['success' => 0]; }
+        $validar = Validator::make($request->all(), $regla);
 
-        $dato = TipoProyecto::find($request->id);
+        if ($validar->fails()) {
+            return ['success' => 0];
+        }
 
-        if (!$dato) { return ['success' => 2]; }
+        $proyecto = TipoProyecto::where('id', $request->id)->first();
 
-        $tieneEntradas = $dato->entradas()->exists();
+        if (!$proyecto) {
+            return ['success' => 2];
+        }
+
+        $tieneEntradas = Entradas::where('id_tipoproyecto', $proyecto->id)->exists();
 
         return [
             'success'        => 1,
-            'info'           => $dato,
+            'info'           => $proyecto,
             'tiene_entradas' => $tieneEntradas,
         ];
     }
 
-    public function editarProyecto(Request $request){
-
+    public function editarProyecto(Request $request)
+    {
         $regla = array(
             'id' => 'required',
             'nombre' => 'required'
@@ -83,18 +89,27 @@ class TipoProyectoController extends Controller
 
         $validar = Validator::make($request->all(), $regla);
 
-        if ($validar->fails()){ return ['success' => 0];}
+        if ($validar->fails()) {
+            return ['success' => 0];
+        }
 
-        if(TipoProyecto::where('id', $request->id)->first()){
+        $proyecto = TipoProyecto::where('id', $request->id)->first();
 
-            TipoProyecto::where('id', $request->id)->update([
-                'nombre' => $request->nombre
-            ]);
-
-            return ['success' => 1];
-        }else{
+        if (!$proyecto) {
             return ['success' => 2];
         }
+
+        $tieneEntradas = Entradas::where('id_tipoproyecto', $proyecto->id)->exists();
+
+        if ($tieneEntradas) {
+            return ['success' => 3];
+        }
+
+        $proyecto->update([
+            'nombre' => $request->nombre
+        ]);
+
+        return ['success' => 1];
     }
 
 
