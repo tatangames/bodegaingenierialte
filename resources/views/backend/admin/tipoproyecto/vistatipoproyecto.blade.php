@@ -105,7 +105,15 @@
                     <div class="card-body">
                         <div class="row">
                             <div class="col-md-12">
-                                <div id="tablaDatatable"></div>
+                                <div id="tablaDatatable">
+                                    {{-- Loading inicial --}}
+                                    <div id="loading-proyectos" class="text-center py-5">
+                                        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                                            <span class="sr-only">Cargando...</span>
+                                        </div>
+                                        <p class="mt-3 text-muted">Cargando listado de proyectos...</p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -233,6 +241,16 @@
             if ($.fn.DataTable.isDataTable('#tabla')) {
                 $('#tabla').DataTable().destroy();
             }
+
+            // Mostrar loading antes de la petición
+            $('#tablaDatatable').html(`
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                        <span class="sr-only">Cargando...</span>
+                    </div>
+                    <p class="mt-3 text-muted">Cargando listado de proyectos...</p>
+                </div>
+            `);
 
             $('#tablaDatatable').load(url, function () {
                 initDataTable();
