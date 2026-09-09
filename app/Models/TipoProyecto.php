@@ -15,6 +15,9 @@ class TipoProyecto extends Model
         'transferido' => 'boolean',
     ];
 
+    protected $fillable = ['nombre'];
+
+
     public function transferencia()
     {
         return $this->hasMany(Transferencia::class, 'id_tipoproyecto');
