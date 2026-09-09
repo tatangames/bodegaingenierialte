@@ -188,7 +188,7 @@ Route::middleware('auth:admin')->group(function () {
     // --- PDF - GENERADO MATERIALES RESERVADOS ---
     Route::post('/admin/reporte/acta/preview/reserva',
         [ReportesController::class, 'actaRecepcionPreviewReserva'])
-        ->name('reporte.acta.preview');
+        ->name('reporte.acta.preview.reserva');
 
     // --- PDF - GENERADO AL RESERVAR MATERIALES - Formulario de Reserva — GEAD-001-FORM ---
     Route::post('/admin/reporte/form001/reserva/preview',
@@ -242,7 +242,6 @@ Route::middleware('auth:admin')->group(function () {
         [ReportesController::class, 'reporteDestinoSobrantesDescriptivo']);
 
     // --- REPORTE / ENTREGAS MENSUALES - GEAD-002-REPO
-    Route::get('/admin/reporte/proyectos/codigos', [ReportesController::class,'vistaReporteProyectoCodigos'])->name('admin.reporte.proyectos.codigos.index');
     Route::get('/admin/reporte/proyectos/codigos/pdf/{idproy}/{desde}/{hasta}/{descripcion?}', [ReportesController::class, 'reportePDFProyectoCodigos']);
 
     // --- REPORTE / PROYECTO CERRADO - INVENTARIO QUE SOBRO
