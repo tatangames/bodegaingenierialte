@@ -7,7 +7,6 @@
                         <table id="tabla" class="table table-bordered table-striped">
                             <thead>
                             <tr>
-                                <th style="width: 5%">ID</th>
                                 <th style="width: 80%">Proyecto</th>
                                 <th style="width: 13%">Opciones</th>
                             </tr>
@@ -16,7 +15,6 @@
 
                             @foreach($lista as $dato)
                                 <tr>
-                                    <td>{{ $dato->id }}</td>
                                     <td>{{ $dato->nombre }}</td>
                                     <td>
                                         <button type="button" class="btn btn-primary btn-xs" onclick="informacion({{ $dato->id }})">
