@@ -71,12 +71,9 @@ class TipoProyectoController extends Controller
             return ['success' => 2];
         }
 
-        $tieneEntradas = Entradas::where('id_tipoproyecto', $proyecto->id)->exists();
-
         return [
-            'success'        => 1,
-            'info'           => $proyecto,
-            'tiene_entradas' => $tieneEntradas,
+            'success' => 1,
+            'info'    => $proyecto,
         ];
     }
 
@@ -97,12 +94,6 @@ class TipoProyectoController extends Controller
 
         if (!$proyecto) {
             return ['success' => 2];
-        }
-
-        $tieneEntradas = Entradas::where('id_tipoproyecto', $proyecto->id)->exists();
-
-        if ($tieneEntradas) {
-            return ['success' => 3];
         }
 
         $proyecto->update([

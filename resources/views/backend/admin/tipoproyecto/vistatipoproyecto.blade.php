@@ -341,26 +341,14 @@
             openLoading();
             document.getElementById('formulario-editar').reset();
 
-            // Limpiar estado anterior
-            $('#alerta-entradas').addClass('d-none');
-            $('#formulario-editar input:not([type=hidden])').prop('disabled', false);
-            $('#btn-guardar-editar').prop('disabled', false).show();
-
             axios.post(urlAdmin + '/admin/proyecto/informacion', { id: id })
                 .then((response) => {
                     closeLoading();
                     if (response.data.success === 1) {
-                        var info          = response.data.info;
-                        var tieneEntradas = response.data.tiene_entradas;
+                        var info = response.data.info;
 
                         $('#id-editar').val(info.id);
                         $('#nombre-editar').val(info.nombre);
-
-                        if (tieneEntradas) {
-                            $('#alerta-entradas').removeClass('d-none');
-                            $('#formulario-editar input:not([type=hidden])').prop('disabled', true);
-                            $('#btn-guardar-editar').prop('disabled', true).hide();
-                        }
 
                         $('#modalEditar').modal('show');
                     } else {
@@ -396,10 +384,6 @@
                     closeLoading();
                     if(response.data.success === 1){
                         toastr.success('Actualizado correctamente');
-                        $('#modalEditar').modal('hide');
-                        recargar();
-                    } else if(response.data.success === 3){
-                        toastr.error('No se puede editar: este proyecto ya tiene entradas registradas');
                         $('#modalEditar').modal('hide');
                         recargar();
                     } else if(response.data.success === 2){
