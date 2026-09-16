@@ -74,13 +74,15 @@
                                 <label class="font-weight-bold">Fecha hasta</label>
                                 <input type="date" class="form-control" id="filtro-fecha-hasta">
                             </div>
-                            <div class="col-md-2">
-                                <button class="btn btn-primary btn-block mb-1" onclick="recargar()">
-                                    <i class="fas fa-search mr-1"></i> Filtrar
-                                </button>
-                                <button class="btn btn-secondary btn-block" onclick="limpiarFiltros()">
-                                    <i class="fas fa-times mr-1"></i> Limpiar
-                                </button>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <div style="width:100%">
+                                    <button class="btn btn-primary btn-block mb-1" onclick="buscarConFiltros()">
+                                        <i class="fas fa-search mr-1"></i> Filtrar
+                                    </button>
+                                    <button class="btn btn-secondary btn-block" onclick="limpiarFiltros()">
+                                        <i class="fas fa-times mr-1"></i> Limpiar
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
@@ -113,18 +115,19 @@
                 <div class="card card-blue">
                     <div class="card-header">
                         <h3 class="card-title">Listado de Salidas</h3>
+                        <div class="card-tools">
+                            <span class="badge badge-info" id="badge-total" style="display:none"></span>
+                        </div>
                     </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-12">
-                                <div id="tablaDatatable">
-                                    {{-- Loading inicial --}}
-                                    <div id="loading-historial" class="text-center py-5">
-                                        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
-                                            <span class="sr-only">Cargando...</span>
-                                        </div>
-                                        <p class="mt-3 text-muted">Cargando historial de salidas...</p>
-                                    </div>
+                    <div class="card-body p-0">
+                        <div id="div-instruccion" class="text-center text-muted py-5">
+                            <i class="fas fa-search fa-3x mb-3 d-block"></i>
+                            <p class="mb-0">Utiliza los filtros de arriba y presiona <strong>Filtrar</strong> para ver el historial.</p>
+                        </div>
+                        <div id="div-tabla" style="display:none">
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <div id="tablaDatatable"></div>
                                 </div>
                             </div>
                         </div>
@@ -228,9 +231,9 @@
     <script src="{{ asset('js/select2.min.js') }}" type="text/javascript"></script>
 
     <script>
-        $(function () {
-            const ruta = "{{ url('/admin/historial/salidas/tabla') }}";
+        const RUTA_TABLA = "{{ url('/admin/historial/salidas/tabla') }}";
 
+        $(function () {
             // ── Select2 con badge de estado ───────────────────────
             $('#filtro-proyecto').select2({
                 theme: 'bootstrap-5',
@@ -239,7 +242,7 @@
                 language: { noResults: function () { return 'No encontrado'; } },
                 templateResult: function (data) {
                     if (!data.id) return data.text;
-                    var cerrado = $(data.element).data('cerrado') == '1';  // 👈
+                    var cerrado = $(data.element).data('cerrado') == '1';
                     return $('<span class="d-flex align-items-center justify-content-between">')
                         .append($('<span>').text(data.text))
                         .append($('<span>')
@@ -249,7 +252,7 @@
                 },
                 templateSelection: function (data) {
                     if (!data.id) return data.text;
-                    var cerrado = $(data.element).data('cerrado') == '1';  // 👈
+                    var cerrado = $(data.element).data('cerrado') == '1';
                     return $('<span>')
                         .append($('<span>').text(data.text))
                         .append($('<span>')
@@ -259,89 +262,89 @@
                 }
             });
 
-            // ── DataTable ─────────────────────────────────────────
-            function initDataTable() {
-                if ($.fn.DataTable.isDataTable('#tabla')) {
-                    $('#tabla').DataTable().destroy();
-                }
-                $('#tabla').DataTable({
-                    paging: true,
-                    lengthChange: true,
-                    searching: true,
-                    ordering: true,
-                    info: true,
-                    autoWidth: false,
-                    responsive: true,
-                    pagingType: "full_numbers",
-                    lengthMenu: [[50, 100, -1], [50, 100, "Todo"]],
-                    language: {
-                        sProcessing:   "Procesando...",
-                        sLengthMenu:   "Mostrar _MENU_ registros",
-                        sZeroRecords:  "No se encontraron resultados",
-                        sEmptyTable:   "Ningún dato disponible en esta tabla",
-                        sInfo:         "Mostrando _START_ a _END_ de _TOTAL_ registros",
-                        sInfoEmpty:    "Mostrando 0 a 0 de 0 registros",
-                        sInfoFiltered: "(filtrado de _MAX_ registros)",
-                        sSearch:       "Buscar:",
-                        oPaginate: {
-                            sFirst: "Primero", sLast: "Último",
-                            sNext: "Siguiente", sPrevious: "Anterior"
-                        }
-                    },
-                    dom:
-                        "<'row align-items-center'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6 text-md-right'f>>" +
-                        "tr" +
-                        "<'row align-items-center'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>"
-                });
-                $('#tabla_length select').addClass('form-control form-control-sm');
-                $('#tabla_filter input').addClass('form-control form-control-sm').css('display', 'inline-block');
-            }
-
-            // ── Cargar tabla con filtros ──────────────────────────
-            function cargarTabla() {
-                const proyecto   = $('#filtro-proyecto').val();
-                const fechaDesde = $('#filtro-fecha-desde').val();
-                const fechaHasta = $('#filtro-fecha-hasta').val();
-                const material   = $('#filtro-material').val().trim();
-
-                const params = new URLSearchParams();
-                if (proyecto)   params.append('proyecto',    proyecto);
-                if (fechaDesde) params.append('fecha_desde', fechaDesde);
-                if (fechaHasta) params.append('fecha_hasta', fechaHasta);
-                if (material)   params.append('material',    material);
-
-                const url = params.toString() ? ruta + '?' + params.toString() : ruta;
-
-                // Mostrar loading antes de la petición
-                $('#tablaDatatable').html(`
-                    <div class="text-center py-5">
-                        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
-                            <span class="sr-only">Cargando...</span>
-                        </div>
-                        <p class="mt-3 text-muted">Cargando historial de salidas...</p>
-                    </div>
-                `);
-
-                $('#tablaDatatable').load(url, function () {
-                    initDataTable();
-                });
-            }
-
-            window.recargar = function () { cargarTabla(); };
-
-            window.limpiarFiltros = function () {
-                $('#filtro-proyecto').val('').trigger('change');
-                $('#filtro-fecha-desde').val('');
-                $('#filtro-fecha-hasta').val('');
-                $('#filtro-material').val('');
-                cargarTabla();
-            };
-
-            cargarTabla();
+            // Ya NO se carga la tabla automáticamente al entrar.
+            // Solo se muestra el mensaje de instrucción (div-instruccion).
         });
-    </script>
 
-    <script>
+        // ── DataTable ─────────────────────────────────────────
+        function initDataTable() {
+            if ($.fn.DataTable.isDataTable('#tabla')) {
+                $('#tabla').DataTable().destroy();
+            }
+            $('#tabla').DataTable({
+                paging: true,
+                lengthChange: true,
+                searching: true,
+                ordering: true,
+                info: true,
+                autoWidth: false,
+                responsive: true,
+                pagingType: "full_numbers",
+                lengthMenu: [[50, 100, -1], [50, 100, "Todo"]],
+                language: {
+                    sProcessing:   "Procesando...",
+                    sLengthMenu:   "Mostrar _MENU_ registros",
+                    sZeroRecords:  "No se encontraron resultados",
+                    sEmptyTable:   "Ningún dato disponible en esta tabla",
+                    sInfo:         "Mostrando _START_ a _END_ de _TOTAL_ registros",
+                    sInfoEmpty:    "Mostrando 0 a 0 de 0 registros",
+                    sInfoFiltered: "(filtrado de _MAX_ registros)",
+                    sSearch:       "Buscar:",
+                    oPaginate: {
+                        sFirst: "Primero", sLast: "Último",
+                        sNext: "Siguiente", sPrevious: "Anterior"
+                    }
+                },
+                dom:
+                    "<'row align-items-center'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6 text-md-right'f>>" +
+                    "tr" +
+                    "<'row align-items-center'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>"
+            });
+            $('#tabla_length select').addClass('form-control form-control-sm');
+            $('#tabla_filter input').addClass('form-control form-control-sm').css('display', 'inline-block');
+        }
+
+        // ── Buscar con filtros (se dispara solo con el botón Filtrar) ──
+        function buscarConFiltros() {
+            const proyecto   = $('#filtro-proyecto').val();
+            const fechaDesde = $('#filtro-fecha-desde').val();
+            const fechaHasta = $('#filtro-fecha-hasta').val();
+            const material   = $('#filtro-material').val().trim();
+
+            const params = new URLSearchParams();
+            if (proyecto)   params.append('proyecto',    proyecto);
+            if (fechaDesde) params.append('fecha_desde', fechaDesde);
+            if (fechaHasta) params.append('fecha_hasta', fechaHasta);
+            if (material)   params.append('material',    material);
+
+            // Si no se llenó ningún filtro, params queda vacío y se trae todo.
+            const url = params.toString() ? RUTA_TABLA + '?' + params.toString() : RUTA_TABLA;
+
+            $('#div-instruccion').hide();
+            $('#div-tabla').show();
+            $('#tablaDatatable').html(
+                '<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x"></i></div>'
+            );
+
+            $('#tablaDatatable').load(url, function () {
+                initDataTable();
+                const total = $('#tabla tbody tr').length;
+                $('#badge-total').text(total + ' registros').show();
+            });
+        }
+
+        // Se mantiene el nombre "recargar" por compatibilidad con otras llamadas
+        window.recargar = function () { buscarConFiltros(); };
+
+        function limpiarFiltros() {
+            $('#filtro-proyecto').val('').trigger('change');
+            $('#filtro-fecha-desde').val('');
+            $('#filtro-fecha-hasta').val('');
+            $('#filtro-material').val('');
+            $('#div-instruccion').show();
+            $('#div-tabla').hide();
+            $('#badge-total').hide();
+        }
 
         // ── Editar cabecera ───────────────────────────────────────
         function modalEditar(id) {
@@ -385,7 +388,7 @@
                     if (response.data.success === 1) {
                         toastr.success('Salida actualizada correctamente');
                         $('#modalEditar').modal('hide');
-                        recargar();
+                        buscarConFiltros();
                     } else if (response.data.success === 2) {
                         Swal.fire({
                             title: 'Fecha inválida',
@@ -424,7 +427,7 @@
                             closeLoading();
                             if (response.data.success === 1) {
                                 toastr.success('Salida eliminada correctamente');
-                                recargar();
+                                buscarConFiltros();
                             } else {
                                 toastr.error('Error al eliminar');
                             }
@@ -478,6 +481,30 @@
                     $('#detalle-vacio').show();
                     toastr.error('Error al cargar el detalle');
                 });
+        }
+
+        function generarPdfGuardado(id) {
+            var form = document.createElement('form');
+            form.method = 'POST';
+            form.action = urlAdmin + '/admin/reporte/talonario/salida/guardada';
+            form.target = '_blank';
+
+            var fields = {
+                '_token': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'id': id,
+            };
+
+            Object.keys(fields).forEach(function (key) {
+                var input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = key;
+                input.value = fields[key];
+                form.appendChild(input);
+            });
+
+            document.body.appendChild(form);
+            form.submit();
+            document.body.removeChild(form);
         }
 
     </script>

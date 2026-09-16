@@ -39,6 +39,13 @@
                                         </td>
                                         <td class="text-center">
 
+                                            <button type="button"
+                                                    style="margin: 3px"
+                                                    class="btn btn-secondary btn-xs"
+                                                    onclick="generarPdfGuardado({{ $dato->id }})">
+                                                <i class="fas fa-file-pdf"></i> PDF
+                                            </button>
+
                                             @if(!$cerrado)
                                                 <button type="button"
                                                         class="btn btn-success btn-xs"
