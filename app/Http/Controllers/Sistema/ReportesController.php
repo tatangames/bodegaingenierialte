@@ -9129,6 +9129,7 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
 
 
 
+
     public function pdfReporteSalidaTalonario(Request $request)
     {
         $fecha          = $request->input('fecha', '');
@@ -9230,8 +9231,9 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
 <table width='100%' style='border-collapse:collapse; font-family:Arial, sans-serif; font-size:12px;'>
     <thead>
         <tr>
-            <th style='width:20%; border:0.8px solid #000; padding:6px 8px; text-align:center; background:#f0f0f0;'>CANTIDAD</th>
-            <th style='width:80%; border:0.8px solid #000; padding:6px 8px; text-align:center; background:#f0f0f0;'>DESCRIPCION</th>
+            <th style='width:15%; border:0.8px solid #000; padding:6px 8px; text-align:center; background:#f0f0f0;'>CANTIDAD</th>
+            <th style='width:70%; border:0.8px solid #000; padding:6px 8px; text-align:center; background:#f0f0f0;'>DESCRIPCION</th>
+            <th style='width:15%; border:0.8px solid #000; padding:6px 8px; text-align:center; background:#f0f0f0;'>UNIDAD</th>
         </tr>
     </thead>
     <tbody>";
@@ -9239,12 +9241,16 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
         foreach ($contenedor as $item) {
             $cantidad  = htmlspecialchars($item['infoCantidad'] ?? '');
             $nombreMat = htmlspecialchars($item['nombreMaterial'] ?? '');
+            $unidadMed = '';
 
             if (!empty($item['infoIdEntradaDeta'])) {
-                $entDet = \App\Models\EntradasDetalle::with('material')
+                $entDet = \App\Models\EntradasDetalle::with('material.unidadMedida')
                     ->find($item['infoIdEntradaDeta']);
                 if ($entDet && $entDet->material) {
                     $nombreMat = htmlspecialchars($entDet->material->nombre);
+                    if ($entDet->material->unidadMedida) {
+                        $unidadMed = htmlspecialchars($entDet->material->unidadMedida->nombre);
+                    }
                 }
             }
 
@@ -9252,6 +9258,7 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
     <tr>
         <td style='border:0.8px solid #000; padding:5px 8px; text-align:center;'>{$cantidad}</td>
         <td style='border:0.8px solid #000; padding:5px 8px;'>{$nombreMat}</td>
+        <td style='border:0.8px solid #000; padding:5px 8px; text-align:center;'>{$unidadMed}</td>
     </tr>";
         }
 
@@ -9297,11 +9304,13 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
 
 
 
+
+
     public function pdfReporteSalidaGuardada(Request $request)
     {
         $idSalida = $request->input('id', '');
 
-        $salida = Salidas::with(['tipoproyecto', 'detalle.entradaDetalle.material'])->find($idSalida);
+        $salida = Salidas::with(['tipoproyecto', 'detalle.entradaDetalle.material.unidadMedida'])->find($idSalida);
 
         if (!$salida) {
             abort(404, 'Salida no encontrada');
@@ -9391,8 +9400,9 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
 <table width='100%' style='border-collapse:collapse; font-family:Arial, sans-serif; font-size:12px;'>
     <thead>
         <tr>
-            <th style='width:20%; border:0.8px solid #000; padding:6px 8px; text-align:center; background:#f0f0f0;'>CANTIDAD</th>
-            <th style='width:80%; border:0.8px solid #000; padding:6px 8px; text-align:center; background:#f0f0f0;'>DESCRIPCION</th>
+            <th style='width:15%; border:0.8px solid #000; padding:6px 8px; text-align:center; background:#f0f0f0;'>CANTIDAD</th>
+            <th style='width:70%; border:0.8px solid #000; padding:6px 8px; text-align:center; background:#f0f0f0;'>DESCRIPCION</th>
+             <th style='width:15%; border:0.8px solid #000; padding:6px 8px; text-align:center; background:#f0f0f0;'>UNIDAD</th>
         </tr>
     </thead>
     <tbody>";
@@ -9400,15 +9410,20 @@ padding:5px 4px; background:#d9e1f2; text-align:center;";
         foreach ($salida->detalle as $fila) {
             $cantidad  = htmlspecialchars($fila->cantidad_salida ?? '');
             $nombreMat = '';
+            $unidadMed = '';
 
             if ($fila->entradaDetalle && $fila->entradaDetalle->material) {
                 $nombreMat = htmlspecialchars($fila->entradaDetalle->material->nombre);
+                if ($fila->entradaDetalle->material->unidadMedida) {
+                    $unidadMed = htmlspecialchars($fila->entradaDetalle->material->unidadMedida->nombre);
+                }
             }
 
             $html .= "
     <tr>
         <td style='border:0.8px solid #000; padding:5px 8px; text-align:center;'>{$cantidad}</td>
         <td style='border:0.8px solid #000; padding:5px 8px;'>{$nombreMat}</td>
+        <td style='border:0.8px solid #000; padding:5px 8px; text-align:center;'>{$unidadMed}</td>
     </tr>";
         }
 
