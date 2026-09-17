@@ -175,7 +175,7 @@
 
     {{-- Modal Detalle Entrada --}}
     <div class="modal fade" id="modalDetalle" tabindex="-1" role="dialog">
-        <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-dialog modal-xl" role="document">
             <div class="modal-content">
                 <div class="modal-header bg-info">
                     <h5 class="modal-title text-white">
@@ -246,7 +246,7 @@
                         </div>
                         <div class="form-group">
                             <label>Detalle (Opcional)</label>
-                            <input type="text" id="detalle-codigo-editar" class="form-control"
+                            <input type="text" autocomplete="off" id="detalle-codigo-editar" class="form-control"
                                    maxlength="100" placeholder="Código (opcional)">
                         </div>
                         <div class="form-group">
