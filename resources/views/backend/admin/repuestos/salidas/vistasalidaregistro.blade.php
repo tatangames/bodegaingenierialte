@@ -426,8 +426,6 @@
             var hoy = new Date();
             document.getElementById('fecha').value = hoy.toJSON().slice(0, 10);
 
-            window.seguroBuscador = true;
-
             $(document).click(function () { $(".droplista").hide(); });
 
             $('#select-proyecto').select2({
@@ -481,26 +479,49 @@
         }
 
         // ── Buscar material (buscador con dropdown) ───────────────────────
-        function buscarMaterial(e) {
-            if (seguroBuscador) {
-                seguroBuscador = false;
-                var row   = $(e).closest('tr');
-                var texto = e.value;
-                var idProyecto = $('#select-proyecto').val();
+        var debounceBuscador   = null;
+        var controllerBuscador = null;
 
-                axios.post(urlAdmin + '/admin/buscar/material/disponible', {
-                    'query': texto,
-                    'id_proyecto': idProyecto
+        function buscarMaterial(e) {
+            var row   = $(e).closest('tr');
+            var texto = e.value;
+
+            // Espera 300ms de inactividad antes de buscar: evita 1 petición
+            // por cada tecla presionada.
+            clearTimeout(debounceBuscador);
+            debounceBuscador = setTimeout(function () {
+                ejecutarBusquedaMaterial(row, texto);
+            }, 300);
+        }
+
+        function ejecutarBusquedaMaterial(row, texto) {
+            var idProyecto = $('#select-proyecto').val();
+
+            // Si había una búsqueda anterior aún en curso, se cancela. Así,
+            // una respuesta vieja nunca sobreescribe a una más reciente, y el
+            // buscador nunca queda "esperando" algo que ya no importa.
+            if (controllerBuscador) controllerBuscador.abort();
+            controllerBuscador = new AbortController();
+
+            axios.post(urlAdmin + '/admin/buscar/material/disponible', {
+                'query': texto,
+                'id_proyecto': idProyecto
+            }, {
+                timeout: 10000, // corta la espera a los 10s en vez de colgarse indefinidamente
+                signal: controllerBuscador.signal
+            })
+                .then((response) => {
+                    $(row).each(function () {
+                        $(this).find(".droplista").fadeIn();
+                        $(this).find(".droplista").html(response.data);
+                    });
                 })
-                    .then((response) => {
-                        seguroBuscador = true;
-                        $(row).each(function () {
-                            $(this).find(".droplista").fadeIn();
-                            $(this).find(".droplista").html(response.data);
-                        });
-                    })
-                    .catch(() => { seguroBuscador = true; });
-            }
+                .catch((error) => {
+                    // Una petición cancelada por una búsqueda más nueva no es un error real
+                    if (axios.isCancel(error) || error.code === 'ERR_CANCELED') return;
+
+                    toastr.error('No se pudo completar la búsqueda. Intenta de nuevo.');
+                });
         }
 
         // ── Seleccionar material → abrir modal cantidades ─────────────────
