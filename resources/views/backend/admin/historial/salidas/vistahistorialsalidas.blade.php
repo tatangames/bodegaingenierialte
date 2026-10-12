@@ -206,6 +206,7 @@
                                 <th class="text-center">Unidad</th>
                                 <th class="text-center">Cantidad</th>
                                 <th class="text-right">Precio unitario</th>
+                                <th class="text-center">Acción</th>
                             </tr>
                             </thead>
                             <tbody id="detalle-tbody"></tbody>
@@ -438,7 +439,13 @@
         }
 
         // ── Detalle salida ────────────────────────────────────────
+        let detalleSalidaActual = null;
+        let detalleProyectoCerrado = false;
+
         function verDetalle(id, proyecto, fecha, cerrado) {
+            detalleSalidaActual = id;
+            detalleProyectoCerrado = !!cerrado;
+
             $('#detalle-proyecto').text(proyecto);
             $('#detalle-fecha').text(fecha);
             $('#detalle-tbody').html('');
@@ -453,34 +460,7 @@
             }
 
             $('#modalDetalle').modal('show');
-
-            axios.post(urlAdmin + '/admin/historial/salidas/detalle', { id: id })
-                .then((response) => {
-                    $('#detalle-loading').hide();
-                    if (response.data.success === 1 && response.data.detalle.length > 0) {
-                        let html = '';
-                        response.data.detalle.forEach((fila, index) => {
-                            html += `
-                                <tr>
-                                    <td>${index + 1}</td>
-                                    <td>${fila.codigo}</td>
-                                    <td>${fila.material}</td>
-                                    <td class="text-center">${fila.unidad}</td>
-                                    <td class="text-center">${fila.cantidad_salida}</td>
-                                    <td class="text-right">$${fila.precio}</td>
-                                </tr>`;
-                        });
-                        $('#detalle-tbody').html(html);
-                        $('#detalle-contenido').show();
-                    } else {
-                        $('#detalle-vacio').show();
-                    }
-                })
-                .catch(() => {
-                    $('#detalle-loading').hide();
-                    $('#detalle-vacio').show();
-                    toastr.error('Error al cargar el detalle');
-                });
+            cargarDetalle();
         }
 
         function generarPdfGuardado(id) {
@@ -505,6 +485,99 @@
             document.body.appendChild(form);
             form.submit();
             document.body.removeChild(form);
+        }
+
+
+
+        function cargarDetalle() {
+            $('#detalle-tbody').html('');
+            $('#detalle-contenido').hide();
+            $('#detalle-vacio').hide();
+            $('#detalle-loading').show();
+
+            axios.post(urlAdmin + '/admin/historial/salidas/detalle', { id: detalleSalidaActual })
+                .then((response) => {
+                    $('#detalle-loading').hide();
+                    if (response.data.success === 1 && response.data.detalle.length > 0) {
+                        let html = '';
+                        response.data.detalle.forEach((fila, index) => {
+                            // Si el proyecto está cerrado no se permite eliminar
+                            const botonEliminar = detalleProyectoCerrado
+                                ? '<span class="text-muted">—</span>'
+                                : `<button type="button" class="btn btn-danger btn-xs"
+                                   title="Eliminar"
+                                   onclick="eliminarDetalle(${fila.id})">
+                               <i class="fas fa-trash"></i>
+                           </button>`;
+
+                            html += `
+                        <tr>
+                            <td>${index + 1}</td>
+                            <td>${fila.codigo}</td>
+                            <td>${fila.material}</td>
+                            <td class="text-center">${fila.unidad}</td>
+                            <td class="text-center">${fila.cantidad_salida}</td>
+                            <td class="text-right">$${fila.precio}</td>
+                            <td class="text-center">${botonEliminar}</td>
+                        </tr>`;
+                        });
+                        $('#detalle-tbody').html(html);
+                        $('#detalle-contenido').show();
+                    } else {
+                        $('#detalle-vacio').show();
+                    }
+                })
+                .catch(() => {
+                    $('#detalle-loading').hide();
+                    $('#detalle-vacio').show();
+                    toastr.error('Error al cargar el detalle');
+                });
+        }
+
+
+        function eliminarDetalle(idDetalle) {
+            Swal.fire({
+                title: '¿Eliminar material de la salida?',
+                text: 'Se quitará este material de la salida. Si es el último, se eliminará toda la salida. Esta acción no se puede deshacer.',
+                type: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.value) {
+                    openLoading();
+                    axios.post(urlAdmin + '/admin/historial/salidas/detalle/eliminar', {
+                        id_salida: detalleSalidaActual,
+                        id_detalle: idDetalle
+                    })
+                        .then((response) => {
+                            closeLoading();
+                            if (response.data.success === 1) {
+                                if (response.data.salida_eliminada) {
+                                    toastr.success('Material eliminado. Como era el último, la salida fue eliminada');
+                                    $('#modalDetalle').modal('hide');
+                                } else {
+                                    toastr.success('Material eliminado de la salida');
+                                    cargarDetalle(); // refresca el modal
+                                }
+                                buscarConFiltros();  // refresca la tabla de fondo
+                            } else if (response.data.success === 2) {
+                                Swal.fire({
+                                    title: 'No permitido',
+                                    text: response.data.mensaje,
+                                    icon: 'warning',
+                                    confirmButtonColor: '#d33',
+                                    confirmButtonText: 'Entendido'
+                                });
+                            } else {
+                                toastr.error('Error al eliminar');
+                            }
+                        })
+                        .catch(() => { closeLoading(); toastr.error('Error al eliminar'); });
+                }
+            });
         }
 
     </script>

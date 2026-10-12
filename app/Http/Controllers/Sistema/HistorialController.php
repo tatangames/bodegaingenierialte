@@ -517,13 +517,14 @@ class HistorialController extends Controller
         }
 
         $detalle = $salida->detalle()
-            ->with('entradaDetalle.material.unidadMedida')  // ← agregar .unidadMedida
+            ->with('entradaDetalle.material.unidadMedida')
             ->get()
             ->map(function ($item) {
                 return [
+                    'id'              => $item->id, // ← NUEVO: id de la fila de detalle
                     'codigo'          => $item->entradaDetalle->id_material ?? '',
                     'material'        => $item->entradaDetalle->material->nombre ?? '',
-                    'unidad' => $item->entradaDetalle->material->unidadMedida->nombre ?? '',
+                    'unidad'          => $item->entradaDetalle->material->unidadMedida->nombre ?? '',
                     'cantidad_salida' => $item->cantidad_salida,
                     'precio'          => number_format($item->entradaDetalle->precio, 4),
                 ];
@@ -536,6 +537,71 @@ class HistorialController extends Controller
     }
 
 
+
+
+    public function eliminarDetalleSalida(Request $request)
+    {
+        $salida = Salidas::with('tipoproyecto')->find($request->id_salida);
+
+        if (!$salida) {
+            return response()->json(['success' => 0]);
+        }
+
+        // 1) El proyecto debe existir y estar activo (sin transferir)
+        if (!$salida->tipoproyecto || $salida->tipoproyecto->transferido) {
+            return response()->json([
+                'success' => 2,
+                'mensaje' => 'No se puede eliminar porque el proyecto ya fue transferido.',
+            ]);
+        }
+
+        // 2) La salida no debe estar relacionada a una transferencia
+        $tieneTransferencia = $salida->id_tipoproyecto_transferencia
+            || Transferencia::where('id_salida', $salida->id)->exists();
+
+        if ($tieneTransferencia) {
+            return response()->json([
+                'success' => 2,
+                'mensaje' => 'No se puede eliminar porque esta salida pertenece a una transferencia.',
+            ]);
+        }
+
+        DB::beginTransaction();
+
+        try {
+            $fila = $salida->detalle()->where('id', $request->id_detalle)->first();
+
+            if (!$fila) {
+                DB::rollBack();
+                return response()->json(['success' => 0]);
+            }
+
+            $fila->delete();
+
+            // Si era el último item, se elimina también la salida
+            $restantes        = $salida->detalle()->count();
+            $salidaEliminada  = false;
+
+            if ($restantes === 0) {
+                $salida->delete();
+                $salidaEliminada = true;
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success'          => 1,
+                'restantes'        => $restantes,
+                'salida_eliminada' => $salidaEliminada,
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('eliminarDetalleSalida: ' . $e->getMessage());
+            return response()->json(['success' => 0]);
+        }
+    }
+
+
     public function vistaExtrasSalida($id)
     {
         $salida = Salidas::with('tipoproyecto')->find($id);
@@ -544,8 +610,6 @@ class HistorialController extends Controller
             return redirect()->route('admin.historial.salidas.index')
                 ->with('error', 'El proyecto está cerrado, no se pueden agregar extras');
         }
-
-
 
         return view('backend.admin.historial.salidas.vistaextrassalidas', compact('salida'));
     }
