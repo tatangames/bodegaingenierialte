@@ -7272,7 +7272,7 @@ style='text-align:center; vertical-align:top;
     }
 
 
-    
+
 
 
     public function actualizarFirmasReportePeriodos(Request $request)
@@ -7945,6 +7945,7 @@ style='text-align:center; vertical-align:top;
         // ── Consulta principal (salidas netas de reingresos) ──────────────────────
         $filas = DB::table('entradas_detalle as ed')
             ->join('entradas as e', 'e.id', '=', 'ed.id_entradas')
+            ->join('tipoproyecto as tp', 'tp.id', '=', 'e.id_tipoproyecto')
             ->join('materiales as m', 'm.id', '=', 'ed.id_material')
             ->leftJoin('unidadmedida as um', 'um.id', '=', 'm.id_medida')
             ->leftJoin('objeto_especifico as obj', 'obj.id', '=', 'm.id_objespecifico')
@@ -7953,6 +7954,8 @@ style='text-align:center; vertical-align:top;
             ->selectRaw('
         m.id as id_material,
         m.nombre,
+        tp.id as id_proyecto,
+        tp.nombre as proyecto,
         COALESCE(um.nombre, "—") as medida,
         COALESCE(obj.codigo, "SIN-CODIGO") as codigo,
         ed.precio as precio_unitario,
@@ -7961,39 +7964,44 @@ style='text-align:center; vertical-align:top;
             ->havingRaw('disponible > 0')
             ->orderBy('obj.codigo')
             ->orderBy('m.nombre')
+            ->orderBy('tp.nombre')
             ->orderBy('ed.precio')
             ->get();
 
-        // ── Agrupar por código → material → lotes ────────────────────────────────
+        // ── Agrupar por código → (material + proyecto) → lotes ───────────────────
         $porCodigo = [];
 
         foreach ($filas as $fila) {
-            $codigo     = $fila->codigo;
-            $idMaterial = $fila->id_material;
-            $precio     = $fila->precio_unitario;
+            $codigo = $fila->codigo;
+            $clave  = $fila->id_material . '|' . $fila->id_proyecto;
+            $precio = $fila->precio_unitario;
 
             if (!isset($porCodigo[$codigo])) {
                 $porCodigo[$codigo] = ['codigo' => $codigo, 'materiales' => []];
             }
 
-            if (!isset($porCodigo[$codigo]['materiales'][$idMaterial])) {
-                $porCodigo[$codigo]['materiales'][$idMaterial] = [
-                    'nombre' => $fila->nombre,
-                    'medida' => $fila->medida,
-                    'lotes'  => [],
+            if (!isset($porCodigo[$codigo]['materiales'][$clave])) {
+                $porCodigo[$codigo]['materiales'][$clave] = [
+                    'nombre'   => $fila->nombre,
+                    'proyecto' => $fila->proyecto,
+                    'medida'   => $fila->medida,
+                    'lotes'    => [],
                 ];
             }
 
-            if (isset($porCodigo[$codigo]['materiales'][$idMaterial]['lotes'][$precio])) {
-                $porCodigo[$codigo]['materiales'][$idMaterial]['lotes'][$precio] += $fila->disponible;
+            if (isset($porCodigo[$codigo]['materiales'][$clave]['lotes'][$precio])) {
+                $porCodigo[$codigo]['materiales'][$clave]['lotes'][$precio] += $fila->disponible;
             } else {
-                $porCodigo[$codigo]['materiales'][$idMaterial]['lotes'][$precio]  = $fila->disponible;
+                $porCodigo[$codigo]['materiales'][$clave]['lotes'][$precio]  = $fila->disponible;
             }
         }
 
         // ── Ordenar ───────────────────────────────────────────────────────────────
         foreach ($porCodigo as &$grupo) {
-            uasort($grupo['materiales'], fn($a, $b) => strcmp($a['nombre'], $b['nombre']));
+            uasort($grupo['materiales'], function ($a, $b) {
+                $cmp = strcmp($a['nombre'], $b['nombre']);
+                return $cmp !== 0 ? $cmp : strcmp($a['proyecto'], $b['proyecto']);
+            });
             foreach ($grupo['materiales'] as &$mat) {
                 ksort($mat['lotes']);
             }
@@ -8111,14 +8119,14 @@ style='text-align:center; vertical-align:top;
 
         // ── Anchos de columna según modo ──────────────────────────────────────────
         if ($conConteo) {
-            $wObj    = '9%';  $wMat = '30%'; $wMed = '9%';
-            $wPrecio = '10%'; $wStock = '9%'; $wTotal = '10%';
-            $wConteo = '10%'; $wDif = '10%';
-            $colspan = 8;
+            $wObj    = '8%';  $wProy = '17%'; $wMat = '22%'; $wMed = '8%';
+            $wPrecio = '9%';  $wStock = '8%'; $wTotal = '9%';
+            $wConteo = '10%'; $wDif = '9%';
+            $colspan = 9;
         } else {
-            $wObj    = '12%'; $wMat = '38%'; $wMed = '11%';
-            $wPrecio = '13%'; $wStock = '10%'; $wTotal = '10%';
-            $colspan = 6;
+            $wObj    = '10%'; $wProy = '20%'; $wMat = '28%'; $wMed = '9%';
+            $wPrecio = '11%'; $wStock = '11%'; $wTotal = '11%';
+            $colspan = 7;
         }
 
         // ── Tabla detalle ─────────────────────────────────────────────────────────
@@ -8127,6 +8135,7 @@ style='text-align:center; vertical-align:top;
 <thead>
     <tr>
         <th style='{$thStyle} width:{$wObj};'>Obj. Espec.</th>
+        <th style='{$thStyle} width:{$wProy};'>Proyecto</th>
         <th style='{$thStyle} width:{$wMat};'>Material</th>
         <th style='{$thStyle} width:{$wMed};'>Medida</th>
         <th style='{$thStyle} width:{$wPrecio};'>Precio Unit.</th>
@@ -8176,13 +8185,15 @@ style='text-align:center; vertical-align:top;
                         $esLoteExtra = !$esElPrimero;
 
                         if (!$esLoteExtra) {
-                            $celdaNombre    = "<td style='{$tdStyle}'>" . e($mat['nombre']) . "</td>
+                            $celdaNombre    = "<td style='{$tdStyle}'>" . e($mat['proyecto']) . "</td>
+                                       <td style='{$tdStyle}'>" . e($mat['nombre']) . "</td>
                                        <td style='{$tdC}'>" . e($mat['medida']) . "</td>";
                             $bgCodigo       = $tdC;
                             $estiloConteo   = $tdConteo;
                             $estiloDif      = $tdDif;
                         } else {
                             $celdaNombre    = "<td style='{$tdLote}'></td>
+                                       <td style='{$tdLote}'></td>
                                        <td style='{$tdLote}'></td>";
                             $bgCodigo       = $tdLote;
                             $estiloConteo   = $tdConteoLote;
@@ -8226,9 +8237,9 @@ style='text-align:center; vertical-align:top;
 
                         $tabla .= "
     <tr>
-        <td colspan='4' style='{$tdStyle} text-align:right; font-style:italic;
+        <td colspan='5' style='{$tdStyle} text-align:right; font-style:italic;
                                 background:#eef2fb; font-size:10px;'>
-            Subtotal: " . e($mat['nombre']) . "
+            Subtotal: " . e($mat['nombre']) . " — " . e($mat['proyecto']) . "
         </td>
         <td style='{$tdC} font-weight:bold; background:#eef2fb;'>
             " . number_format($stockTotal, 0, '.', ',') . "
@@ -8301,8 +8312,6 @@ style='text-align:center; vertical-align:top;
         $mpdf->WriteHTML($tabla, 2);
         $mpdf->Output();
     }
-
-
 
     public function reporteConsolidadoMaterialesCerrados(Request $request)
     {
