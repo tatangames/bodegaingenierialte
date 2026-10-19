@@ -876,7 +876,15 @@
                     } else if (response.data.success === 4) {
                         toastr.error(response.data.msg ?? 'Proyecto destino cerrado');
 
-                    } else {
+                    } else if (response.data.success === 6) {
+                        Swal.fire({
+                            title: 'Fecha no válida',
+                            html: 'La fecha del despacho no puede ser anterior al cierre del proyecto.<br><br>' +
+                                'Fecha de cierre: <b>' + response.data.fecha_cierre + '</b>',
+                            type: 'error', confirmButtonColor: '#d33', confirmButtonText: 'Entendido'
+                        });
+                    }
+                    else {
                         toastr.error('Error al despachar');
                     }
                 })

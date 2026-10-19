@@ -15,6 +15,9 @@ use App\Http\Controllers\Sistema\HistorialController;
 use App\Http\Controllers\Sistema\ReportesController;
 use App\Http\Controllers\Sistema\ReservasController;
 use App\Http\Controllers\Sistema\HistorialTransferenciaController;
+use App\Http\Controllers\Sistema\ReingresoController;
+use App\Http\Controllers\Sistema\HistorialReingresoController;
+use App\Http\Controllers\Sistema\ReportesReingresoController;
 
 
 
@@ -108,7 +111,8 @@ Route::middleware('auth:admin')->group(function () {
     Route::get('/admin/registro/entrada', [RepuestosController::class,'indexRegistroEntrada'])->name('admin.entrada.registro.index');
     Route::post('/admin/buscar/material',  [RepuestosController::class,'buscadorMaterial']);
     Route::post('/admin/entradas/guardar',  [RepuestosController::class,'guardarEntrada']);
-    Route::post('/admin/inventario/proyectos', [RepuestosController::class, 'proyectosPorMaterial']);
+
+
 
     // --- REGISTRAR SALIDA ---
     Route::get('/admin/registro/salida', [SalidasController::class,'indexRegistroSalida'])->name('admin.salida.registro.index');
@@ -265,8 +269,27 @@ Route::middleware('auth:admin')->group(function () {
     Route::post('/admin/reporte/talonario/salida/guardada', [ReportesController::class, 'pdfReporteSalidaGuardada']);
 
 
+    //*********************** REINGRESO ********************************
+
+    Route::get('/admin/reingreso', [ReingresoController::class, 'index'])
+        ->name('admin.reingreso.index');
+
+    Route::get('/admin/reingreso/tabla/{idproyecto}', [ReingresoController::class, 'tabla'])
+        ->name('admin.reingreso.tabla');
+    Route::post('/admin/reingreso/nuevo', [ReingresoController::class, 'store'])
+        ->name('admin.salidas.detalle.reingreso');
 
 
+    Route::get('/admin/historial/reingreso/index', [HistorialReingresoController::class, 'index'])
+        ->name('admin.historial.reingreso.index');
+    Route::get('/admin/historial/reingreso/tabla', [HistorialReingresoController::class, 'tabla']);
+    Route::post('/admin/historial/reingreso/eliminar', [HistorialReingresoController::class, 'eliminar']);
+    Route::post('/admin/historial/reingreso/informacion', [HistorialReingresoController::class, 'informacion']);
+    Route::post('/admin/historial/reingreso/editar', [HistorialReingresoController::class, 'editar']);
+
+
+    Route::get('/admin/reporte/reingresos/proyectos/pdf/{idproy}/{desde}/{hasta}/{tipo}',
+        [ReportesReingresoController::class, 'pdfReingresos']);
 
 
 

@@ -39,9 +39,9 @@ class ReservasController extends Controller
     public function crearReserva(Request $request)
     {
         $rules = [
-            'fecha' => 'required',
+            'fecha'            => 'required',
             'proyecto_cerrado' => 'required',
-            'contenedorArray' => 'required',
+            'contenedorArray'  => 'required',
         ];
 
         $validator = Validator::make($request->all(), $rules);
@@ -50,82 +50,114 @@ class ReservasController extends Controller
             return ['success' => 0];
         }
 
+        $contenedor      = json_decode($request->contenedorArray, true);
+        $proyectoCerrado = $request->proyecto_cerrado;
+
+        if (empty($contenedor)) {
+            return ['success' => 1];
+        }
+
+        // Agrupar por lote para validar bien si el mismo material viene repetido
+        $agrupado = [];
+        foreach ($contenedor as $item) {
+            $id = $item['infoIdEntradaDeta'];
+            $agrupado[$id] = ($agrupado[$id] ?? 0) + (int) $item['infoCantidad'];
+        }
+
         DB::beginTransaction();
 
         try {
-            $contenedor = json_decode($request->contenedorArray, true);
-            $proyectoCerrado = $request->proyecto_cerrado;
 
-            if (empty($contenedor)) {
-                return ['success' => 1];
+            // ── El proyecto origen debe estar CERRADO ──
+            $proyOrigen = TipoProyecto::find($proyectoCerrado);
+
+            if (!$proyOrigen || $proyOrigen->transferido == 0) {
+                DB::rollback();
+                return ['success' => 5];
             }
 
-            foreach ($contenedor as $item) {
+            // ── La fecha no puede ser anterior al cierre ──
+            $fechaReserva = Carbon::parse($request->fecha)->startOfDay();
+            $fechaCierre  = Carbon::parse($proyOrigen->fecha_cierre)->startOfDay();
 
-                $idEntradaDetalle = $item['infoIdEntradaDeta'];
-                $cantidad = (int)$item['infoCantidad'];
+            if ($fechaReserva->lt($fechaCierre)) {
+                DB::rollback();
+                return [
+                    'success'      => 6,
+                    'fecha_cierre' => $fechaCierre->format('d/m/Y'),
+                ];
+            }
 
-                $entradaDetalle = EntradasDetalle::find($idEntradaDetalle);
+            foreach ($agrupado as $idEntradaDetalle => $cantidad) {
+
+                // Bloquea el lote mientras se valida y se guarda
+                $entradaDetalle = EntradasDetalle::where('id', $idEntradaDetalle)
+                    ->lockForUpdate()
+                    ->first();
 
                 if (!$entradaDetalle) {
                     DB::rollback();
                     return ['success' => 2];
                 }
 
-                // ── Calcular stock libre (sin reservas pendientes) ────────
-                $totalSalido = SalidasDetalle::where(
-                    'id_entrada_detalle',
-                    $idEntradaDetalle
-                )->sum('cantidad_salida');
+                // El lote debe pertenecer al proyecto cerrado seleccionado
+                $perteneceAlProyecto = Entradas::where('id', $entradaDetalle->id_entradas)
+                    ->where('id_tipoproyecto', $proyectoCerrado)
+                    ->exists();
 
-                $totalReservado = Reserva::where(
-                    'id_entrada_detalle',
-                    $idEntradaDetalle
-                )->where('despachado', 0)->sum('cantidad');
+                if (!$perteneceAlProyecto) {
+                    DB::rollback();
+                    return ['success' => 2];
+                }
+
+                // ── Stock libre = inicial - (salidas - reingresos) - reservas pendientes ──
+                $totalSalido = SalidasDetalle::where('id_entrada_detalle', $idEntradaDetalle)
+                    ->sum('cantidad_salida');
+
+                $reingresado = DB::table('salidas_detalle_reingreso as r')
+                    ->join('salidas_detalle as sd', 'sd.id', '=', 'r.id_salida_detalle')
+                    ->where('sd.id_entrada_detalle', $idEntradaDetalle)
+                    ->sum('r.cantidad');
+
+                $totalReservado = Reserva::where('id_entrada_detalle', $idEntradaDetalle)
+                    ->where('despachado', 0)
+                    ->sum('cantidad');
 
                 $libre = $entradaDetalle->cantidad_inicial
-                    - $totalSalido
+                    - ($totalSalido - $reingresado)
                     - $totalReservado;
 
                 if ($cantidad > $libre) {
                     DB::rollback();
                     return [
-                        'success' => 3,
+                        'success'         => 3,
                         'nombre_material' => $entradaDetalle->material->nombre
                             ?? $entradaDetalle->nombre,
                         'cantidad_pedida' => $cantidad,
-                        'disponible' => $libre,
+                        'disponible'      => $libre,
                     ];
                 }
 
-                // ── Crear reserva ─────────────────────────────────────────
-                $reserva = new Reserva();
+                // ── Crear reserva ──
+                $reserva                     = new Reserva();
                 $reserva->id_entrada_detalle = $idEntradaDetalle;
-                $reserva->id_tipoproyecto = $proyectoCerrado;
-                $reserva->cantidad = $cantidad;
-                $reserva->descripcion = $request->descripcion ?? null;
-                $reserva->fecha_reserva = Carbon::parse($request->fecha);
-                $reserva->despachado = 0;
+                $reserva->id_tipoproyecto    = $proyectoCerrado;
+                $reserva->cantidad           = $cantidad;
+                $reserva->descripcion        = $request->descripcion ?? null;
+                $reserva->fecha_reserva      = Carbon::parse($request->fecha);
+                $reserva->despachado         = 0;
                 $reserva->save();
             }
 
             DB::commit();
-
             return ['success' => 10];
 
         } catch (\Throwable $e) {
-
             DB::rollback();
-
-            Log::error(
-                'crearReserva: ' . $e->getMessage()
-            );
-
+            Log::error('crearReserva: ' . $e->getMessage());
             return ['success' => 99];
         }
     }
-
-
 
 
 
@@ -184,7 +216,7 @@ class ReservasController extends Controller
     public function despachar(Request $request)
     {
         $rules = [
-            'fecha' => 'required',
+            'fecha'     => 'required',
             'despachos' => 'required',
         ];
 
@@ -193,18 +225,39 @@ class ReservasController extends Controller
             return ['success' => 0];
         }
 
+        $despachos = json_decode($request->despachos, true);
+
+        if (empty($despachos)) {
+            return ['success' => 1];
+        }
+
         DB::beginTransaction();
 
         try {
-            $despachos = json_decode($request->despachos, true);
 
-            if (empty($despachos)) {
-                return ['success' => 1];
+            // ── La fecha no puede ser anterior al cierre de ningún proyecto origen ──
+            $idsReservas = collect($despachos)
+                ->pluck('items')
+                ->flatten(1)
+                ->pluck('idReserva')
+                ->filter();
+
+            $cierreMax = TipoProyecto::whereIn(
+                'id',
+                Reserva::whereIn('id', $idsReservas)->pluck('id_tipoproyecto')
+            )->max('fecha_cierre');
+
+            if ($cierreMax && Carbon::parse($request->fecha)->startOfDay()->lt(Carbon::parse($cierreMax)->startOfDay())) {
+                DB::rollback();
+                return [
+                    'success'      => 6,
+                    'fecha_cierre' => Carbon::parse($cierreMax)->format('d/m/Y'),
+                ];
             }
 
             foreach ($despachos as $grupo) {
                 $esGrupo = $grupo['esGrupo'] ?? false;
-                $items = $grupo['items'] ?? [];
+                $items   = $grupo['items'] ?? [];
 
                 if (empty($items)) continue;
 

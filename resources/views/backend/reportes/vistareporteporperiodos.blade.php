@@ -85,7 +85,7 @@
         .btn-pdf:hover { transform: translateY(-1px); filter: brightness(1.08); color: #fff; }
         .divider { border: none; border-top: 2px dashed #e8eef8; margin: 10px 0 20px 0; }
 
-        /* Tabs de estado */
+        /* Tabs de estado (indicador automático según el proyecto) */
         .estado-tabs {
             display: flex;
             gap: 8px;
@@ -98,12 +98,13 @@
             border-radius: 8px;
             border: 2px solid #e8eef8;
             background: #f8fafc;
-            cursor: pointer;
             font-size: 12px;
             font-weight: 700;
             color: #6b7a99;
             transition: all .15s;
             user-select: none;
+            cursor: default;
+            pointer-events: none; /* el estado lo decide el proyecto elegido */
         }
         .estado-tab i { display: block; font-size: 18px; margin-bottom: 4px; }
         .estado-tab.active {
@@ -118,6 +119,7 @@
         }
         .modo-hint {
             margin-top: 8px;
+            margin-bottom: 16px;
             font-size: 11px;
             font-weight: 600;
             padding: 6px 10px;
@@ -181,17 +183,16 @@
         }
     </style>
 
-    {{-- Formulario oculto para POST --}}
+    {{-- Formulario oculto para POST (el estado lo decide el servidor según el proyecto) --}}
     <form id="form-pdf"
           action="{{ URL::to('admin/reporte/proyectos/periodos/pdf') }}"
           method="POST"
           target="_blank">
         @csrf
-        <input type="hidden" name="idproy"          id="h-idproy">
-        <input type="hidden" name="estado"          id="h-estado">
-        <input type="hidden" name="desde"           id="h-desde">
-        <input type="hidden" name="hasta"           id="h-hasta">
-        <input type="hidden" name="mostrar_cero"    id="h-mostrar-cero" value="0">
+        <input type="hidden" name="idproy"       id="h-idproy">
+        <input type="hidden" name="desde"        id="h-desde">
+        <input type="hidden" name="hasta"        id="h-hasta">
+        <input type="hidden" name="mostrar_cero" id="h-mostrar-cero" value="0">
     </form>
 
     <div id="divcontenedor">
@@ -208,26 +209,22 @@
 
                                 <hr class="divider">
 
-                                {{-- ── Selector de estado del proyecto ── --}}
+                                {{-- ── Estado del proyecto (se marca solo según el proyecto elegido) ── --}}
                                 <div class="form-group">
                                     <label class="field-label">
                                         <i class="fas fa-toggle-on mr-1"></i>Estado del Proyecto
                                     </label>
                                     <div class="estado-tabs">
-                                        <div class="estado-tab active" data-estado="activo" id="tab-activo">
+                                        <div class="estado-tab active" id="tab-activo">
                                             <i class="fas fa-folder-open"></i>
                                             Activo
                                         </div>
-                                        <div class="estado-tab" data-estado="cerrado" id="tab-cerrado">
+                                        <div class="estado-tab" id="tab-cerrado">
                                             <i class="fas fa-folder"></i>
                                             Cerrado
                                         </div>
                                     </div>
-                                    <span id="modo-hint" class="modo-hint activo">
-                                        <i class="fas fa-info-circle mr-1"></i>
-                                        <strong>Reporte de Saldos de Materiales.</strong>
-                                        Incluye todos los movimientos del proyecto.
-                                    </span>
+                                    <span id="modo-hint" class="modo-hint activo"></span>
                                 </div>
 
                                 <div class="form-group">
@@ -237,7 +234,9 @@
                                     <select class="form-control" id="sel-proyecto">
                                         @foreach($proyectos as $p)
                                             <option value="{{ $p->id }}"
-                                                    data-cerrado="{{ $p->transferido ? '1' : '0' }}">{{ $p->nombre }}</option>
+                                                    data-cerrado="{{ $p->transferido ? '1' : '0' }}"
+                                                    data-cierre="{{ $p->fecha_cierre ? \Carbon\Carbon::parse($p->fecha_cierre)->format('Y-m-d') : '' }}"
+                                                    data-cierre-fmt="{{ $p->fecha_cierre ? \Carbon\Carbon::parse($p->fecha_cierre)->format('d/m/Y') : '' }}">{{ $p->nombre }}</option>
                                         @endforeach
                                     </select>
                                 </div>
@@ -261,7 +260,6 @@
                                     </div>
                                 </div>
 
-                                {{-- ── Toggle: mostrar filas con existencia 0 ── --}}
                                 <div class="form-group">
                                     <label class="field-label">
                                         <i class="fas fa-filter mr-1"></i>Opciones de visualización
@@ -338,8 +336,6 @@
     <script src="{{ asset('js/alertaPersonalizada.js') }}"></script>
 
     <script>
-        var estadoActual = 'activo';
-
         function formatProyecto(option) {
             if (!option.id) return option.text;
             var esCerrado = $(option.element).data('cerrado');
@@ -355,6 +351,33 @@
             return $('<span>' + option.text + '</span>');
         }
 
+        // Marca la pestaña Activo/Cerrado y muestra el hint según el proyecto elegido
+        function actualizarHint() {
+            var opt     = $('#sel-proyecto option:selected');
+            var cerrado = parseInt(opt.data('cerrado')) === 1;
+            var hint    = $('#modo-hint');
+
+            $('.estado-tab').removeClass('active cerrado');
+
+            if (cerrado) {
+                var cierre = opt.data('cierre-fmt') || 'sin fecha registrada';
+                $('#tab-cerrado').addClass('active cerrado');
+                hint.removeClass('activo').addClass('cerrado').html(
+                    '<i class="fas fa-info-circle mr-1"></i> ' +
+                    '<strong>Reporte de Saldos de Materiales Sobrantes</strong> (proyecto cerrado). ' +
+                    'Incluye únicamente transferencias y salidas posteriores al cierre. ' +
+                    'Fecha de cierre: <strong>' + cierre + '</strong>. El período debe iniciar desde esa fecha.'
+                );
+            } else {
+                $('#tab-activo').addClass('active');
+                hint.removeClass('cerrado').addClass('activo').html(
+                    '<i class="fas fa-info-circle mr-1"></i> ' +
+                    '<strong>Reporte de Saldos de Materiales</strong> (proyecto activo). ' +
+                    'Incluye entradas, salidas y reingresos del proyecto.'
+                );
+            }
+        }
+
         $(document).ready(function () {
             document.getElementById("divcontenedor").style.display = "block";
 
@@ -368,33 +391,15 @@
                 }
             });
 
-            $('.estado-tab').on('click', function () {
-                cambiarEstado($(this).data('estado'));
-            });
+            $('#sel-proyecto').on('change', actualizarHint);
+            actualizarHint();
         });
 
-        function cambiarEstado(estado) {
-            estadoActual = estado;
-            $('.estado-tab').removeClass('active cerrado');
-            if (estado === 'cerrado') {
-                $('#tab-cerrado').addClass('active cerrado');
-                $('#modo-hint').removeClass('activo').addClass('cerrado')
-                    .html('<i class="fas fa-info-circle mr-1"></i> ' +
-                        '<strong>Reporte de Saldos de Materiales Sobrantes.</strong> ' +
-                        'Incluye únicamente los movimientos de transferencia.');
-            } else {
-                $('#tab-activo').addClass('active');
-                $('#modo-hint').removeClass('cerrado').addClass('activo')
-                    .html('<i class="fas fa-info-circle mr-1"></i> ' +
-                        '<strong>Reporte de Saldos de Materiales.</strong> ' +
-                        'Incluye todos los movimientos del proyecto.');
-            }
-        }
-
         function generarPDF() {
-            var idproy     = $('#sel-proyecto').val();
-            var desde      = $('#inp-desde').val();
-            var hasta      = $('#inp-hasta').val();
+            var opt         = $('#sel-proyecto option:selected');
+            var idproy      = $('#sel-proyecto').val();
+            var desde       = $('#inp-desde').val();
+            var hasta       = $('#inp-hasta').val();
             var mostrarCero = $('#chk-mostrar-cero').is(':checked') ? '1' : '0';
 
             if (!idproy) { toastr.error('Seleccione un proyecto'); return; }
@@ -405,8 +410,16 @@
                 return;
             }
 
+            // Proyecto cerrado: el período no puede iniciar antes del cierre
+            var cerrado = parseInt(opt.data('cerrado')) === 1;
+            var cierre  = opt.data('cierre');
+
+            if (cerrado && cierre && desde < cierre) {
+                toastr.error('El período debe iniciar desde la fecha de cierre del proyecto: ' + opt.data('cierre-fmt'));
+                return;
+            }
+
             $('#h-idproy').val(idproy);
-            $('#h-estado').val(estadoActual);
             $('#h-desde').val(desde);
             $('#h-hasta').val(hasta);
             $('#h-mostrar-cero').val(mostrarCero);

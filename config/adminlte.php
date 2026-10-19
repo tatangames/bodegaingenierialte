@@ -388,6 +388,11 @@ return [
                     'icon' => 'far fa-circle',
                     'route' => 'admin.salida.registro.index',
                 ],
+                [
+                    'text' => 'Reingreso',
+                    'icon' => 'far fa-circle',
+                    'route' => 'admin.reingreso.index',
+                ],
             ],
         ],
 
@@ -412,6 +417,11 @@ return [
                     'text' => 'Transferencias',
                     'icon' => 'far fa-circle',
                     'route' => 'admin.historial.transferencias.index',
+                ],
+                [
+                    'text' => 'Reingresos',
+                    'icon' => 'far fa-circle',
+                    'route' => 'admin.historial.reingreso.index',
                 ],
             ],
         ],

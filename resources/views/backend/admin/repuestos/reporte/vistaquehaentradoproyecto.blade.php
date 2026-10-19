@@ -45,8 +45,9 @@
             padding: 14px 20px; display: flex;
             align-items: center; gap: 12px;
         }
-        .reporte-header.entradas { background: linear-gradient(135deg, #1a6b2a, #28a745); }
-        .reporte-header.salidas  { background: linear-gradient(135deg, #6b1a1a, #dc3545); }
+        .reporte-header.entradas   { background: linear-gradient(135deg, #1a6b2a, #28a745); }
+        .reporte-header.salidas    { background: linear-gradient(135deg, #6b1a1a, #dc3545); }
+        .reporte-header.reingresos { background: linear-gradient(135deg, #3d1f6b, #6f42c1); }
         .reporte-header i  { font-size: 22px; color: #fff; }
         .reporte-header h5 {
             color: #fff; font-size: 14px; font-weight: 700;
@@ -65,8 +66,9 @@
             font-size: 13px; border: none; cursor: pointer;
             transition: all .2s; margin-top: 14px;
         }
-        .btn-pdf.verde { background: linear-gradient(135deg, #1a6b2a, #28a745); color: #fff; box-shadow: 0 4px 14px rgba(40,167,69,.35); }
-        .btn-pdf.rojo  { background: linear-gradient(135deg, #6b1a1a, #dc3545); color: #fff; box-shadow: 0 4px 14px rgba(220,53,69,.35); }
+        .btn-pdf.verde   { background: linear-gradient(135deg, #1a6b2a, #28a745); color: #fff; box-shadow: 0 4px 14px rgba(40,167,69,.35); }
+        .btn-pdf.rojo    { background: linear-gradient(135deg, #6b1a1a, #dc3545); color: #fff; box-shadow: 0 4px 14px rgba(220,53,69,.35); }
+        .btn-pdf.morado  { background: linear-gradient(135deg, #3d1f6b, #6f42c1); color: #fff; box-shadow: 0 4px 14px rgba(111,66,193,.35); }
         .btn-pdf:hover { transform: translateY(-1px); filter: brightness(1.08); color: #fff; }
 
         .fecha-row { display: flex; gap: 14px; margin-bottom: 14px; }
@@ -188,6 +190,61 @@
                     </div>
 
                 </div>
+
+                <div class="row">
+
+                    {{-- ══ REINGRESOS ══ --}}
+                    <div class="col-md-6">
+                        <div class="reporte-card">
+                            <div class="reporte-header reingresos">
+                                <i class="fas fa-undo"></i>
+                                <h5>Reingresos de Materiales por Proyecto</h5>
+                            </div>
+                            <div class="reporte-body">
+                                <p style="font-size:13px; color:#666; margin-bottom:14px;">
+                                    Materiales que salieron de un proyecto y volvieron a bodega, filtrados por la fecha del reingreso.
+                                </p>
+                                <hr class="divider">
+
+                                <div class="fecha-row">
+                                    <div class="fecha-box">
+                                        <label>Desde</label>
+                                        <input type="date" class="form-control" id="reingreso-desde">
+                                    </div>
+                                    <div class="fecha-box">
+                                        <label>Hasta</label>
+                                        <input type="date" class="form-control" id="reingreso-hasta">
+                                    </div>
+                                </div>
+
+                                <label class="field-label">
+                                    <i class="fas fa-project-diagram mr-1"></i>Proyecto
+                                </label>
+                                <select class="form-control" id="select-proyecto-reingreso">
+                                    @foreach($proyectos as $dd)
+                                        <option value="{{ $dd->id }}"
+                                                data-cerrado="{{ $dd->transferido ? '1' : '0' }}">
+                                            {{ $dd->nombre }}
+                                        </option>
+                                    @endforeach
+                                </select>
+
+                                <label class="field-label mt-3">Tipo de Reporte</label>
+                                <select class="form-control" id="tipo-reingreso" style="width:200px">
+                                    <option value="1">Juntos</option>
+                                    <option value="2">Separado</option>
+                                </select>
+
+                                <br>
+                                <button type="button" onclick="generarPdfReingreso()" class="btn-pdf morado">
+                                    <img src="{{ asset('images/logopdf.png') }}" width="22px" height="22px">
+                                    Generar PDF
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
             </div>
         </section>
     </div>
@@ -215,24 +272,22 @@
             return option.text;
         }
 
+        function iniciarSelectProyecto(selector) {
+            $(selector).select2({
+                theme:             "bootstrap-5",
+                templateResult:    formatProyecto,
+                templateSelection: formatProyecto,
+                escapeMarkup:      function (m) { return m; },
+                language: { noResults: function () { return "Búsqueda no encontrada"; } }
+            });
+        }
+
         $(document).ready(function () {
             document.getElementById("divcontenedor").style.display = "block";
 
-            $('#select-proyecto-entrada').select2({
-                theme:             "bootstrap-5",
-                templateResult:    formatProyecto,
-                templateSelection: formatProyecto,
-                escapeMarkup:      function (m) { return m; },
-                language: { noResults: function () { return "Búsqueda no encontrada"; } }
-            });
-
-            $('#select-proyecto-salida').select2({
-                theme:             "bootstrap-5",
-                templateResult:    formatProyecto,
-                templateSelection: formatProyecto,
-                escapeMarkup:      function (m) { return m; },
-                language: { noResults: function () { return "Búsqueda no encontrada"; } }
-            });
+            iniciarSelectProyecto('#select-proyecto-entrada');
+            iniciarSelectProyecto('#select-proyecto-salida');
+            iniciarSelectProyecto('#select-proyecto-reingreso');
         });
 
         function generarPdfEntrada() {
@@ -258,6 +313,30 @@
             if (!tipo)   { toastr.error('Seleccionar Tipo');      return; }
 
             window.open("{{ URL::to('admin/reporte/quehasalido/proyectos/pdf') }}/"
+                + idproy + "/" + desde + "/" + hasta + "/" + tipo);
+        }
+
+        function generarPdfReingreso() {
+            var idproy = $('#select-proyecto-reingreso').val();
+            var desde  = document.getElementById('reingreso-desde').value || 'null';
+            var hasta  = document.getElementById('reingreso-hasta').value || 'null';
+            var tipo   = document.getElementById('tipo-reingreso').value;
+
+            if (!idproy) { toastr.error('Proyecto es requerido'); return; }
+            if (!tipo)   { toastr.error('Seleccionar Tipo');      return; }
+
+            // Si se llena solo una fecha, el reporte quedaría inconsistente
+            if ((desde === 'null') !== (hasta === 'null')) {
+                toastr.error('Indique ambas fechas o deje las dos vacías');
+                return;
+            }
+
+            if (desde !== 'null' && desde > hasta) {
+                toastr.error('La fecha "desde" no puede ser mayor que la fecha "hasta"');
+                return;
+            }
+
+            window.open("{{ URL::to('admin/reporte/reingresos/proyectos/pdf') }}/"
                 + idproy + "/" + desde + "/" + hasta + "/" + tipo);
         }
     </script>

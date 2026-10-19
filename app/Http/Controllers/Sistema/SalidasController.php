@@ -36,7 +36,6 @@ class SalidasController extends Controller
 
     public function buscadorMaterialDisponible(Request $request)
     {
-
         Log::info($request->all());
 
         if ($request->get('query')) {
@@ -51,12 +50,18 @@ class SalidasController extends Controller
             }
 
             $listado = DB::table('entradas_detalle as ed')
-                ->join('entradas as e', 'e.id', '=', 'ed.id_entradas') // 👈 JOIN a entradas
+                ->join('entradas as e', 'e.id', '=', 'ed.id_entradas')
                 ->leftJoin(
                     DB::raw('(
-                    SELECT id_entrada_detalle, SUM(cantidad_salida) as total_salido
-                    FROM salidas_detalle
-                    GROUP BY id_entrada_detalle
+                    SELECT sd.id_entrada_detalle,
+                           SUM(sd.cantidad_salida - COALESCE(rei.total, 0)) as total_salido
+                    FROM salidas_detalle sd
+                    LEFT JOIN (
+                        SELECT id_salida_detalle, SUM(cantidad) as total
+                        FROM salidas_detalle_reingreso
+                        GROUP BY id_salida_detalle
+                    ) rei ON rei.id_salida_detalle = sd.id
+                    GROUP BY sd.id_entrada_detalle
                 ) as sd'),
                     'sd.id_entrada_detalle', '=', 'ed.id'
                 )
@@ -67,7 +72,7 @@ class SalidasController extends Controller
                     DB::raw('(SUM(ed.cantidad_inicial) - COALESCE(SUM(sd.total_salido), 0)) as disponible')
                 )
                 ->whereIn('ed.id_material', $materiales)
-                ->when($idProyecto, fn($q) => $q->where('e.id_tipoproyecto', $idProyecto)) // 👈 filtro por proyecto
+                ->when($idProyecto, fn($q) => $q->where('e.id_tipoproyecto', $idProyecto))
                 ->groupBy('ed.id_material')
                 ->havingRaw('disponible > 0')
                 ->orderBy('ed.id_material')
@@ -77,12 +82,17 @@ class SalidasController extends Controller
                 return '';
             }
 
+            // Una sola consulta para todos los materiales del listado
+            $infoMateriales = Materiales::with('unidadMedida')
+                ->whereIn('id', $listado->pluck('id_material'))
+                ->get()
+                ->keyBy('id');
+
             $output = '<ul class="dropdown-menu" style="display:block; position:relative; overflow:auto; max-height:300px; width:800px">';
 
             foreach ($listado as $row) {
 
-                $infoMaterial = Materiales::with(['unidadMedida'])
-                    ->find($row->id_material);
+                $infoMaterial = $infoMateriales->get($row->id_material);
 
                 if (!$infoMaterial) continue;
 
@@ -93,7 +103,7 @@ class SalidasController extends Controller
                 <li class="cursor-pointer" onclick="modificarValor(this)"
                     id="' . $row->id_material . '"
                     data-tipo="material">
-                    ' . $nombreCompleto . ' - Disponible: ' . $row->disponible . '
+                    ' . e($nombreCompleto) . ' - Disponible: ' . $row->disponible . '
                 </li>
                 <hr>
             ';
@@ -104,7 +114,6 @@ class SalidasController extends Controller
             return $output;
         }
     }
-
 
 
     public function infoBodegaMaterialDetalleFila(Request $request)
@@ -210,13 +219,26 @@ class SalidasController extends Controller
             // ── Validar disponibilidad ──
             foreach ($agrupado as $idEntradaDetalle => $cantidadSalida) {
 
+                // Bloquea el lote mientras se valida y se guarda
+                DB::table('entradas_detalle')
+                    ->where('id', $idEntradaDetalle)
+                    ->lockForUpdate()
+                    ->first();
+
+                // Disponible = inicial - (salidas - reingresos)
                 $disponible = DB::table('entradas_detalle as ed')
                     ->leftJoin(
                         DB::raw('(
-                SELECT id_entrada_detalle, SUM(cantidad_salida) as total_salido
-                FROM salidas_detalle
-                GROUP BY id_entrada_detalle
-            ) as sd'),
+                        SELECT sd.id_entrada_detalle,
+                               SUM(sd.cantidad_salida - COALESCE(rei.total, 0)) as total_salido
+                        FROM salidas_detalle sd
+                        LEFT JOIN (
+                            SELECT id_salida_detalle, SUM(cantidad) as total
+                            FROM salidas_detalle_reingreso
+                            GROUP BY id_salida_detalle
+                        ) rei ON rei.id_salida_detalle = sd.id
+                        GROUP BY sd.id_entrada_detalle
+                    ) as sd'),
                         'sd.id_entrada_detalle', '=', 'ed.id'
                     )
                     ->where('ed.id', $idEntradaDetalle)
@@ -240,7 +262,7 @@ class SalidasController extends Controller
                     ];
                 }
 
-                // ── 🆕 Validar que la fecha de salida no sea anterior a la fecha de ingreso ──
+                // ── Validar que la fecha de salida no sea anterior a la fecha de ingreso ──
                 $fechaIngreso = DB::table('entradas_detalle as ed')
                     ->join('entradas as e', 'e.id', '=', 'ed.id_entradas')
                     ->where('ed.id', $idEntradaDetalle)
@@ -255,37 +277,36 @@ class SalidasController extends Controller
                         ->value('m.nombre');
 
                     return [
-                        'success'          => 4,
-                        'nombre_material'  => $nombreMaterial ?? 'Material desconocido',
-                        'fecha_salida'     => Carbon::parse($request->fecha)->format('d-m-Y'),
-                        'fecha_ingreso'    => Carbon::parse($fechaIngreso)->format('d-m-Y'),
+                        'success'         => 4,
+                        'nombre_material' => $nombreMaterial ?? 'Material desconocido',
+                        'fecha_salida'    => Carbon::parse($request->fecha)->format('d-m-Y'),
+                        'fecha_ingreso'   => Carbon::parse($fechaIngreso)->format('d-m-Y'),
                     ];
                 }
-                // ─────────────────────────────────────────────────────────────────────────
 
                 $fila++;
             }
 
             // Guardar cabecera
-            $salida                  = new Salidas();
-            $salida->fecha           = Carbon::parse($request->fecha);
-            $salida->descripcion     = $request->descripcion;
-            $salida->id_tipoproyecto = $request->proyecto;
-            $salida->es_transferencia= 0;
+            $salida                                = new Salidas();
+            $salida->fecha                         = Carbon::parse($request->fecha);
+            $salida->descripcion                   = $request->descripcion;
+            $salida->id_tipoproyecto               = $request->proyecto;
+            $salida->es_transferencia              = 0;
             $salida->id_tipoproyecto_transferencia = null;
-            $salida->ficha_nombre = $request->fichaNombre;
-            $salida->ficha_talonario = $request->fichaTalonario;
-            $salida->ficha_no_equipo = $request->fichaNoEquipo;
-            $salida->ficha_motorista = $request->fichaMotorista;
-            $salida->ficha_codigo = $request->fichaCodigo;
+            $salida->ficha_nombre                  = $request->fichaNombre;
+            $salida->ficha_talonario               = $request->fichaTalonario;
+            $salida->ficha_no_equipo               = $request->fichaNoEquipo;
+            $salida->ficha_motorista               = $request->fichaMotorista;
+            $salida->ficha_codigo                  = $request->fichaCodigo;
             $salida->save();
 
             // ✅ Guardar detalle con cantidades agrupadas
             foreach ($agrupado as $idEntradaDetalle => $cantidadSalida) {
-                $detalle                      = new SalidasDetalle();
-                $detalle->id_salida           = $salida->id;
-                $detalle->id_entrada_detalle  = $idEntradaDetalle;
-                $detalle->cantidad_salida     = $cantidadSalida;
+                $detalle                     = new SalidasDetalle();
+                $detalle->id_salida          = $salida->id;
+                $detalle->id_entrada_detalle = $idEntradaDetalle;
+                $detalle->cantidad_salida    = $cantidadSalida;
                 $detalle->save();
             }
 
@@ -298,8 +319,6 @@ class SalidasController extends Controller
             return ['success' => 99];
         }
     }
-
-
 
 
 
@@ -331,6 +350,7 @@ class SalidasController extends Controller
     }
 
 
+
     public function generarSalidaTransferencia(Request $request)
     {
         $rules = ['fecha' => 'required'];
@@ -346,9 +366,9 @@ class SalidasController extends Controller
 
             // Evitar cierre doble
             if (TipoProyecto::where('id', $request->idproyecto)->where('transferido', 1)->first()) {
+                DB::rollback();
                 return ['success' => 1];
             }
-
 
             // ── Validar que la fecha de cierre no sea anterior a la última salida ──
             $ultimaSalida = Salidas::where('id_tipoproyecto', $request->idproyecto)
@@ -356,13 +376,29 @@ class SalidasController extends Controller
                 ->first();
 
             if ($ultimaSalida && Carbon::parse($request->fecha)->lt(Carbon::parse($ultimaSalida->fecha))) {
+                DB::rollback();
                 return [
                     'success'       => 2,
                     'fecha_cierre'  => Carbon::parse($request->fecha)->format('d-m-Y'),
                     'ultima_salida' => Carbon::parse($ultimaSalida->fecha)->format('d-m-Y'),
                 ];
             }
-            // ─────────────────────────────────────────────────────────────────────
+
+            // ── Validar que la fecha de cierre no sea anterior al último reingreso ──
+            $ultimoReingreso = DB::table('salidas_detalle_reingreso as r')
+                ->join('salidas_detalle as sd', 'sd.id', '=', 'r.id_salida_detalle')
+                ->join('salidas as s', 's.id', '=', 'sd.id_salida')
+                ->where('s.id_tipoproyecto', $request->idproyecto)
+                ->max('r.fecha');
+
+            if ($ultimoReingreso && Carbon::parse($request->fecha)->lt(Carbon::parse($ultimoReingreso))) {
+                DB::rollback();
+                return [
+                    'success'       => 2,
+                    'fecha_cierre'  => Carbon::parse($request->fecha)->format('d-m-Y'),
+                    'ultima_salida' => Carbon::parse($ultimoReingreso)->format('d-m-Y'),
+                ];
+            }
 
             // Marcar como cerrado
             TipoProyecto::where('id', $request->idproyecto)->update(['transferido' => 1, 'fecha_cierre' => $request->fecha]);
@@ -385,20 +421,27 @@ class SalidasController extends Controller
             }
 
             // Guardar registro de cierre
-            $transferencia                  = new Transferencia();
-            $transferencia->id_tipoproyecto = $request->idproyecto;
+            $transferencia                         = new Transferencia();
+            $transferencia->id_tipoproyecto        = $request->idproyecto;
             $transferencia->id_tipoproyecto_origen = $request->idproyecto;
-            $transferencia->fecha           = Carbon::parse($request->fecha);
-            $transferencia->descripcion     = $request->descripcion;
-            $transferencia->documento       = $nomDocumento;
-            $transferencia->tipo_salida = 'snapshot';
+            $transferencia->fecha                  = Carbon::parse($request->fecha);
+            $transferencia->descripcion            = $request->descripcion;
+            $transferencia->documento              = $nomDocumento;
+            $transferencia->tipo_salida            = 'snapshot';
             $transferencia->save();
 
-            // ── Snapshot del inventario al momento del cierre ─────────────
+            // ── Snapshot del inventario al momento del cierre (salidas netas de reingresos) ──
             $listado = DB::table('entradas_detalle as ed')
                 ->leftJoin(DB::raw('(
-                SELECT id_entrada_detalle, SUM(cantidad_salida) as total_salido
-                FROM salidas_detalle GROUP BY id_entrada_detalle
+                SELECT sd.id_entrada_detalle,
+                       SUM(sd.cantidad_salida - COALESCE(rei.total, 0)) as total_salido
+                FROM salidas_detalle sd
+                LEFT JOIN (
+                    SELECT id_salida_detalle, SUM(cantidad) as total
+                    FROM salidas_detalle_reingreso
+                    GROUP BY id_salida_detalle
+                ) rei ON rei.id_salida_detalle = sd.id
+                GROUP BY sd.id_entrada_detalle
             ) as sd'), 'sd.id_entrada_detalle', '=', 'ed.id')
                 ->join('entradas as e', 'e.id', '=', 'ed.id_entradas')
                 ->where('e.id_tipoproyecto', $request->idproyecto)
@@ -430,7 +473,6 @@ class SalidasController extends Controller
             return ['success' => 99];
         }
     }
-
 
 
     public function reabrirProyecto(Request $request)
@@ -496,6 +538,29 @@ class SalidasController extends Controller
     }
 
 
+    /**
+     * Stock libre de un entradas_detalle:
+     * cantidad_inicial - salidas netas de reingresos - reservas pendientes.
+     */
+    private function stockLibreEntradaDetalle($entradaDetalle)
+    {
+        $salidoBruto = SalidasDetalle::where('id_entrada_detalle', $entradaDetalle->id)
+            ->sum('cantidad_salida');
+
+        $reingresado = DB::table('salidas_detalle_reingreso as r')
+            ->join('salidas_detalle as sd', 'sd.id', '=', 'r.id_salida_detalle')
+            ->where('sd.id_entrada_detalle', $entradaDetalle->id)
+            ->sum('r.cantidad');
+
+        $reservado = Reserva::where('id_entrada_detalle', $entradaDetalle->id)
+            ->where('despachado', 0)
+            ->sum('cantidad');
+
+        return $entradaDetalle->cantidad_inicial - ($salidoBruto - $reingresado) - $reservado;
+    }
+
+
+
     public function retirarMaterialDeProyectosCerrados(Request $request)
     {
         $rules = [
@@ -521,6 +586,7 @@ class SalidasController extends Controller
             $proyectoDestino = $request->proyecto_destino;
 
             if (empty($contenedor)) {
+                DB::rollback();
                 return ['success' => 1];
             }
 
@@ -529,24 +595,20 @@ class SalidasController extends Controller
 
             if (!$proyOrigen || $proyOrigen->transferido == 0) {
                 DB::rollback();
-                return ['success' => 5];   // origen no es un proyecto cerrado
+                return ['success' => 5];
             }
 
-
-            // ── Blindaje: la fecha de la transferencia NO puede ser
-            //    anterior a la fecha de cierre del proyecto ───────────────
+            // ── Blindaje: la fecha NO puede ser anterior al cierre ───────
             $fechaTransferencia = \Carbon\Carbon::parse($request->fecha)->startOfDay();
             $fechaCierre        = \Carbon\Carbon::parse($proyOrigen->fecha_cierre)->startOfDay();
 
             if ($fechaTransferencia->lt($fechaCierre)) {
                 DB::rollback();
                 return [
-                    'success'      => 6,   // fecha de transferencia anterior al cierre
+                    'success'      => 6,
                     'fecha_cierre' => $fechaCierre->format('d/m/Y'),
                 ];
             }
-
-
 
             // Datos acta
             $actaNumero        = $request->acta_numero ?? null;
@@ -570,7 +632,7 @@ class SalidasController extends Controller
 
                 if (!$proyDestino || $proyDestino->transferido == 1) {
                     DB::rollback();
-                    return ['success' => 4];   // destino cerrado o inexistente
+                    return ['success' => 4];
                 }
 
                 // SALIDA
@@ -587,8 +649,8 @@ class SalidasController extends Controller
                 $salida->acta_cargo_solic              = $actaCargoSolic;
                 $salida->acta_observaciones            = $actaObservaciones;
                 $salida->acta_tipo_destino             = $actaTipoDestino;
-                $salida->firma_1 = $request->firma_1;
-                $salida->firma_2 = $request->firma_2;
+                $salida->firma_1                       = $request->firma_1;
+                $salida->firma_2                       = $request->firma_2;
                 $salida->save();
 
                 // ENTRADA
@@ -624,22 +686,9 @@ class SalidasController extends Controller
                         return ['success' => 2];
                     }
 
-                    $totalSalido = SalidasDetalle::where(
-                        'id_entrada_detalle',
-                        $idEntradaDetalle
-                    )->sum('cantidad_salida');
-
-                    $totalReservado = Reserva::where(
-                        'id_entrada_detalle',
-                        $idEntradaDetalle
-                    )->where('despachado', 0)->sum('cantidad');
-
-                    $libre = $entradaDetalle->cantidad_inicial
-                        - $totalSalido
-                        - $totalReservado;
+                    $libre = $this->stockLibreEntradaDetalle($entradaDetalle);
 
                     if ($cantidad > $libre) {
-
                         DB::rollback();
 
                         return [
@@ -657,9 +706,7 @@ class SalidasController extends Controller
                     $salidaDet->cantidad_salida    = $cantidad;
                     $salidaDet->save();
 
-                    $infoMaterial = Materiales::find(
-                        $entradaDetalle->id_material
-                    );
+                    $infoMaterial = Materiales::find($entradaDetalle->id_material);
 
                     // ENTRADA DETALLE
                     $entradaDet = new EntradasDetalle();
@@ -667,11 +714,9 @@ class SalidasController extends Controller
                     $entradaDet->id_material      = $entradaDetalle->id_material;
                     $entradaDet->cantidad_inicial = $cantidad;
                     $entradaDet->precio           = $entradaDetalle->precio;
-                    $entradaDet->nombre           =
-                        $infoMaterial
-                            ? $infoMaterial->nombre
-                            : $entradaDetalle->nombre;
-
+                    $entradaDet->nombre           = $infoMaterial
+                        ? $infoMaterial->nombre
+                        : $entradaDetalle->nombre;
                     $entradaDet->save();
 
                     // HISTORIAL DETALLE
@@ -680,11 +725,9 @@ class SalidasController extends Controller
                     $transDet->id_entrada_detalle = $idEntradaDetalle;
                     $transDet->cantidad_sobrante  = $cantidad;
                     $transDet->precio             = $entradaDetalle->precio;
-                    $transDet->nombre_material    =
-                        $infoMaterial
-                            ? $infoMaterial->nombre
-                            : $entradaDetalle->nombre;
-
+                    $transDet->nombre_material    = $infoMaterial
+                        ? $infoMaterial->nombre
+                        : $entradaDetalle->nombre;
                     $transDet->save();
                 }
 
@@ -706,8 +749,8 @@ class SalidasController extends Controller
                 $salida->acta_cargo_solic     = $actaCargoSolic;
                 $salida->acta_observaciones   = $actaObservaciones;
                 $salida->acta_tipo_destino    = $actaTipoDestino;
-                $salida->firma_1 = $request->firma_1;
-                $salida->firma_2 = $request->firma_2;
+                $salida->firma_1              = $request->firma_1;
+                $salida->firma_2              = $request->firma_2;
                 $salida->save();
 
                 // HISTORIAL
@@ -734,6 +777,20 @@ class SalidasController extends Controller
                         return ['success' => 2];
                     }
 
+                    // Validación de stock (antes esta rama no validaba)
+                    $libre = $this->stockLibreEntradaDetalle($entradaDetalle);
+
+                    if ($cantidad > $libre) {
+                        DB::rollback();
+
+                        return [
+                            'success'         => 3,
+                            'nombre_material' => $entradaDetalle->material->nombre,
+                            'cantidad_pedida' => $cantidad,
+                            'disponible'      => $libre,
+                        ];
+                    }
+
                     $salidaDet = new SalidasDetalle();
                     $salidaDet->id_salida          = $salida->id;
                     $salidaDet->id_entrada_detalle = $idEntradaDetalle;
@@ -746,10 +803,8 @@ class SalidasController extends Controller
                     $transDet->id_entrada_detalle = $idEntradaDetalle;
                     $transDet->cantidad_sobrante  = $cantidad;
                     $transDet->precio             = $entradaDetalle->precio;
-                    $transDet->nombre_material    =
-                        $entradaDetalle->material->nombre
+                    $transDet->nombre_material    = $entradaDetalle->material->nombre
                         ?? $entradaDetalle->nombre;
-
                     $transDet->save();
                 }
             }
@@ -757,18 +812,15 @@ class SalidasController extends Controller
             DB::commit();
 
             return [
-                'success'  => 10,
-                'id_salida'=> $salida->id ?? null
+                'success'   => 10,
+                'id_salida' => $salida->id ?? null,
             ];
 
         } catch (\Throwable $e) {
 
             DB::rollback();
 
-            Log::error(
-                'retirarMaterialDeProyectosCerrados: '
-                . $e->getMessage()
-            );
+            Log::error('retirarMaterialDeProyectosCerrados: ' . $e->getMessage());
 
             return ['success' => 99];
         }
@@ -783,34 +835,39 @@ class SalidasController extends Controller
         $materiales = DB::table('entradas_detalle as ed')
             ->join('entradas as e', 'e.id', '=', 'ed.id_entradas')
             ->join('materiales as m', 'm.id', '=', 'ed.id_material')
-            ->leftJoin('unidadmedida as um', 'um.id', '=', 'm.id_medida') // leftJoin por si id_medida es nullable
-            ->leftJoin('objeto_especifico as obj', 'obj.id', '=', 'm.id_objespecifico') // código objeto específico
+            ->leftJoin('unidadmedida as um', 'um.id', '=', 'm.id_medida')
+            ->leftJoin('objeto_especifico as obj', 'obj.id', '=', 'm.id_objespecifico')
             ->leftJoin(DB::raw('(
-        SELECT id_entrada_detalle, SUM(cantidad_salida) as total_salido
-        FROM salidas_detalle GROUP BY id_entrada_detalle
-    ) as sd'), 'sd.id_entrada_detalle', '=', 'ed.id')
+            SELECT sd.id_entrada_detalle,
+                   SUM(sd.cantidad_salida - COALESCE(rei.total, 0)) as total_salido
+            FROM salidas_detalle sd
+            LEFT JOIN (
+                SELECT id_salida_detalle, SUM(cantidad) as total
+                FROM salidas_detalle_reingreso
+                GROUP BY id_salida_detalle
+            ) rei ON rei.id_salida_detalle = sd.id
+            GROUP BY sd.id_entrada_detalle
+        ) as sd'), 'sd.id_entrada_detalle', '=', 'ed.id')
             ->leftJoin(DB::raw('(
-        SELECT id_entrada_detalle, SUM(cantidad) as total_reservado
-        FROM reservas WHERE despachado = 0 GROUP BY id_entrada_detalle
-    ) as r'), 'r.id_entrada_detalle', '=', 'ed.id')
+            SELECT id_entrada_detalle, SUM(cantidad) as total_reservado
+            FROM reservas WHERE despachado = 0 GROUP BY id_entrada_detalle
+        ) as r'), 'r.id_entrada_detalle', '=', 'ed.id')
             ->where('e.id_tipoproyecto', $idProyecto)
             ->selectRaw('
-        ed.id as id_entrada_detalle,
-        m.nombre,
-        COALESCE(um.nombre, "—") as medida,
-        COALESCE(obj.codigo, "—") as objespec,
-        ed.precio,
-        (ed.cantidad_inicial - COALESCE(sd.total_salido, 0)) as disponible,
-        COALESCE(r.total_reservado, 0) as reservado,
-        (ed.cantidad_inicial - COALESCE(sd.total_salido, 0) - COALESCE(r.total_reservado, 0)) as libre
-    ')
+            ed.id as id_entrada_detalle,
+            m.nombre,
+            COALESCE(um.nombre, "—") as medida,
+            COALESCE(obj.codigo, "—") as objespec,
+            ed.precio,
+            (ed.cantidad_inicial - COALESCE(sd.total_salido, 0)) as disponible,
+            COALESCE(r.total_reservado, 0) as reservado,
+            (ed.cantidad_inicial - COALESCE(sd.total_salido, 0) - COALESCE(r.total_reservado, 0)) as libre
+        ')
             ->havingRaw('disponible > 0')
             ->get();
 
         return ['success' => 1, 'materiales' => $materiales];
     }
-
-
 
 
 

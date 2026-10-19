@@ -426,10 +426,25 @@
                     axios.post(urlAdmin + '/admin/historial/salidas/eliminar', { id: id })
                         .then((response) => {
                             closeLoading();
+
                             if (response.data.success === 1) {
                                 toastr.success('Salida eliminada correctamente');
                                 buscarConFiltros();
-                            } else {
+                            }
+                            else if (response.data.success === 2) {
+                                Swal.fire({
+                                    title: 'No se puede eliminar',
+                                    text: response.data.mensaje,
+                                    type: 'warning',
+                                    confirmButtonColor: '#d33',
+                                    confirmButtonText: 'Entendido'
+                                });
+                            }
+                            else if (response.data.success === 0) {
+                                toastr.error('La salida no existe o ya fue eliminada');
+                                buscarConFiltros();
+                            }
+                            else {
                                 toastr.error('Error al eliminar');
                             }
                         })

@@ -1239,7 +1239,23 @@
                                 confirmButtonColor: '#6f42c1',
                                 confirmButtonText: 'Aceptar'
                             }).then((r) => { if (r.isConfirmed) location.reload(); });
-                        } else {
+                        }
+
+                            else if (response.data.success === 5) {
+                            Swal.fire({
+                                title: 'Proyecto origen no válido',
+                                text: 'El proyecto origen no está cerrado.',
+                                type: 'error', confirmButtonColor: '#d33', confirmButtonText: 'Entendido'
+                            });
+                        } else if (response.data.success === 6) {
+                            Swal.fire({
+                                title: 'Fecha no válida',
+                                html: 'La fecha de la reserva no puede ser anterior al cierre del proyecto.<br><br>' +
+                                    'Fecha de cierre: <b>' + response.data.fecha_cierre + '</b>',
+                                type: 'error', confirmButtonColor: '#d33', confirmButtonText: 'Entendido'
+                            });
+                        }
+                        else {
                             toastr.error('Error al guardar reserva');
                         }
                     })
