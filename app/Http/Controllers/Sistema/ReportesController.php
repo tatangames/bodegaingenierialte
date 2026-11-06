@@ -7863,7 +7863,7 @@ style='text-align:center; vertical-align:top;
     <th style='{$thStyle} width:12%;'>Medida</th>
     <th style='{$thStyle} width:12%;'>Stock</th>
     <th style='{$thStyle} width:12%;'>Reservas</th>
-    <th style='{$thStyle} width:12%;'>Total Esperado</th>
+    <th style='{$thStyle} width:12%;'>Stock Físico</th>
 </tr>
 </thead>
 <tbody>";
@@ -8190,7 +8190,7 @@ style='text-align:center; vertical-align:top;
     <th style='{$thStyle} width:{$wPre};'>Precio Unit.</th>
     <th style='{$thStyle} width:{$wStk};'>Stock</th>
     <th style='{$thStyle} width:{$wRes};'>Reservas</th>
-    <th style='{$thStyle} width:{$wEsp};'>Total Esperado</th>
+    <th style='{$thStyle} width:{$wEsp};'>Stock Físico</th>
     <th style='{$thStyle} width:{$wTot};'>Total $</th>";
 
         if ($conConteo) {
@@ -8820,7 +8820,7 @@ style='text-align:center; vertical-align:top;
     <th style='{$thStyle} width:8%;'>Medida</th>
     <th style='{$thStyle} width:10%;'>Stock Sistema</th>
     <th style='{$thStyle} width:10%;'>Reservas</th>
-    <th style='{$thStyle} width:10%;'>Total Esperado</th>
+    <th style='{$thStyle} width:10%;'>Stock Físico</th>
     <th style='{$thBlanco} width:11%;'>Conteo Físico</th>
     <th style='{$thBlanco} width:11%;'>Diferencia</th>
 </tr>
@@ -9079,7 +9079,7 @@ style='text-align:center; vertical-align:top;
     <th style='{$thStyle} width:7%;'>Medida</th>
     <th style='{$thStyle} width:8%;'>Stock Sistema</th>
     <th style='{$thStyle} width:8%;'>Reservas</th>
-    <th style='{$thStyle} width:8%;'>Total Esperado</th>
+    <th style='{$thStyle} width:8%;'>Stock Físico</th>
     <th style='{$thStyle} width:9%;'>Precio Unitario</th>
     <th style='{$thStyle} width:9%;'>Total</th>
     <th style='{$thBlanco} width:11%;'>Conteo Físico</th>
