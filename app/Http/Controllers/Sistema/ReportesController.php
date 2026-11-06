@@ -7689,7 +7689,10 @@ style='text-align:center; vertical-align:top;
         GROUP BY id_entrada_detalle
     )';
 
-        // ── Consulta principal (salidas netas de reingresos y menos reservas) ─────
+        // ── Consulta principal ────────────────────────────────────────────────────
+        // existencia = físico esperado en bodega (incluye reservado)
+        // reservado  = apartado pendiente de despacho
+        // disponible = existencia - reservado
         $filas = DB::table('entradas_detalle as ed')
             ->join('entradas as e', 'e.id', '=', 'ed.id_entradas')
             ->join('materiales as m', 'm.id', '=', 'ed.id_material')
@@ -7704,11 +7707,13 @@ style='text-align:center; vertical-align:top;
             COALESCE(um.nombre, "—") as medida,
             COALESCE(obj.codigo, "SIN-CODIGO") as codigo,
             ed.precio as precio_unitario,
+            (ed.cantidad_inicial - COALESCE(sd.total_salido, 0)) as existencia,
+            COALESCE(rs.total_reservado, 0) as reservado,
             (ed.cantidad_inicial
                 - COALESCE(sd.total_salido, 0)
                 - COALESCE(rs.total_reservado, 0)) as disponible
         ')
-            ->havingRaw('disponible > 0')
+            ->havingRaw('existencia > 0')
             ->get();
 
         // ── Agrupar por código → material, acumulando lotes ───────────────────────
@@ -7729,13 +7734,19 @@ style='text-align:center; vertical-align:top;
                 $porCodigo[$codigo]['materiales'][$idMaterial] = [
                     'nombre'         => $fila->nombre,
                     'medida'         => $fila->medida,
-                    'stock'          => 0,
+                    'stock'          => 0,   // disponible
+                    'reservado'      => 0,
+                    'fisico'         => 0,   // existencia física esperada
                     'suma_ponderada' => 0,
                 ];
             }
 
-            $porCodigo[$codigo]['materiales'][$idMaterial]['stock']          += $fila->disponible;
-            $porCodigo[$codigo]['materiales'][$idMaterial]['suma_ponderada'] += ($fila->precio_unitario * $fila->disponible);
+            $m = &$porCodigo[$codigo]['materiales'][$idMaterial];
+            $m['stock']          += $fila->disponible;
+            $m['reservado']      += $fila->reservado;
+            $m['fisico']         += $fila->existencia;
+            $m['suma_ponderada'] += ($fila->precio_unitario * $fila->existencia);
+            unset($m);
         }
 
         // ── Ordenar materiales dentro de cada grupo ───────────────────────────────
@@ -7746,7 +7757,7 @@ style='text-align:center; vertical-align:top;
 
         ksort($porCodigo);
 
-        // ── Resumen valorizado por objeto específico ──────────────────────────────
+        // ── Resumen valorizado por objeto específico (sobre existencia física) ────
         $resumenPorCodigo = [];
         $granTotal        = 0;
 
@@ -7772,7 +7783,7 @@ style='text-align:center; vertical-align:top;
 
         // ── Estilos ───────────────────────────────────────────────────────────────
         $thStyle = "font-weight:bold; font-size:11px; border:0.8px solid #000;
-        padding:5px 4px; background:#d9e1f2; text-align:center;";
+    padding:5px 4px; background:#d9e1f2; text-align:center;";
         $tdStyle = "font-size:11px; border:0.8px solid #000; padding:4px;";
         $tdC     = $tdStyle . " text-align:center;";
         $tdR     = $tdStyle . " text-align:right;";
@@ -7847,10 +7858,12 @@ style='text-align:center; vertical-align:top;
 <table width='100%' style='border-collapse:collapse;'>
 <thead>
 <tr>
-    <th style='{$thStyle} width:15%;'>Obj. Espec.</th>
-    <th style='{$thStyle} width:60%;'>Material</th>
-    <th style='{$thStyle} width:15%;'>Medida</th>
-    <th style='{$thStyle} width:10%;'>Stock</th>
+    <th style='{$thStyle} width:12%;'>Obj. Espec.</th>
+    <th style='{$thStyle} width:40%;'>Material</th>
+    <th style='{$thStyle} width:12%;'>Medida</th>
+    <th style='{$thStyle} width:12%;'>Stock</th>
+    <th style='{$thStyle} width:12%;'>Reservas</th>
+    <th style='{$thStyle} width:12%;'>Total Esperado</th>
 </tr>
 </thead>
 <tbody>";
@@ -7858,7 +7871,7 @@ style='text-align:center; vertical-align:top;
         if (empty($porCodigo)) {
             $tabla .= "
 <tr>
-    <td colspan='4' style='text-align:center; font-size:12px;
+    <td colspan='6' style='text-align:center; font-size:12px;
                             border:0.8px solid #000; padding:12px; color:#888;'>
         No se encontraron sobrantes disponibles en proyectos cerrados.
     </td>
@@ -7867,7 +7880,7 @@ style='text-align:center; vertical-align:top;
             foreach ($porCodigo as $grupo) {
                 $tabla .= "
 <tr>
-    <td colspan='4' style='font-weight:bold; font-size:11px;
+    <td colspan='6' style='font-weight:bold; font-size:11px;
                             border:0.8px solid #000; padding:5px 8px;
                             background:#e8eef8;'>
         Objeto Específico: " . e($grupo['codigo']) . "
@@ -7875,12 +7888,16 @@ style='text-align:center; vertical-align:top;
 </tr>";
 
                 foreach ($grupo['materiales'] as $mat) {
+                    $colorReserva = $mat['reservado'] > 0 ? 'color:#b45309;' : 'color:#888;';
+
                     $tabla .= "
 <tr>
     <td style='{$tdC}'>" . e($grupo['codigo']) . "</td>
     <td style='{$tdStyle}'>" . e($mat['nombre']) . "</td>
     <td style='{$tdC}'>" . e($mat['medida']) . "</td>
-    <td style='{$tdC} font-weight:bold;'>" . number_format($mat['stock'], 0, '.', ',') . "</td>
+    <td style='{$tdC} font-weight:bold; color:#1a5c3a;'>" . number_format($mat['stock'], 0, '.', ',') . "</td>
+    <td style='{$tdC} font-weight:bold; {$colorReserva}'>" . number_format($mat['reservado'], 0, '.', ',') . "</td>
+    <td style='{$tdC} font-weight:bold; background:#f7f9fd;'>" . number_format($mat['fisico'], 0, '.', ',') . "</td>
 </tr>";
                 }
             }
@@ -7937,9 +7954,6 @@ style='text-align:center; vertical-align:top;
         $mpdf->WriteHTML($tabla, 2);
         $mpdf->Output();
     }
-
-
-
     public function reporteTotalizadoCerradosDesglosadoPrecio(Request $request)
     {
         $conConteo    = $request->input('conteo', 0) == 1;
@@ -7960,7 +7974,10 @@ style='text-align:center; vertical-align:top;
         GROUP BY id_entrada_detalle
     )';
 
-        // ── Consulta principal (salidas netas de reingresos y menos reservas) ─────
+        // ── Consulta principal ────────────────────────────────────────────────────
+        // existencia = físico esperado en bodega (incluye reservado)
+        // reservado  = apartado pendiente de despacho
+        // disponible = existencia - reservado
         $filas = DB::table('entradas_detalle as ed')
             ->join('entradas as e', 'e.id', '=', 'ed.id_entradas')
             ->join('tipoproyecto as tp', 'tp.id', '=', 'e.id_tipoproyecto')
@@ -7978,18 +7995,20 @@ style='text-align:center; vertical-align:top;
             COALESCE(um.nombre, "—") as medida,
             COALESCE(obj.codigo, "SIN-CODIGO") as codigo,
             ed.precio as precio_unitario,
+            (ed.cantidad_inicial - COALESCE(sd.total_salido, 0)) as existencia,
+            COALESCE(rs.total_reservado, 0) as reservado,
             (ed.cantidad_inicial
                 - COALESCE(sd.total_salido, 0)
                 - COALESCE(rs.total_reservado, 0)) as disponible
         ')
-            ->havingRaw('disponible > 0')
+            ->havingRaw('existencia > 0')
             ->orderBy('obj.codigo')
             ->orderBy('m.nombre')
             ->orderBy('tp.nombre')
             ->orderBy('ed.precio')
             ->get();
 
-        // ── Agrupar por código → (material + proyecto) → lotes ───────────────────
+        // ── Agrupar por código → (material + proyecto) → lotes por precio ────────
         $porCodigo = [];
 
         foreach ($filas as $fila) {
@@ -8010,11 +8029,19 @@ style='text-align:center; vertical-align:top;
                 ];
             }
 
-            if (isset($porCodigo[$codigo]['materiales'][$clave]['lotes'][$precio])) {
-                $porCodigo[$codigo]['materiales'][$clave]['lotes'][$precio] += $fila->disponible;
-            } else {
-                $porCodigo[$codigo]['materiales'][$clave]['lotes'][$precio]  = $fila->disponible;
+            if (!isset($porCodigo[$codigo]['materiales'][$clave]['lotes'][$precio])) {
+                $porCodigo[$codigo]['materiales'][$clave]['lotes'][$precio] = [
+                    'stock'     => 0,  // disponible
+                    'reservado' => 0,
+                    'fisico'    => 0,  // existencia física esperada
+                ];
             }
+
+            $l = &$porCodigo[$codigo]['materiales'][$clave]['lotes'][$precio];
+            $l['stock']     += $fila->disponible;
+            $l['reservado'] += $fila->reservado;
+            $l['fisico']    += $fila->existencia;
+            unset($l);
         }
 
         // ── Ordenar ───────────────────────────────────────────────────────────────
@@ -8031,15 +8058,15 @@ style='text-align:center; vertical-align:top;
         unset($grupo);
         ksort($porCodigo);
 
-        // ── Resumen valorizado ────────────────────────────────────────────────────
+        // ── Resumen valorizado (sobre existencia física) ──────────────────────────
         $resumenPorCodigo = [];
         $granTotal        = 0;
 
         foreach ($porCodigo as $codigo => $grupo) {
             $subtotal = 0;
             foreach ($grupo['materiales'] as $mat) {
-                foreach ($mat['lotes'] as $precio => $stock) {
-                    $subtotal += ($precio * $stock);
+                foreach ($mat['lotes'] as $precio => $l) {
+                    $subtotal += ($precio * $l['fisico']);
                 }
             }
             $resumenPorCodigo[$codigo] = $subtotal;
@@ -8059,7 +8086,7 @@ style='text-align:center; vertical-align:top;
 
         // ── Estilos ───────────────────────────────────────────────────────────────
         $thStyle  = "font-weight:bold; font-size:10px; border:0.8px solid #000;
-     padding:8px 4px; background:#d9e1f2; text-align:center;";
+ padding:8px 4px; background:#d9e1f2; text-align:center;";
         $tdStyle  = "font-size:10px; border:0.8px solid #000; padding:7px 4px;";
         $tdC      = $tdStyle . " text-align:center;";
         $tdR      = $tdStyle . " text-align:right;";
@@ -8067,7 +8094,7 @@ style='text-align:center; vertical-align:top;
         $tdLoteR  = $tdStyle . " text-align:right;  background:#f7f9fd;";
 
         $thConteo     = "font-weight:bold; font-size:10px; border:0.8px solid #000;
-            padding:5px 4px; background:#d9e1f2; text-align:center;";
+        padding:5px 4px; background:#d9e1f2; text-align:center;";
         $tdConteo     = $tdStyle . " text-align:center; background:#ffffff;";
         $tdConteoLote = $tdStyle . " text-align:center; background:#f7f9fd;";
         $tdDif        = $tdStyle . " text-align:center; background:#ffffff;";
@@ -8140,14 +8167,15 @@ style='text-align:center; vertical-align:top;
 
         // ── Anchos de columna según modo ──────────────────────────────────────────
         if ($conConteo) {
-            $wObj    = '8%';  $wProy = '17%'; $wMat = '22%'; $wMed = '8%';
-            $wPrecio = '9%';  $wStock = '8%'; $wTotal = '9%';
-            $wConteo = '10%'; $wDif = '9%';
-            $colspan = 9;
+            $wObj  = '7%';  $wProy = '14%'; $wMat = '19%'; $wMed = '7%';
+            $wPre  = '8%';  $wStk  = '7%';  $wRes = '7%';  $wEsp = '8%';
+            $wTot  = '9%';  $wCnt  = '8%';  $wDif = '6%';
+            $colspan = 11;
         } else {
-            $wObj    = '10%'; $wProy = '20%'; $wMat = '28%'; $wMed = '9%';
-            $wPrecio = '11%'; $wStock = '11%'; $wTotal = '11%';
-            $colspan = 7;
+            $wObj  = '8%';  $wProy = '17%'; $wMat = '23%'; $wMed = '8%';
+            $wPre  = '9%';  $wStk  = '8%';  $wRes = '8%';  $wEsp = '9%';
+            $wTot  = '10%';
+            $colspan = 9;
         }
 
         // ── Tabla detalle ─────────────────────────────────────────────────────────
@@ -8159,13 +8187,15 @@ style='text-align:center; vertical-align:top;
     <th style='{$thStyle} width:{$wProy};'>Proyecto</th>
     <th style='{$thStyle} width:{$wMat};'>Material</th>
     <th style='{$thStyle} width:{$wMed};'>Medida</th>
-    <th style='{$thStyle} width:{$wPrecio};'>Precio Unit.</th>
-    <th style='{$thStyle} width:{$wStock};'>Stock Sistema</th>
-    <th style='{$thStyle} width:{$wTotal};'>Total</th>";
+    <th style='{$thStyle} width:{$wPre};'>Precio Unit.</th>
+    <th style='{$thStyle} width:{$wStk};'>Stock</th>
+    <th style='{$thStyle} width:{$wRes};'>Reservas</th>
+    <th style='{$thStyle} width:{$wEsp};'>Total Esperado</th>
+    <th style='{$thStyle} width:{$wTot};'>Total $</th>";
 
         if ($conConteo) {
             $tabla .= "
-    <th style='{$thConteo} width:{$wConteo};'>Conteo Físico</th>
+    <th style='{$thConteo} width:{$wCnt};'>Conteo Físico</th>
     <th style='{$thConteo} width:{$wDif};'>Diferencia</th>";
         }
 
@@ -8200,40 +8230,44 @@ style='text-align:center; vertical-align:top;
                     $totalLotes  = count($lotes);
                     $esElPrimero = true;
 
-                    foreach ($lotes as $precio => $stock) {
+                    foreach ($lotes as $precio => $l) {
 
-                        $totalLote   = $precio * $stock;
+                        $totalLote   = $precio * $l['fisico'];
                         $esLoteExtra = !$esElPrimero;
 
                         if (!$esLoteExtra) {
-                            $celdaNombre    = "<td style='{$tdStyle}'>" . e($mat['proyecto']) . "</td>
-                                   <td style='{$tdStyle}'>" . e($mat['nombre']) . "</td>
-                                   <td style='{$tdC}'>" . e($mat['medida']) . "</td>";
-                            $bgCodigo       = $tdC;
-                            $estiloConteo   = $tdConteo;
-                            $estiloDif      = $tdDif;
+                            $celdaNombre  = "<td style='{$tdStyle}'>" . e($mat['proyecto']) . "</td>
+                               <td style='{$tdStyle}'>" . e($mat['nombre']) . "</td>
+                               <td style='{$tdC}'>" . e($mat['medida']) . "</td>";
+                            $bgCodigo     = $tdC;
+                            $estiloConteo = $tdConteo;
+                            $estiloDif    = $tdDif;
                         } else {
-                            $celdaNombre    = "<td style='{$tdLote}'></td>
-                                   <td style='{$tdLote}'></td>
-                                   <td style='{$tdLote}'></td>";
-                            $bgCodigo       = $tdLote;
-                            $estiloConteo   = $tdConteoLote;
-                            $estiloDif      = $tdDifLote;
+                            $celdaNombre  = "<td style='{$tdLote}'></td>
+                               <td style='{$tdLote}'></td>
+                               <td style='{$tdLote}'></td>";
+                            $bgCodigo     = $tdLote;
+                            $estiloConteo = $tdConteoLote;
+                            $estiloDif    = $tdDifLote;
                         }
+
+                        $baseC        = $esLoteExtra ? $tdLote  : $tdC;
+                        $baseR        = $esLoteExtra ? $tdLoteR : $tdR;
+                        $colorReserva = $l['reservado'] > 0 ? 'color:#b45309;' : 'color:#888;';
 
                         $tabla .= "
 <tr>
     <td style='{$bgCodigo}'>" . (!$esLoteExtra ? e($grupo['codigo']) : '') . "</td>
     {$celdaNombre}
-    <td style='" . ($esLoteExtra ? $tdLoteR : $tdR) . "'>
-        $ " . number_format($precio, 2, '.', ',') . "
-    </td>
-    <td style='" . ($esLoteExtra ? $tdLote : $tdC) . " font-weight:bold;'>
-        " . number_format($stock, 0, '.', ',') . "
-    </td>
-    <td style='" . ($esLoteExtra ? $tdLoteR : $tdR) . " font-weight:bold;'>
-        $ " . number_format($totalLote, 2, '.', ',') . "
-    </td>";
+    <td style='{$baseR}'>$ " . number_format($precio, 2, '.', ',') . "</td>
+    <td style='{$baseC} font-weight:bold; color:#1a5c3a;'>"
+                            . number_format($l['stock'], 0, '.', ',') . "</td>
+    <td style='{$baseC} font-weight:bold; {$colorReserva}'>"
+                            . number_format($l['reservado'], 0, '.', ',') . "</td>
+    <td style='{$baseC} font-weight:bold;'>"
+                            . number_format($l['fisico'], 0, '.', ',') . "</td>
+    <td style='{$baseR} font-weight:bold;'>$ "
+                            . number_format($totalLote, 2, '.', ',') . "</td>";
 
                         if ($conConteo) {
                             $tabla .= "
@@ -8249,12 +8283,13 @@ style='text-align:center; vertical-align:top;
 
                     // ── Subtotal del material (solo si tiene más de 1 lote) ───────
                     if ($totalLotes > 1) {
-                        $stockTotal = array_sum($lotes);
-                        $valorTotal = array_sum(array_map(
-                            fn($p, $s) => $p * $s,
-                            array_keys($lotes),
-                            array_values($lotes)
-                        ));
+                        $stockTotal    = array_sum(array_column($lotes, 'stock'));
+                        $reservadoTot  = array_sum(array_column($lotes, 'reservado'));
+                        $fisicoTotal   = array_sum(array_column($lotes, 'fisico'));
+                        $valorTotal    = 0;
+                        foreach ($lotes as $p => $l) {
+                            $valorTotal += $p * $l['fisico'];
+                        }
 
                         $tabla .= "
 <tr>
@@ -8262,12 +8297,14 @@ style='text-align:center; vertical-align:top;
                             background:#eef2fb; font-size:10px;'>
         Subtotal: " . e($mat['nombre']) . " — " . e($mat['proyecto']) . "
     </td>
-    <td style='{$tdC} font-weight:bold; background:#eef2fb;'>
-        " . number_format($stockTotal, 0, '.', ',') . "
-    </td>
-    <td style='{$tdR} font-weight:bold; background:#eef2fb;'>
-        $ " . number_format($valorTotal, 2, '.', ',') . "
-    </td>";
+    <td style='{$tdC} font-weight:bold; background:#eef2fb;'>"
+                            . number_format($stockTotal, 0, '.', ',') . "</td>
+    <td style='{$tdC} font-weight:bold; background:#eef2fb;'>"
+                            . number_format($reservadoTot, 0, '.', ',') . "</td>
+    <td style='{$tdC} font-weight:bold; background:#eef2fb;'>"
+                            . number_format($fisicoTotal, 0, '.', ',') . "</td>
+    <td style='{$tdR} font-weight:bold; background:#eef2fb;'>$ "
+                            . number_format($valorTotal, 2, '.', ',') . "</td>";
 
                         if ($conConteo) {
                             $tabla .= "
@@ -8333,8 +8370,6 @@ style='text-align:center; vertical-align:top;
         $mpdf->WriteHTML($tabla, 2);
         $mpdf->Output();
     }
-
-
 
 
     public function reporteConsolidadoMaterialesCerrados(Request $request)
@@ -8601,7 +8636,6 @@ style='text-align:center; vertical-align:top;
         $mpdf->Output();
     }
 
-
     public function reporteConteoFisicoCerrado($id)
     {
         $proyecto     = TipoProyecto::findOrFail($id);
@@ -8616,7 +8650,10 @@ style='text-align:center; vertical-align:top;
         GROUP BY id_entrada_detalle
     )';
 
-        // ── Consulta (salidas netas de reingresos y menos reservas pendientes) ────
+        // ── Consulta ──────────────────────────────────────────────────────────────
+        // existencia  = lo que físicamente debe estar en bodega (incluye reservado)
+        // reservado   = apartado pendiente de despacho
+        // disponible  = existencia - reservado
         $filas = DB::table('entradas_detalle as ed')
             ->join('entradas as e', 'e.id', '=', 'ed.id_entradas')
             ->join('materiales as m', 'm.id', '=', 'ed.id_material')
@@ -8631,11 +8668,13 @@ style='text-align:center; vertical-align:top;
             COALESCE(um.nombre, "—") as medida,
             COALESCE(obj.codigo, "SIN-CODIGO") as codigo,
             ed.precio as precio_unitario,
+            (ed.cantidad_inicial - COALESCE(sd.total_salido, 0)) as existencia,
+            COALESCE(rs.total_reservado, 0) as reservado,
             (ed.cantidad_inicial
                 - COALESCE(sd.total_salido, 0)
                 - COALESCE(rs.total_reservado, 0)) as disponible
         ')
-            ->havingRaw('disponible > 0')
+            ->havingRaw('existencia > 0')
             ->get();
 
         // ── Agrupar por código → material, acumulando lotes ───────────────────────
@@ -8656,13 +8695,19 @@ style='text-align:center; vertical-align:top;
                 $porCodigo[$codigo]['materiales'][$idMaterial] = [
                     'nombre'         => $fila->nombre,
                     'medida'         => $fila->medida,
-                    'stock'          => 0,
+                    'stock'          => 0,   // disponible
+                    'reservado'      => 0,
+                    'fisico'         => 0,   // existencia física esperada
                     'suma_ponderada' => 0,
                 ];
             }
 
-            $porCodigo[$codigo]['materiales'][$idMaterial]['stock']          += $fila->disponible;
-            $porCodigo[$codigo]['materiales'][$idMaterial]['suma_ponderada'] += ($fila->precio_unitario * $fila->disponible);
+            $m = &$porCodigo[$codigo]['materiales'][$idMaterial];
+            $m['stock']          += $fila->disponible;
+            $m['reservado']      += $fila->reservado;
+            $m['fisico']         += $fila->existencia;
+            $m['suma_ponderada'] += ($fila->precio_unitario * $fila->existencia);
+            unset($m);
         }
 
         foreach ($porCodigo as &$grupo) {
@@ -8672,7 +8717,7 @@ style='text-align:center; vertical-align:top;
 
         ksort($porCodigo);
 
-        // ── Resumen valorizado por objeto específico ──────────────────────────────
+        // ── Resumen valorizado por objeto específico (sobre existencia física) ────
         $resumenPorCodigo = [];
         $granTotal        = 0;
 
@@ -8770,16 +8815,14 @@ style='text-align:center; vertical-align:top;
 <table width='100%' style='border-collapse:collapse;'>
 <thead>
 <tr>
-    <th style='{$thStyle} width:12%;'>Obj. Espec.</th>
-    <th style='{$thStyle} width:42%;'>Material</th>
-    <th style='{$thStyle} width:10%;'>Medida</th>
-    <th style='{$thStyle} width:9%;'>Stock Sistema</th>
-    <th style='{$thBlanco} width:13%;'>Conteo Físico<br>
-        <span style='font-weight:normal; font-size:10px;'></span>
-    </th>
-    <th style='{$thBlanco} width:14%;'>Diferencia<br>
-        <span style='font-weight:normal; font-size:10px;'></span>
-    </th>
+    <th style='{$thStyle} width:10%;'>Obj. Espec.</th>
+    <th style='{$thStyle} width:30%;'>Material</th>
+    <th style='{$thStyle} width:8%;'>Medida</th>
+    <th style='{$thStyle} width:10%;'>Stock Sistema</th>
+    <th style='{$thStyle} width:10%;'>Reservas</th>
+    <th style='{$thStyle} width:10%;'>Total Esperado</th>
+    <th style='{$thBlanco} width:11%;'>Conteo Físico</th>
+    <th style='{$thBlanco} width:11%;'>Diferencia</th>
 </tr>
 </thead>
 <tbody>";
@@ -8787,7 +8830,7 @@ style='text-align:center; vertical-align:top;
         if (empty($porCodigo)) {
             $tabla .= "
 <tr>
-    <td colspan='6' style='text-align:center; font-size:12px;
+    <td colspan='8' style='text-align:center; font-size:12px;
                             border:0.8px solid #000; padding:12px; color:#888;'>
         No se encontraron materiales con existencia disponible.
     </td>
@@ -8796,7 +8839,7 @@ style='text-align:center; vertical-align:top;
             foreach ($porCodigo as $grupo) {
                 $tabla .= "
 <tr>
-    <td colspan='6' style='font-weight:bold; font-size:11px;
+    <td colspan='8' style='font-weight:bold; font-size:11px;
                             border:0.8px solid #000; padding:5px 8px;
                             background:#e8eef8;'>
         Objeto Específico: " . e($grupo['codigo']) . "
@@ -8804,12 +8847,16 @@ style='text-align:center; vertical-align:top;
 </tr>";
 
                 foreach ($grupo['materiales'] as $mat) {
+                    $colorReserva = $mat['reservado'] > 0 ? 'color:#b45309;' : 'color:#888;';
+
                     $tabla .= "
 <tr>
     <td style='{$tdC}'>" . e($grupo['codigo']) . "</td>
     <td style='{$tdStyle}'>" . e($mat['nombre']) . "</td>
     <td style='{$tdC}'>" . e($mat['medida']) . "</td>
-    <td style='{$tdC} font-weight:bold; color:#1a5c3a;'>{$mat['stock']}</td>
+    <td style='{$tdC} font-weight:bold; color:#1a5c3a;'>" . number_format($mat['stock'], 0, '.', ',') . "</td>
+    <td style='{$tdC} font-weight:bold; {$colorReserva}'>" . number_format($mat['reservado'], 0, '.', ',') . "</td>
+    <td style='{$tdC} font-weight:bold; background:#f7f9fd;'>" . number_format($mat['fisico'], 0, '.', ',') . "</td>
     <td style='{$tdBlanco}'>&nbsp;</td>
     <td style='{$tdBlanco}'>&nbsp;</td>
 </tr>";
@@ -8869,7 +8916,6 @@ style='text-align:center; vertical-align:top;
     }
 
 
-
     public function reporteLoteCerrado($id)
     {
         $proyecto     = TipoProyecto::findOrFail($id);
@@ -8884,7 +8930,10 @@ style='text-align:center; vertical-align:top;
         GROUP BY id_entrada_detalle
     )';
 
-        // ── Consulta (salidas netas de reingresos y menos reservas pendientes) ────
+        // ── Consulta ──────────────────────────────────────────────────────────────
+        // existencia = físico esperado en bodega (incluye reservado)
+        // reservado  = apartado pendiente de despacho
+        // disponible = existencia - reservado
         $filas = DB::table('entradas_detalle as ed')
             ->join('entradas as e', 'e.id', '=', 'ed.id_entradas')
             ->join('materiales as m', 'm.id', '=', 'ed.id_material')
@@ -8900,11 +8949,13 @@ style='text-align:center; vertical-align:top;
             COALESCE(um.nombre, "—") as medida,
             COALESCE(obj.codigo, "SIN-CODIGO") as codigo,
             ed.precio,
+            (ed.cantidad_inicial - COALESCE(sd.total_salido, 0)) as existencia,
+            COALESCE(rs.total_reservado, 0) as reservado,
             (ed.cantidad_inicial
                 - COALESCE(sd.total_salido, 0)
                 - COALESCE(rs.total_reservado, 0)) as disponible
         ')
-            ->havingRaw('disponible > 0')
+            ->havingRaw('existencia > 0')
             ->orderBy('m.nombre')
             ->get();
 
@@ -8924,10 +8975,12 @@ style='text-align:center; vertical-align:top;
             }
 
             $porCodigo[$codigo]['materiales'][$claveUnica] = [
-                'nombre'  => $fila->nombre,
-                'medida'  => $fila->medida,
-                'precio'  => (float) $fila->precio,
-                'stock'   => (float) $fila->disponible,
+                'nombre'    => $fila->nombre,
+                'medida'    => $fila->medida,
+                'precio'    => (float) $fila->precio,
+                'stock'     => (float) $fila->disponible,
+                'reservado' => (float) $fila->reservado,
+                'fisico'    => (float) $fila->existencia,
             ];
         }
 
@@ -9009,9 +9062,9 @@ style='text-align:center; vertical-align:top;
 </table>";
 
         $thStyle  = "font-weight:bold; font-size:11px; border:0.8px solid #000;
-     padding:5px 4px; background:#d9e1f2; text-align:center;";
+ padding:5px 4px; background:#d9e1f2; text-align:center;";
         $thBlanco = "font-weight:bold; font-size:11px; border:0.8px solid #000;
-     padding:5px 4px; background:#d9e1f2; text-align:center;";
+ padding:5px 4px; background:#d9e1f2; text-align:center;";
         $tdStyle  = "font-size:11px; border:0.8px solid #000; padding:8px 4px;";
         $tdC      = $tdStyle . " text-align:center;";
         $tdR      = $tdStyle . " text-align:right;";
@@ -9021,14 +9074,16 @@ style='text-align:center; vertical-align:top;
 <table width='100%' style='border-collapse:collapse;'>
 <thead>
 <tr>
-    <th style='{$thStyle} width:10%;'>Obj. Espec.</th>
-    <th style='{$thStyle} width:28%;'>Material</th>
-    <th style='{$thStyle} width:8%;'>Medida</th>
+    <th style='{$thStyle} width:8%;'>Obj. Espec.</th>
+    <th style='{$thStyle} width:22%;'>Material</th>
+    <th style='{$thStyle} width:7%;'>Medida</th>
     <th style='{$thStyle} width:8%;'>Stock Sistema</th>
-    <th style='{$thStyle} width:10%;'>Precio Unitario</th>
-    <th style='{$thStyle} width:10%;'>Total</th>
-    <th style='{$thBlanco} width:13%;'>Conteo Físico</th>
-    <th style='{$thBlanco} width:13%;'>Diferencia</th>
+    <th style='{$thStyle} width:8%;'>Reservas</th>
+    <th style='{$thStyle} width:8%;'>Total Esperado</th>
+    <th style='{$thStyle} width:9%;'>Precio Unitario</th>
+    <th style='{$thStyle} width:9%;'>Total</th>
+    <th style='{$thBlanco} width:11%;'>Conteo Físico</th>
+    <th style='{$thBlanco} width:10%;'>Diferencia</th>
 </tr>
 </thead>
 <tbody>";
@@ -9036,7 +9091,7 @@ style='text-align:center; vertical-align:top;
         if (empty($porCodigo)) {
             $tabla .= "
 <tr>
-    <td colspan='8' style='text-align:center; font-size:12px;
+    <td colspan='10' style='text-align:center; font-size:12px;
                             border:0.8px solid #000; padding:12px; color:#888;'>
         No se encontraron materiales con existencia disponible.
     </td>
@@ -9049,7 +9104,7 @@ style='text-align:center; vertical-align:top;
 
                 $tabla .= "
 <tr>
-    <td colspan='8' style='font-weight:bold; font-size:11px;
+    <td colspan='10' style='font-weight:bold; font-size:11px;
                             border:0.8px solid #000; padding:5px 8px;
                             background:#e8eef8;'>
         Objeto Específico: " . e($grupo['codigo']) . "
@@ -9057,8 +9112,11 @@ style='text-align:center; vertical-align:top;
 </tr>";
 
                 foreach ($grupo['materiales'] as $mat) {
-                    $total     = $mat['stock'] * $mat['precio'];
+                    // El valor se calcula sobre la existencia física (incluye reservado)
+                    $total     = $mat['fisico'] * $mat['precio'];
                     $subtotal += $total;
+
+                    $colorReserva = $mat['reservado'] > 0 ? 'color:#b45309;' : 'color:#888;';
 
                     $tabla .= "
 <tr>
@@ -9066,6 +9124,8 @@ style='text-align:center; vertical-align:top;
     <td style='{$tdStyle}'>" . e($mat['nombre']) . "</td>
     <td style='{$tdC}'>" . e($mat['medida']) . "</td>
     <td style='{$tdC} font-weight:bold; color:#1a5c3a;'>" . number_format($mat['stock'], 2) . "</td>
+    <td style='{$tdC} font-weight:bold; {$colorReserva}'>" . number_format($mat['reservado'], 2) . "</td>
+    <td style='{$tdC} font-weight:bold; background:#f7f9fd;'>" . number_format($mat['fisico'], 2) . "</td>
     <td style='{$tdR}'>$ " . number_format($mat['precio'], 4) . "</td>
     <td style='{$tdR} font-weight:bold;'>$ " . number_format($total, 2) . "</td>
     <td style='{$tdBlanco}'>&nbsp;</td>
@@ -9078,7 +9138,7 @@ style='text-align:center; vertical-align:top;
                 // Subtotal por objeto específico
                 $tabla .= "
 <tr>
-    <td colspan='5' style='text-align:right; font-weight:bold; font-size:11px;
+    <td colspan='7' style='text-align:right; font-weight:bold; font-size:11px;
                             border:0.8px solid #000; padding:5px 8px;
                             background:#f5f5f5;'>
         Subtotal " . e($grupo['codigo']) . ":
@@ -9094,7 +9154,7 @@ style='text-align:center; vertical-align:top;
             // Gran total
             $tabla .= "
 <tr>
-    <td colspan='5' style='text-align:right; font-weight:bold; font-size:12px;
+    <td colspan='7' style='text-align:right; font-weight:bold; font-size:12px;
                             border:0.8px solid #000; padding:6px 8px;
                             background:#d9e1f2;'>
         GRAN TOTAL:
@@ -9118,7 +9178,6 @@ style='text-align:center; vertical-align:top;
         $mpdf->WriteHTML($tabla, 2);
         $mpdf->Output();
     }
-
 
 
 
