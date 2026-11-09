@@ -7954,8 +7954,15 @@ style='text-align:center; vertical-align:top;
         $mpdf->WriteHTML($tabla, 2);
         $mpdf->Output();
     }
+
+
     public function reporteTotalizadoCerradosDesglosadoPrecio(Request $request)
     {
+        // ── Límites para reportes grandes ────────────────────────────────────────
+        ini_set('pcre.backtrack_limit', '5000000');
+        ini_set('memory_limit', '1024M');
+        set_time_limit(300);
+
         $conConteo    = $request->input('conteo', 0) == 1;
         $fechaFormat  = date("d-m-Y");
         $logoalcaldia = 'images/logo.png';
@@ -8044,6 +8051,9 @@ style='text-align:center; vertical-align:top;
             unset($l);
         }
 
+        // Liberar memoria de la consulta
+        unset($filas);
+
         // ── Ordenar ───────────────────────────────────────────────────────────────
         foreach ($porCodigo as &$grupo) {
             uasort($grupo['materiales'], function ($a, $b) {
@@ -8100,8 +8110,13 @@ style='text-align:center; vertical-align:top;
         $tdDif        = $tdStyle . " text-align:center; background:#ffffff;";
         $tdDifLote    = $tdStyle . " text-align:center; background:#f7f9fd;";
 
+        // ── Stylesheet + footer (siempre primero) ────────────────────────────────
+        $stylesheet = file_get_contents('css/cssregistro.css');
+        $mpdf->WriteHTML($stylesheet, 1);
+        $mpdf->setFooter("Página: " . '{PAGENO}' . "/" . '{nb}');
+
         // ── Encabezado ────────────────────────────────────────────────────────────
-        $tabla = "
+        $encabezado = "
 <table width='100%' style='border-collapse:collapse; font-family:Arial, sans-serif;'>
 <tr>
 <td style='width:20%; border:0.8px solid #000; padding:6px 8px;'>
@@ -8152,7 +8167,7 @@ style='text-align:center; vertical-align:top;
 </table>
 <br>";
 
-        $tabla .= "
+        $encabezado .= "
 <table width='100%' style='margin-bottom:4px; border-collapse:collapse;'>
 <tr>
 <td style='font-size:13px; padding:4px 0;'>
@@ -8164,6 +8179,9 @@ style='text-align:center; vertical-align:top;
 </td>
 </tr>
 </table>";
+
+        $mpdf->WriteHTML($encabezado, 2);
+        unset($encabezado);
 
         // ── Anchos de columna según modo ──────────────────────────────────────────
         if ($conConteo) {
@@ -8178,9 +8196,8 @@ style='text-align:center; vertical-align:top;
             $colspan = 9;
         }
 
-        // ── Tabla detalle ─────────────────────────────────────────────────────────
-        $tabla .= "
-<table width='100%' style='border-collapse:collapse;'>
+        // ── THEAD reutilizable ────────────────────────────────────────────────────
+        $thead = "
 <thead>
 <tr>
     <th style='{$thStyle} width:{$wObj};'>Obj. Espec.</th>
@@ -8194,28 +8211,44 @@ style='text-align:center; vertical-align:top;
     <th style='{$thStyle} width:{$wTot};'>Total $</th>";
 
         if ($conConteo) {
-            $tabla .= "
+            $thead .= "
     <th style='{$thConteo} width:{$wCnt};'>Conteo Físico</th>
     <th style='{$thConteo} width:{$wDif};'>Diferencia</th>";
         }
 
-        $tabla .= "
+        $thead .= "
 </tr>
-</thead>
-<tbody>";
+</thead>";
 
+        // ── Función para enviar un bloque (tabla completa y cerrada) a mPDF ──────
+        $limiteBloque = 150000; // caracteres por WriteHTML (muy por debajo de 1,000,000)
+        $buffer       = '';
+
+        $flush = function () use (&$buffer, $mpdf, $thead) {
+            if ($buffer === '') {
+                return;
+            }
+            $html = "<table width='100%' style='border-collapse:collapse;'>"
+                . $thead
+                . "<tbody>" . $buffer . "</tbody></table>";
+            $mpdf->WriteHTML($html, 2);
+            $buffer = '';
+        };
+
+        // ── Detalle ───────────────────────────────────────────────────────────────
         if (empty($porCodigo)) {
-            $tabla .= "
+            $buffer .= "
 <tr>
     <td colspan='{$colspan}' style='text-align:center; font-size:12px;
                                     border:0.8px solid #000; padding:12px; color:#888;'>
         No se encontraron sobrantes disponibles en proyectos cerrados.
     </td>
 </tr>";
+            $flush();
         } else {
             foreach ($porCodigo as $grupo) {
 
-                $tabla .= "
+                $buffer .= "
 <tr>
     <td colspan='{$colspan}' style='font-weight:bold; font-size:10px;
                                     border:0.8px solid #000; padding:5px 8px;
@@ -8237,15 +8270,15 @@ style='text-align:center; vertical-align:top;
 
                         if (!$esLoteExtra) {
                             $celdaNombre  = "<td style='{$tdStyle}'>" . e($mat['proyecto']) . "</td>
-                               <td style='{$tdStyle}'>" . e($mat['nombre']) . "</td>
-                               <td style='{$tdC}'>" . e($mat['medida']) . "</td>";
+                           <td style='{$tdStyle}'>" . e($mat['nombre']) . "</td>
+                           <td style='{$tdC}'>" . e($mat['medida']) . "</td>";
                             $bgCodigo     = $tdC;
                             $estiloConteo = $tdConteo;
                             $estiloDif    = $tdDif;
                         } else {
                             $celdaNombre  = "<td style='{$tdLote}'></td>
-                               <td style='{$tdLote}'></td>
-                               <td style='{$tdLote}'></td>";
+                           <td style='{$tdLote}'></td>
+                           <td style='{$tdLote}'></td>";
                             $bgCodigo     = $tdLote;
                             $estiloConteo = $tdConteoLote;
                             $estiloDif    = $tdDifLote;
@@ -8255,7 +8288,7 @@ style='text-align:center; vertical-align:top;
                         $baseR        = $esLoteExtra ? $tdLoteR : $tdR;
                         $colorReserva = $l['reservado'] > 0 ? 'color:#b45309;' : 'color:#888;';
 
-                        $tabla .= "
+                        $buffer .= "
 <tr>
     <td style='{$bgCodigo}'>" . (!$esLoteExtra ? e($grupo['codigo']) : '') . "</td>
     {$celdaNombre}
@@ -8270,12 +8303,12 @@ style='text-align:center; vertical-align:top;
                             . number_format($totalLote, 2, '.', ',') . "</td>";
 
                         if ($conConteo) {
-                            $tabla .= "
+                            $buffer .= "
     <td style='{$estiloConteo}'>&nbsp;</td>
     <td style='{$estiloDif}'>&nbsp;</td>";
                         }
 
-                        $tabla .= "
+                        $buffer .= "
 </tr>";
 
                         $esElPrimero = false;
@@ -8283,15 +8316,15 @@ style='text-align:center; vertical-align:top;
 
                     // ── Subtotal del material (solo si tiene más de 1 lote) ───────
                     if ($totalLotes > 1) {
-                        $stockTotal    = array_sum(array_column($lotes, 'stock'));
-                        $reservadoTot  = array_sum(array_column($lotes, 'reservado'));
-                        $fisicoTotal   = array_sum(array_column($lotes, 'fisico'));
-                        $valorTotal    = 0;
-                        foreach ($lotes as $p => $l) {
-                            $valorTotal += $p * $l['fisico'];
+                        $stockTotal   = array_sum(array_column($lotes, 'stock'));
+                        $reservadoTot = array_sum(array_column($lotes, 'reservado'));
+                        $fisicoTotal  = array_sum(array_column($lotes, 'fisico'));
+                        $valorTotal   = 0;
+                        foreach ($lotes as $p => $lt) {
+                            $valorTotal += $p * $lt['fisico'];
                         }
 
-                        $tabla .= "
+                        $buffer .= "
 <tr>
     <td colspan='5' style='{$tdStyle} text-align:right; font-style:italic;
                             background:#eef2fb; font-size:10px;'>
@@ -8307,25 +8340,30 @@ style='text-align:center; vertical-align:top;
                             . number_format($valorTotal, 2, '.', ',') . "</td>";
 
                         if ($conConteo) {
-                            $tabla .= "
+                            $buffer .= "
     <td style='{$tdConteo} background:#eef2fb;'>&nbsp;</td>
     <td style='{$tdDif}    background:#eef2fb;'>&nbsp;</td>";
                         }
 
-                        $tabla .= "
+                        $buffer .= "
 </tr>";
+                    }
+
+                    // ── Si el buffer ya es grande, enviarlo a mPDF (corte limpio
+                    //    entre materiales, nunca a mitad de un lote) ───────────────
+                    if (strlen($buffer) >= $limiteBloque) {
+                        $flush();
                     }
                 }
             }
-        }
 
-        $tabla .= "
-</tbody>
-</table>";
+            // Enviar lo que quede
+            $flush();
+        }
 
         // ── Tabla resumen valorizado ──────────────────────────────────────────────
         if (!empty($resumenPorCodigo)) {
-            $tabla .= "
+            $resumen = "
 <br>
 <table width='45%' style='border-collapse:collapse; font-family:Arial, sans-serif; margin-left:auto;'>
 <thead>
@@ -8342,14 +8380,14 @@ style='text-align:center; vertical-align:top;
 <tbody>";
 
             foreach ($resumenPorCodigo as $codigo => $subtotal) {
-                $tabla .= "
+                $resumen .= "
 <tr>
     <td style='{$tdStyle}'>" . e($codigo) . "</td>
     <td style='{$tdR} font-weight:bold;'>$ " . number_format($subtotal, 2, '.', ',') . "</td>
 </tr>";
             }
 
-            $tabla .= "
+            $resumen .= "
 <tr>
     <td style='{$tdStyle} text-align:right; font-weight:bold;
                 background:#d9e1f2; font-size:12px;'>
@@ -8361,15 +8399,18 @@ style='text-align:center; vertical-align:top;
 </tr>
 </tbody>
 </table>";
+
+            $mpdf->WriteHTML($resumen, 2);
         }
 
         // ── Render ────────────────────────────────────────────────────────────────
-        $stylesheet = file_get_contents('css/cssregistro.css');
-        $mpdf->WriteHTML($stylesheet, 1);
-        $mpdf->setFooter("Página: " . '{PAGENO}' . "/" . '{nb}');
-        $mpdf->WriteHTML($tabla, 2);
         $mpdf->Output();
     }
+
+
+
+
+
 
 
     public function reporteConsolidadoMaterialesCerrados(Request $request)
